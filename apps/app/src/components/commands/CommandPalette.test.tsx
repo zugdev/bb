@@ -1791,11 +1791,11 @@ describe("CommandPalette", () => {
       expect(
         idleRow.querySelector("[data-palette-thread-details]")?.children,
       ).toHaveLength(1);
-      for (const [title, label, icon] of [
-        ["Title working", "Thread working", "Loading"],
-        ["Title draft", "Thread has unsubmitted draft", "Edit"],
-        ["Title waiting", "Thread needs user input", "CircleQuestion"],
-        ["Title workflow", "Workflow running", "Workflow"],
+      for (const [title, label, icon, iconSize] of [
+        ["Title working", "Thread working", "Loading", "size-3.5"],
+        ["Title draft", "Thread has unsubmitted draft", "Edit", "size-2"],
+        ["Title waiting", "Thread needs user input", "CircleQuestion", "size-3.5"],
+        ["Title workflow", "Workflow running", "Workflow", "size-3.5"],
       ]) {
         const row = within(results).getByRole("option", {
           name: new RegExp(title),
@@ -1816,7 +1816,7 @@ describe("CommandPalette", () => {
         expectClasses(status, "size-3.5", "shrink-0", "cursor-default");
         expectClasses(
           status.querySelector(`[data-icon="${icon}"]`),
-          "size-3.5",
+          iconSize,
         );
         expect(status.hasAttribute("tabindex")).toBe(false);
         expect(status.closest('button, [role="button"]')).toBeNull();
