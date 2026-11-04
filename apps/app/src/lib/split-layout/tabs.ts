@@ -11,6 +11,7 @@ import {
   findPane,
   findPaneByContent,
   findPaneByThread,
+  listPanes,
   removePane,
   replacePaneContent,
   setFocus,
@@ -357,6 +358,21 @@ export const movePaneToTabAtom = atom(
     return activateTabLayout(set, { tabs, activeTabId: target.id }, layout);
   },
 );
+
+export function sharedThreadProjectId(
+  layout: SplitLayout | null,
+): string | null {
+  if (layout === null) return null;
+  const panes = listPanes(layout.root);
+  if (panes.length < 2) return null;
+  const projectIds = new Set(
+    panes.map((pane) =>
+      pane.content.kind === "thread" ? pane.content.projectId : null,
+    ),
+  );
+  const [projectId] = projectIds;
+  return projectIds.size === 1 && projectId !== undefined ? projectId : null;
+}
 
 export function renameSplitTab(
   state: SplitTabsState,

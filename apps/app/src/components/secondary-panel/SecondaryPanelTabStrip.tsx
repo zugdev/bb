@@ -4,7 +4,6 @@ import {
   type PointerEvent as ReactPointerEvent,
   type RefObject,
   useCallback,
-  useEffect,
   useLayoutEffect,
   useMemo,
   useRef,
@@ -43,6 +42,7 @@ import {
   type OverflowFadeTone,
 } from "@bb/shared-ui/overflow-fade";
 import { TabPill } from "@/components/ui/tab-pill";
+import { useTabStripOverflow } from "@/components/ui/use-tab-strip-overflow";
 import { useDragClickSuppression } from "@bb/shared-ui/use-drag-click-suppression";
 import { cn } from "@bb/shared-ui/lib/utils";
 import {
@@ -60,8 +60,6 @@ const CHEVRON_SCROLL_STEP_PX = 140;
 const TAB_STRIP_SCROLL_BUTTON_CLASS =
   "h-7 w-5 rounded-md p-0 [&_[data-icon-root]]:size-3.5 max-md:pointer-coarse:h-9 max-md:pointer-coarse:w-9 max-md:pointer-coarse:[&_[data-icon-root]]:size-5";
 
-const EDGE_EPSILON_PX = 1;
-
 const SECONDARY_PANEL_TAB_STRIP_FADE_TONE: OverflowFadeTone = "sidebar";
 
 class InertTouchSensor extends TouchSensor {
@@ -69,18 +67,6 @@ class InertTouchSensor extends TouchSensor {
     return () => {};
   }
 }
-
-interface TabStripOverflowState {
-  hasOverflow: boolean;
-  canScrollLeft: boolean;
-  canScrollRight: boolean;
-}
-
-const INITIAL_OVERFLOW_STATE: TabStripOverflowState = {
-  hasOverflow: false,
-  canScrollLeft: false,
-  canScrollRight: false,
-};
 
 export interface SecondaryPanelTabStripProps {
   activeTabId: string | null;
@@ -137,18 +123,10 @@ export function SecondaryPanelTabStrip({
   usesDesktopChrome,
   isPanelOpen,
 }: SecondaryPanelTabStripProps) {
-  const stripRef = useRef<HTMLDivElement>(null);
-  const viewportRef = useRef<HTMLDivElement>(null);
-  const contentRef = useRef<HTMLDivElement>(null);
-  const activeTabRef = useRef<HTMLDivElement>(null);
+  const { stripRef, viewportRef, contentRef, activeTabRef, overflow } =
+    useTabStripOverflow({ activeKey: activeTabId, contentKey: tabs });
   const leftScrollButtonRef = useRef<HTMLButtonElement>(null);
   const rightScrollButtonRef = useRef<HTMLButtonElement>(null);
-  const [overflow, setOverflow] = useState<TabStripOverflowState>(
-    INITIAL_OVERFLOW_STATE,
-  );
-  const maxScrollLeftRef = useRef(0);
-  const hasOverflowRef = useRef(false);
-  const scrollFrameRef = useRef<number | null>(null);
   const [draggingTabId, setDraggingTabId] = useState<string | null>(null);
   const {
     beginDragClickSuppression,
@@ -169,92 +147,6 @@ export function SecondaryPanelTabStrip({
     draggingTabId === null
       ? null
       : (tabs.find((tab) => tab.tab.id === draggingTabId) ?? null);
-
-  const applyEdgeFlags = useCallback(() => {
-    const viewport = viewportRef.current;
-    if (viewport === null) {
-      return;
-    }
-    const maxScrollLeft = maxScrollLeftRef.current;
-    const hasOverflow = hasOverflowRef.current;
-    const isScrollable = hasOverflow && maxScrollLeft > EDGE_EPSILON_PX;
-    const { scrollLeft } = viewport;
-    const canScrollLeft = isScrollable && scrollLeft > EDGE_EPSILON_PX;
-    const canScrollRight =
-      isScrollable && scrollLeft < maxScrollLeft - EDGE_EPSILON_PX;
-    setOverflow((prev) =>
-      prev.hasOverflow === hasOverflow &&
-      prev.canScrollLeft === canScrollLeft &&
-      prev.canScrollRight === canScrollRight
-        ? prev
-        : { hasOverflow, canScrollLeft, canScrollRight },
-    );
-  }, []);
-
-  const measureCapacity = useCallback(() => {
-    const strip = stripRef.current;
-    const viewport = viewportRef.current;
-    const content = contentRef.current;
-    if (strip === null || viewport === null || content === null) {
-      return;
-    }
-    const hasOverflow =
-      content.scrollWidth > strip.clientWidth + EDGE_EPSILON_PX;
-    hasOverflowRef.current = hasOverflow;
-    maxScrollLeftRef.current = hasOverflow
-      ? Math.max(0, viewport.scrollWidth - viewport.clientWidth)
-      : 0;
-    applyEdgeFlags();
-  }, [applyEdgeFlags]);
-
-  useEffect(() => {
-    const viewport = viewportRef.current;
-    if (viewport === null) {
-      return;
-    }
-    const handleScroll = () => {
-      if (scrollFrameRef.current !== null) {
-        return;
-      }
-      scrollFrameRef.current = window.requestAnimationFrame(() => {
-        scrollFrameRef.current = null;
-        applyEdgeFlags();
-      });
-    };
-    viewport.addEventListener("scroll", handleScroll, { passive: true });
-    const resizeObserver = new ResizeObserver(measureCapacity);
-    if (stripRef.current !== null) {
-      resizeObserver.observe(stripRef.current);
-    }
-    resizeObserver.observe(viewport);
-    if (contentRef.current !== null) {
-      resizeObserver.observe(contentRef.current);
-    }
-    return () => {
-      viewport.removeEventListener("scroll", handleScroll);
-      resizeObserver.disconnect();
-      if (scrollFrameRef.current !== null) {
-        window.cancelAnimationFrame(scrollFrameRef.current);
-        scrollFrameRef.current = null;
-      }
-    };
-  }, [applyEdgeFlags, measureCapacity]);
-
-  useEffect(() => {
-    measureCapacity();
-  }, [tabs, measureCapacity]);
-
-  useEffect(() => {
-    void document.fonts?.ready?.then(() => measureCapacity());
-  }, [measureCapacity]);
-
-  useLayoutEffect(() => {
-    const activeTabElement = activeTabRef.current;
-    if (activeTabElement === null) {
-      return;
-    }
-    activeTabElement.scrollIntoView({ inline: "nearest", block: "nearest" });
-  }, [activeTabId, overflow.hasOverflow]);
 
   useLayoutEffect(() => {
     const focusedElement = document.activeElement;
@@ -280,42 +172,6 @@ export function SecondaryPanelTabStrip({
       )?.focus();
     }
   }, [overflow.canScrollLeft, overflow.canScrollRight]);
-
-  useEffect(() => {
-    const viewport = viewportRef.current;
-    if (viewport === null) {
-      return;
-    }
-    const handleWheel = (event: WheelEvent) => {
-      if (
-        event.deltaY === 0 ||
-        Math.abs(event.deltaX) >= Math.abs(event.deltaY)
-      ) {
-        return;
-      }
-      const maxScrollLeft = maxScrollLeftRef.current;
-      if (maxScrollLeft <= EDGE_EPSILON_PX) {
-        return;
-      }
-      const { scrollLeft } = viewport;
-      const canScrollInWheelDirection =
-        event.deltaY > 0
-          ? scrollLeft < maxScrollLeft - EDGE_EPSILON_PX
-          : scrollLeft > EDGE_EPSILON_PX;
-      if (!canScrollInWheelDirection) {
-        return;
-      }
-      viewport.scrollLeft = Math.min(
-        maxScrollLeft,
-        Math.max(0, scrollLeft + event.deltaY),
-      );
-      event.preventDefault();
-    };
-    viewport.addEventListener("wheel", handleWheel, { passive: false });
-    return () => {
-      viewport.removeEventListener("wheel", handleWheel);
-    };
-  }, []);
 
   const scrollByStep = useCallback((direction: -1 | 1) => {
     viewportRef.current?.scrollBy({
