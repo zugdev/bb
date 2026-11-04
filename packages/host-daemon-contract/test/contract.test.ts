@@ -398,12 +398,14 @@ const ONLINE_RPC_RESPONSE_RESULT_FIXTURES: OnlineRpcResponseResultFixtures = {
         title: "Fix the flaky test",
         updatedAt: 1_780_000_000_000,
         sizeBytes: 2048,
+        repositoryRoot: "/home/user/projects/bb",
       },
     ],
   },
   "provider.sessions.read": {
     sessionId: "session-1",
     cwd: "/home/user/projects/bb",
+    repositoryRoot: null,
     truncated: false,
     turns: [
       {
