@@ -1,4 +1,4 @@
-import { appendFileSync, mkdirSync, openSync } from "node:fs";
+import { appendFileSync, mkdirSync, openSync, readFileSync, rmSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import { experimental_spawnHostProcess as spawn } from "@get-bb/plugin-sdk/process";
@@ -6,7 +6,27 @@ import { experimental_defineHostEntry } from "@get-bb/plugin-sdk/host";
 import { forkUpdaterHostContract, type UpdateStep } from "./contract.js";
 
 const LOG_PATH = join(homedir(), ".bb", "logs", "fork-updater.log");
+const INSTALLED_COMMIT_PATH = join(homedir(), ".bb", "fork-updater-installed-commit");
+const SWAP_FAILED_PATH = join(homedir(), ".bb", "fork-updater-swap-failed");
 const OUTPUT_TAIL_BYTES = 2_000;
+
+function logTail(): string {
+  try {
+    return readFileSync(LOG_PATH, "utf8").slice(-OUTPUT_TAIL_BYTES).trim();
+  } catch {
+    return "";
+  }
+}
+
+function consume(path: string): string | null {
+  try {
+    const value = readFileSync(path, "utf8").trim();
+    rmSync(path, { force: true });
+    return value === "" ? null : value;
+  } catch {
+    return null;
+  }
+}
 
 function log(line: string): void {
   mkdirSync(dirname(LOG_PATH), { recursive: true });
@@ -78,11 +98,15 @@ async function runStep(checkoutPath: string, step: UpdateStep): Promise<void> {
         ["exec", "dotenv", "--no-expand", "-c", "production", "--", "turbo", "run", "package", "--filter=@bb/desktop", "--output-logs=new-only"],
         { NODE_ENV: "production" },
       );
+      await run(checkoutPath, "/bin/sh", [join(checkoutPath, "scripts", "fork-update.sh"), "--verify"]);
       return;
-    case "swap": {
-      log("starting detached swap");
+    case "swap":
+    case "swap-and-reopen": {
+      log(`starting detached ${step}`);
       const output = openSync(LOG_PATH, "a");
-      const child = spawn("/bin/sh", [join(checkoutPath, "scripts", "fork-update.sh"), "--swap"], {
+      const args = [join(checkoutPath, "scripts", "fork-update.sh"), "--swap"];
+      if (step === "swap") args.push("--no-reopen");
+      const child = spawn("/bin/sh", args, {
         cwd: checkoutPath,
         detached: true,
         stdio: ["ignore", output, output],
@@ -96,12 +120,16 @@ async function runStep(checkoutPath: string, step: UpdateStep): Promise<void> {
 export default experimental_defineHostEntry({
   contract: forkUpdaterHostContract,
   handlers: {
-    async inspect({ checkoutPath, builtCommit }) {
+    async inspect({ checkoutPath, builtCommit: storedCommit }) {
+      const installedCommit = consume(INSTALLED_COMMIT_PATH);
+      const swapFailure = consume(SWAP_FAILED_PATH);
+      const swapError = swapFailure === null ? null : `${swapFailure}. See ${LOG_PATH}\n${logTail()}`;
+      const builtCommit = installedCommit ?? storedCommit;
       await git(checkoutPath, "fetch", "origin");
       const remoteCommit = await git(checkoutPath, "rev-parse", "origin/main");
       const builtIsAncestor = await isAncestor(checkoutPath, builtCommit, remoteCommit);
       if (!builtIsAncestor) {
-        return { remoteCommit, builtIsAncestor, commits: [], changedFiles: [] };
+        return { remoteCommit, builtIsAncestor, commits: [], changedFiles: [], installedCommit, swapError };
       }
       const range = `${builtCommit}..${remoteCommit}`;
       const commits = (await git(checkoutPath, "log", "--no-merges", "--format=%h%x09%s", range))
@@ -114,7 +142,7 @@ export default experimental_defineHostEntry({
       const changedFiles = (await git(checkoutPath, "diff", "--name-only", builtCommit, remoteCommit))
         .split("\n")
         .filter((line) => line !== "");
-      return { remoteCommit, builtIsAncestor, commits, changedFiles };
+      return { remoteCommit, builtIsAncestor, commits, changedFiles, installedCommit, swapError };
     },
     async run({ checkoutPath, step }) {
       await runStep(checkoutPath, step);

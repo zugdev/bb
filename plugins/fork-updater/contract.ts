@@ -8,6 +8,7 @@ export const updateStepSchema = z.enum([
   "install",
   "package",
   "swap",
+  "swap-and-reopen",
 ]);
 export type UpdateStep = z.infer<typeof updateStepSchema>;
 
@@ -22,6 +23,8 @@ export const forkUpdaterHostContract = defineRpcContract({
         builtIsAncestor: z.boolean(),
         commits: z.array(commitSchema),
         changedFiles: z.array(z.string()),
+        installedCommit: z.string().nullable(),
+        swapError: z.string().nullable(),
       })
       .strict(),
   },
@@ -54,7 +57,7 @@ export const forkUpdaterRpcContract = defineRpcContract({
     output: statusSchema,
   },
   update: {
-    input: z.object({}).strict(),
+    input: z.object({ reopen: z.boolean() }).strict(),
     output: statusSchema,
   },
 });

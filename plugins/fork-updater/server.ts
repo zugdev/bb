@@ -11,6 +11,7 @@ const BUILT_COMMIT_KEY = "built-commit";
 const SEED_BUILT_COMMIT = "5008564189";
 const DEFAULT_CHECKOUT = "/Users/gus/prog/bb/.claude/worktrees/trunk";
 const LONG_STEP_TIMEOUT_MS = 30 * 60_000;
+const SELF_RELOAD_DELAY_MS = 1_000;
 
 const JSON_OPTION = { type: "boolean", description: "Emit machine-readable JSON" } as const;
 
@@ -54,8 +55,10 @@ export default async function forkUpdaterPlugin(bb: BbPluginApi): Promise<void> 
     progress: null,
     error: null,
   };
+  let swapError: string | null = null;
   let checking: Promise<ForkUpdaterStatus> | null = null;
   let updating: Promise<ForkUpdaterStatus> | null = null;
+  let selfReloadPending = false;
 
   function setStatus(patch: Partial<ForkUpdaterStatus>): void {
     status = { ...status, ...patch };
@@ -97,18 +100,23 @@ export default async function forkUpdaterPlugin(bb: BbPluginApi): Promise<void> 
         { checkoutPath: path, builtCommit },
         { hostId: await serverHostId(), timeoutMs: 5 * 60_000 },
       );
+      if (result.installedCommit !== null) await saveBuiltCommit(result.installedCommit);
+      swapError = result.swapError ?? swapError;
       const classified = result.builtIsAncestor
         ? classifyChanges(path, result.changedFiles, await localPlugins())
         : ({ kind: "rebuild" } as const);
+      const docsOnly = classified.kind === "docs";
+      if (docsOnly) await saveBuiltCommit(await runStep("fast-forward", path));
       setStatus({
         checkoutPath: path,
         builtCommit,
         remoteCommit: result.remoteCommit,
-        commits: result.commits,
-        kind: classified.kind,
+        commits: docsOnly ? [] : result.commits,
+        kind: docsOnly ? "up-to-date" : classified.kind,
         reloadPluginIds: classified.kind === "plugins" ? classified.pluginIds : [],
         checkedAt: Date.now(),
-        error: null,
+        ...(result.swapError === null ? {} : { progress: null }),
+        error: swapError,
       });
     } catch (error) {
       setStatus({ checkoutPath: path, checkedAt: Date.now(), error: errorMessage(error) });
@@ -129,7 +137,8 @@ export default async function forkUpdaterPlugin(bb: BbPluginApi): Promise<void> 
     await bb.storage.kv.set(BUILT_COMMIT_KEY, commit);
   }
 
-  async function applyUpdate(): Promise<ForkUpdaterStatus> {
+  async function applyUpdate(reopen: boolean): Promise<ForkUpdaterStatus> {
+    swapError = null;
     const current = await check();
     if (current.error !== null) throw new Error(current.error);
     if (current.kind === "up-to-date") return current;
@@ -145,7 +154,8 @@ export default async function forkUpdaterPlugin(bb: BbPluginApi): Promise<void> 
         await saveBuiltCommit(head);
         setStatus({ progress: null, builtCommit: head });
         if (current.reloadPluginIds.includes(bb.pluginId)) {
-          void bb.sdk.plugins.reload({ pluginId: bb.pluginId });
+          setStatus({ kind: "up-to-date", commits: [], reloadPluginIds: [] });
+          selfReloadPending = true;
         }
         return status;
       }
@@ -153,9 +163,8 @@ export default async function forkUpdaterPlugin(bb: BbPluginApi): Promise<void> 
       await runStep("install", path);
       setStatus({ progress: "Packaging bb.app, this takes several minutes" });
       await runStep("package", path);
-      await saveBuiltCommit(head);
-      setStatus({ progress: "Restarting bb with the new build", builtCommit: head });
-      await runStep("swap", path);
+      setStatus({ progress: reopen ? "Restarting bb with the new build" : "Installing the new build, bb will quit" });
+      await runStep(reopen ? "swap-and-reopen" : "swap", path);
       return status;
     } catch (error) {
       setStatus({ progress: null, error: errorMessage(error) });
@@ -163,19 +172,23 @@ export default async function forkUpdaterPlugin(bb: BbPluginApi): Promise<void> 
     }
   }
 
-  function update(): Promise<ForkUpdaterStatus> {
-    updating ??= applyUpdate()
+  function update(reopen: boolean): Promise<ForkUpdaterStatus> {
+    updating ??= applyUpdate(reopen)
       .finally(() => {
         updating = null;
       })
-      .then(() => check());
+      .then(() => {
+        if (!selfReloadPending) return check();
+        setTimeout(() => void bb.sdk.plugins.reload({ pluginId: bb.pluginId }), SELF_RELOAD_DELAY_MS);
+        return status;
+      });
     return updating;
   }
 
   bb.rpc.register(forkUpdaterRpcContract, {
     status: ({ refresh }) => (refresh || status.checkedAt === null ? check() : status),
-    update: () => {
-      void update().catch(() => undefined);
+    update: ({ reopen }) => {
+      void update(reopen).catch(() => undefined);
       return status;
     },
   });
@@ -196,11 +209,14 @@ export default async function forkUpdaterPlugin(bb: BbPluginApi): Promise<void> 
           },
         }),
         update: cliCommand({
-          summary: "Apply pending commits: reload plugins, or rebuild and restart bb",
-          options: { json: JSON_OPTION },
+          summary: "Apply pending commits: reload plugins, or rebuild bb.app and reopen it",
+          options: {
+            json: JSON_OPTION,
+            "no-reopen": { type: "boolean", description: "After a rebuild, install the new bb.app and leave bb closed" },
+          },
           async run(input) {
             try {
-              const result = await update();
+              const result = await update(input.options["no-reopen"] !== true);
               return { exitCode: 0, stdout: input.options.json ? JSON.stringify(result) : formatStatus(result) };
             } catch (error) {
               throw new PluginCliError(errorMessage(error), { code: "update_failed" });
