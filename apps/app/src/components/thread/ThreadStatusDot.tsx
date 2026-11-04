@@ -38,7 +38,6 @@ export function ThreadStatusDot({
     <span
       role="img"
       aria-label={label}
-      title={label}
       className={cn("relative inline-flex size-2 shrink-0", className)}
     >
       {dot === "working" ? (
