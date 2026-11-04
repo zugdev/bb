@@ -53,6 +53,7 @@ interface ProjectSelectorProps {
   showChevronWhenDisabled?: boolean;
   className?: string;
   defaultOpen?: boolean;
+  onOpenChange?: (open: boolean) => void;
   modal?: boolean;
 }
 
@@ -69,6 +70,7 @@ export function ProjectSelector({
   showChevronWhenDisabled = false,
   className,
   defaultOpen,
+  onOpenChange,
   modal = true,
 }: ProjectSelectorProps) {
   const [open, setOpen] = useState(defaultOpen ?? false);
@@ -140,6 +142,7 @@ export function ProjectSelector({
       allProjectsValue !== undefined);
   const handleOpenChange = (nextOpen: boolean) => {
     setOpen(nextOpen);
+    onOpenChange?.(nextOpen);
     setHighlightedValue(NO_HIGHLIGHT_VALUE);
     if (!nextOpen) {
       setSearchQuery("");

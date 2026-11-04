@@ -1,5 +1,9 @@
 import { preloadThreadSecondaryPanel } from "@/components/secondary-panel/lazySecondaryPanelComponents";
 import {
+  ThreadStatusDot,
+  useThreadDot,
+} from "@/components/thread/ThreadStatusDot";
+import {
   useCallback,
   useContext,
   useLayoutEffect,
@@ -8,6 +12,7 @@ import {
   type PointerEvent as ReactPointerEvent,
   type ReactNode,
 } from "react";
+import { createPortal } from "react-dom";
 import { Button } from "@bb/shared-ui/button";
 import { useAtomValue } from "jotai";
 import type {
@@ -24,11 +29,9 @@ import {
 } from "@/components/layout/AppPageHeader";
 import {
   getBbDesktopInfo,
-  MACOS_TITLE_BAR_TRAILING_TOGGLE_CLASS,
   MACOS_WINDOW_NO_DRAG_CLASS,
   shouldUseMacosDesktopChrome,
 } from "@/lib/bb-desktop";
-import { useIsSidebarFramed } from "@/components/ui/sidebar.js";
 import { cn } from "@bb/shared-ui/lib/utils";
 import {
   useAppCommandHandler,
@@ -52,8 +55,10 @@ import {
   CONTEXT_INACTIVE_TEXT_CLASS,
   CONTEXT_SELECTION_SURFACE_CLASS,
 } from "@bb/shared-ui/context-selection";
+import { useRootComposePinnedPanelToggleBoxClassName } from "@/views/RootComposeSecondaryContent";
 import { usePaneContext } from "./PaneContext";
 import { PaneMaximizeButton } from "./PaneMaximizeButton";
+import { PaneDragHandle } from "./PaneDragHandle";
 
 const THREAD_HEADER_ACTION_BUTTON_CLASS = cn(
   COARSE_POINTER_TOOLBAR_ACTION_BUTTON_CLASS,
@@ -93,6 +98,7 @@ export function ThreadDetailHeader({
 }: ThreadDetailHeaderProps) {
   const isCompactViewport = useIsCompactViewport();
   const threadId = thread.id;
+  const threadDot = useThreadDot(threadId);
   const headerActions = useThreadHeaderActionEntries(thread);
   const [primaryAction, ...secondaryActions] = headerActions;
   const { renameThreadAsync } = useThreadActions();
@@ -118,16 +124,15 @@ export function ThreadDetailHeader({
   const dimsInactiveSplits = useAtomValue(dimInactiveSplitsAtom);
   const panelShortcut = useAppCommandShortcut("panel.toggle");
   const usesDesktopChrome = shouldUseMacosDesktopChrome(desktopInfo);
-  const isSidebarFramed = useIsSidebarFramed();
   const headerRef = useRef<HTMLElement>(null!);
   const {
     beginPaneDrag,
     isFocused,
-    isTopRow,
-    ownsWindowTopLeft,
+    isSplitPane,
     reservesWindowPanelToggle,
     secondaryPanelHost,
   } = usePaneContext();
+  const pageToggleBoxClassName = useRootComposePinnedPanelToggleBoxClassName();
   useAppCommandHandler("thread.rename", () => {
     if (!isFocused) return false;
     startEditing();
@@ -174,12 +179,45 @@ export function ThreadDetailHeader({
   };
   const rightPanelIconName = RIGHT_PANEL_TOGGLE_ICON_NAME;
   const mountRightPanelToggle = secondaryPanelHost === null;
+  const pinsToggleToPage = !isSplitPane && !isCompactViewport;
   const showRightPanelToggle =
     mountRightPanelToggle && (!isSecondaryPanelOpen || isCompactViewport);
   const rightPanelLabel =
     isSecondaryPanelOpen && showRightPanelToggle
       ? "Hide right panel"
       : "Show right panel";
+
+  const rightPanelToggle = (
+    <Button
+      type="button"
+      variant="ghost"
+      size="icon"
+      className={cn(
+        RIGHT_PANEL_TOGGLE_BUTTON_CLASS,
+        "relative",
+        usesDesktopChrome && MACOS_WINDOW_NO_DRAG_CLASS,
+        !showRightPanelToggle && "hidden",
+      )}
+      inert={!showRightPanelToggle}
+      aria-label={
+        panelShortcut
+          ? `${rightPanelLabel} (${panelShortcut.label})`
+          : rightPanelLabel
+      }
+      aria-keyshortcuts={panelShortcut?.ariaKeyshortcuts}
+      aria-expanded={isSecondaryPanelOpen}
+      onPointerEnter={preloadThreadSecondaryPanel}
+      onFocus={preloadThreadSecondaryPanel}
+      onPointerDown={preloadThreadSecondaryPanel}
+      onClick={onToggleSecondaryPanel}
+    >
+      <Icon name={rightPanelIconName} />
+      <AppCommandShortcutHint
+        shortcut={panelShortcut}
+        className={RIGHT_PANEL_TOGGLE_SHORTCUT_HINT_CLASS}
+      />
+    </Button>
+  );
 
   const center = (
     <>
@@ -189,10 +227,20 @@ export function ThreadDetailHeader({
         }
         className={cn(
           "relative min-w-0",
-          isSplitPaneHeader && "-my-1 -ml-2 rounded-md px-2 py-1",
+          isSplitPaneHeader &&
+            "-my-1 -ml-2 flex items-center rounded-md px-2 py-1",
           isSplitPaneHeader && isFocused && CONTEXT_SELECTION_SURFACE_CLASS,
         )}
       >
+        {beginPaneDrag && !isEditing ? (
+          <PaneDragHandle
+            onPointerDown={handleTitlePointerDown}
+            usesDesktopChrome={usesDesktopChrome}
+          />
+        ) : null}
+        {isSplitPaneHeader && !isEditing ? (
+          <ThreadStatusDot dot={threadDot} className="mr-1.5" />
+        ) : null}
         <p
           className={cn(
             "relative min-w-0 text-sm font-normal transition-colors",
@@ -293,50 +341,24 @@ export function ThreadDetailHeader({
           </Button>
         ) : null}
         {contextCardButton}
-        {mountRightPanelToggle ? (
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className={cn(
-              RIGHT_PANEL_TOGGLE_BUTTON_CLASS,
-              "relative",
-              usesDesktopChrome && MACOS_WINDOW_NO_DRAG_CLASS,
-              isTopRow &&
-                isSidebarFramed &&
-                MACOS_TITLE_BAR_TRAILING_TOGGLE_CLASS,
-              !showRightPanelToggle && "hidden",
-            )}
-            inert={!showRightPanelToggle}
-            aria-label={
-              panelShortcut
-                ? `${rightPanelLabel} (${panelShortcut.label})`
-                : rightPanelLabel
-            }
-            aria-keyshortcuts={panelShortcut?.ariaKeyshortcuts}
-            aria-expanded={isSecondaryPanelOpen}
-            onPointerEnter={preloadThreadSecondaryPanel}
-            onFocus={preloadThreadSecondaryPanel}
-            onPointerDown={preloadThreadSecondaryPanel}
-            onClick={onToggleSecondaryPanel}
-          >
-            <Icon name={rightPanelIconName} />
-            <AppCommandShortcutHint
-              shortcut={panelShortcut}
-              className={RIGHT_PANEL_TOGGLE_SHORTCUT_HINT_CLASS}
-            />
-          </Button>
-        ) : null}
+        {mountRightPanelToggle
+          ? pinsToggleToPage
+            ? createPortal(
+                <div
+                  className={cn(
+                    pageToggleBoxClassName,
+                    "z-40",
+                    usesDesktopChrome && MACOS_WINDOW_NO_DRAG_CLASS,
+                  )}
+                >
+                  {rightPanelToggle}
+                </div>,
+                document.body,
+              )
+            : rightPanelToggle
+          : null}
         {reservesWindowPanelToggle && !isWindowPanelOpen ? (
-          <span
-            aria-hidden
-            className={cn(
-              HEADER_ICON_BUTTON_CLASS,
-              isTopRow &&
-                isSidebarFramed &&
-                MACOS_TITLE_BAR_TRAILING_TOGGLE_CLASS,
-            )}
-          />
+          <span aria-hidden className={HEADER_ICON_BUTTON_CLASS} />
         ) : null}
       </div>
     </>
@@ -347,8 +369,8 @@ export function ThreadDetailHeader({
       headerRef={headerRef}
       center={center}
       actions={actions}
-      isWindowDragRegion={isTopRow}
-      ownsWindowTopLeft={ownsWindowTopLeft}
+      isWindowDragRegion={false}
+      ownsWindowTopLeft={false}
       className={beginPaneDrag ? "z-[21]" : undefined}
     />
   );

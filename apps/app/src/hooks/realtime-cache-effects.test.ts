@@ -1004,6 +1004,7 @@ describe("createRealtimeCacheEffects", () => {
         statusChange: {
           activity: NO_THREAD_ACTIVITY,
           latestAttentionAt: 100,
+          lastUserMessageAt: null,
           runtime: {
             displayStatus: "active",
           },
@@ -2335,6 +2336,7 @@ describe("createRealtimeCacheEffects", () => {
       archivedAt: null,
       id: "thr_1",
       latestAttentionAt: 100,
+      lastUserMessageAt: null,
       runtime: { displayStatus: "idle" },
       status: "idle",
       updatedAt: 100,
@@ -2343,6 +2345,7 @@ describe("createRealtimeCacheEffects", () => {
       activity: NO_THREAD_ACTIVITY,
       id: "thr_2",
       latestAttentionAt: 50,
+      lastUserMessageAt: null,
       runtime: { displayStatus: "idle" },
       status: "idle",
       updatedAt: 50,
@@ -2374,6 +2377,7 @@ describe("createRealtimeCacheEffects", () => {
     const statusChange = {
       activity: { ...NO_THREAD_ACTIVITY, activePlanModeCount: 1 },
       latestAttentionAt: 100,
+      lastUserMessageAt: null,
       runtime: {
         displayStatus: "active",
       },
@@ -2518,6 +2522,7 @@ describe("createRealtimeCacheEffects", () => {
       activity: NO_THREAD_ACTIVITY,
       id: "thr_1",
       latestAttentionAt: 100,
+      lastUserMessageAt: null,
       runtime: { displayStatus: "idle" },
       status: "idle",
       updatedAt: 100,
@@ -2546,6 +2551,7 @@ describe("createRealtimeCacheEffects", () => {
         statusChange: {
           activity: NO_THREAD_ACTIVITY,
           latestAttentionAt: 100,
+          lastUserMessageAt: null,
           runtime: {
             displayStatus: "active",
           },
@@ -2591,6 +2597,7 @@ describe("createRealtimeCacheEffects", () => {
       activity: NO_THREAD_ACTIVITY,
       id: "thr_1",
       latestAttentionAt: 100,
+      lastUserMessageAt: null,
       runtime: { displayStatus: "idle" },
       status: "idle",
       updatedAt: 100,
@@ -2653,6 +2660,7 @@ describe("createRealtimeCacheEffects", () => {
         statusChange: {
           activity: NO_THREAD_ACTIVITY,
           latestAttentionAt: 100,
+          lastUserMessageAt: null,
           runtime: {
             displayStatus: "active",
           },
@@ -2731,6 +2739,7 @@ describe("createRealtimeCacheEffects", () => {
           statusChange: {
             activity: NO_THREAD_ACTIVITY,
             latestAttentionAt: 100,
+            lastUserMessageAt: null,
             runtime: { displayStatus: "active" },
             status: "active",
             updatedAt: 200 + index,
@@ -3175,6 +3184,7 @@ describe("createRealtimeCacheEffects", () => {
         id: "thr_1",
         lastReadAt: 100,
         latestAttentionAt: 100,
+        lastUserMessageAt: null,
         runtime: { displayStatus: "active" },
         status: "active",
         title: "Thread",
@@ -3190,6 +3200,7 @@ describe("createRealtimeCacheEffects", () => {
       const idleChange = {
         activity: NO_THREAD_ACTIVITY,
         latestAttentionAt: 300,
+        lastUserMessageAt: null,
         runtime: { displayStatus: "idle" },
         status: "idle",
         updatedAt: 300,
@@ -3207,6 +3218,7 @@ describe("createRealtimeCacheEffects", () => {
       expect(queryClient.getQueryData(threadKey)).toEqual({
         ...activeThread,
         latestAttentionAt: 300,
+        lastUserMessageAt: null,
         runtime: { displayStatus: "idle" },
         status: "idle",
         updatedAt: 300,
@@ -3253,6 +3265,7 @@ describe("createRealtimeCacheEffects", () => {
         activity: NO_THREAD_ACTIVITY,
         id: "thr_1",
         latestAttentionAt: 100,
+        lastUserMessageAt: null,
         runtime: { displayStatus: "idle" },
         status: "idle",
         updatedAt: 100,
@@ -3272,6 +3285,7 @@ describe("createRealtimeCacheEffects", () => {
           statusChange: {
             activity: NO_THREAD_ACTIVITY,
             latestAttentionAt: 100,
+            lastUserMessageAt: null,
             runtime: {
               displayStatus: "active",
             },
@@ -3314,6 +3328,7 @@ describe("createRealtimeCacheEffects", () => {
                 activity: NO_THREAD_ACTIVITY,
                 id: "thr_1",
                 latestAttentionAt: 100,
+                lastUserMessageAt: null,
                 runtime: {
                   displayStatus: "idle",
                 },
@@ -3339,6 +3354,7 @@ describe("createRealtimeCacheEffects", () => {
           statusChange: {
             activity: NO_THREAD_ACTIVITY,
             latestAttentionAt: 200,
+            lastUserMessageAt: null,
             runtime: {
               displayStatus: "active",
             },

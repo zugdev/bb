@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { getAppKeybindingOverrides } from "@bb/db";
 import {
   PANE_FOCUS_APP_COMMAND_IDS,
+  SPLIT_TAB_SELECT_APP_COMMAND_IDS,
   THREAD_JUMP_APP_COMMAND_IDS,
   applyAppKeybindingOverrides,
   appKeybindingOverridesSchema,
@@ -404,7 +405,7 @@ describe("app keybindings", () => {
         ),
       ).toMatchObject({
         desktopOnly: true,
-        shortcut: { key: "t", mod: true, shift: true },
+        shortcut: { key: "t", mod: true, alt: true, shift: true },
       });
       expect(
         config.keybindings.filter(
@@ -531,7 +532,7 @@ describe("app keybindings", () => {
             control: true,
             shift: false,
             when: {
-              all: ["mainSurface", "webSurface", "macPlatform"],
+              all: ["mainSurface", "macPlatform"],
               none: ["modalOpen"],
             },
           },
@@ -543,20 +544,8 @@ describe("app keybindings", () => {
             control: false,
             shift: true,
             when: {
-              all: ["mainSurface", "webSurface"],
-              none: ["modalOpen", "macPlatform"],
-            },
-          },
-          {
-            command,
-            desktopOnly: true,
-            key: String(index + 1),
-            mod: true,
-            control: false,
-            shift: false,
-            when: {
               all: ["mainSurface"],
-              none: ["modalOpen"],
+              none: ["modalOpen", "macPlatform"],
             },
           },
         ]),
@@ -619,8 +608,8 @@ describe("app keybindings", () => {
         altChord("modelPicker.cycleModelBackward", "m", true, composerWhen),
         altChord("modelPicker.cycleProvider", "p", false, composerWhen),
         altChord("modelPicker.cycleProviderBackward", "p", true, composerWhen),
-        altChord("modelPicker.cycleReasoning", "t", false, composerWhen),
-        altChord("modelPicker.cycleReasoningBackward", "t", true, composerWhen),
+        altChord("modelPicker.cycleReasoning", "r", false, composerWhen),
+        altChord("modelPicker.cycleReasoningBackward", "r", true, composerWhen),
         altChord("modelPicker.cycleModel", "m", false, pickerOpenWhen),
         altChord("modelPicker.cycleModelBackward", "m", true, pickerOpenWhen),
         altChord("modelPicker.cycleProvider", "p", false, pickerOpenWhen),
@@ -630,17 +619,21 @@ describe("app keybindings", () => {
           true,
           pickerOpenWhen,
         ),
-        altChord("modelPicker.cycleReasoning", "t", false, pickerOpenWhen),
+        altChord("modelPicker.cycleReasoning", "r", false, pickerOpenWhen),
         altChord(
           "modelPicker.cycleReasoningBackward",
-          "t",
+          "r",
           true,
           pickerOpenWhen,
         ),
       ]);
       expect(
         assignedDefaultKeybindings
-          .filter((binding) => binding.shortcut.alt)
+          .filter(
+            (binding) =>
+              binding.shortcut.alt &&
+              binding.command.startsWith("modelPicker."),
+          )
           .map((binding) => ({
             command: binding.command,
             shift: binding.shortcut.shift,
@@ -700,7 +693,7 @@ describe("app keybindings", () => {
             control: true,
             shift: false,
             when: {
-              all: ["mainSurface", "splitActive", "webSurface", "macPlatform"],
+              all: ["mainSurface", "splitActive", "macPlatform"],
               none: ["modalOpen"],
             },
           },
@@ -712,20 +705,39 @@ describe("app keybindings", () => {
             control: false,
             shift: true,
             when: {
-              all: ["mainSurface", "splitActive", "webSurface"],
+              all: ["mainSurface", "splitActive"],
               none: ["modalOpen", "macPlatform"],
+            },
+          },
+        ]),
+        ...(
+          [
+            ["pane.split.right", false],
+            ["pane.split.down", true],
+          ] as const
+        ).flatMap(([command, shift]) => [
+          {
+            command,
+            desktopOnly: false,
+            key: "d",
+            mod: false,
+            control: false,
+            shift,
+            when: {
+              all: ["mainSurface", "webSurface"],
+              none: ["modalOpen", "browserFocus"],
             },
           },
           {
             command,
             desktopOnly: true,
-            key: String(index + 1),
+            key: "d",
             mod: true,
             control: false,
-            shift: false,
+            shift,
             when: {
-              all: ["mainSurface", "splitActive"],
-              none: ["modalOpen"],
+              all: ["mainSurface"],
+              none: ["modalOpen", "browserFocus"],
             },
           },
         ]),
@@ -741,13 +753,60 @@ describe("app keybindings", () => {
         {
           command: "pane.close",
           desktopOnly: false,
-          key: "x",
+          key: "w",
+          mod: false,
+          control: false,
+          shift: false,
+          when: {
+            all: ["mainSurface", "webSurface"],
+            none: ["modalOpen", "browserFocus"],
+          },
+        },
+        {
+          command: "pane.close",
+          desktopOnly: true,
+          key: "w",
           mod: true,
           control: false,
-          shift: true,
-          when: { all: ["mainSurface", "splitActive"], none: ["modalOpen"] },
+          shift: false,
+          when: {
+            all: ["mainSurface"],
+            none: ["modalOpen", "browserFocus"],
+          },
         },
       ]);
+      expect(
+        assignedDefaultKeybindings
+          .filter(
+            (binding) =>
+              binding.command.startsWith("pane.split.") ||
+              binding.command === "pane.close" ||
+              binding.command.startsWith("splitTab."),
+          )
+          .map((binding) => [
+            binding.command,
+            binding.shortcut.key,
+            binding.shortcut.alt,
+            binding.shortcut.shift,
+            binding.shortcut.mod,
+          ]),
+      ).toEqual(
+        (
+          [
+            ["pane.split.right", "d", false],
+            ["pane.split.down", "d", true],
+            ["pane.close", "w", false],
+            ["splitTab.new", "t", false],
+            ["splitTab.reopenClosed", "t", true],
+            ...SPLIT_TAB_SELECT_APP_COMMAND_IDS.map(
+              (command, index) => [command, String(index + 1), false] as const,
+            ),
+          ] as const
+        ).flatMap(([command, key, shift]) => [
+          [command, key, true, shift, false],
+          [command, key, false, shift, true],
+        ]),
+      );
       expect(
         assignedDefaultKeybindings
           .filter((binding) => binding.desktopOnly)
@@ -756,9 +815,15 @@ describe("app keybindings", () => {
         "thread.new",
         "thread.previous",
         "thread.next",
-        ...THREAD_JUMP_APP_COMMAND_IDS,
-        ...PANE_FOCUS_APP_COMMAND_IDS,
+        "pane.split.right",
+        "pane.split.down",
+        "pane.close",
+        "splitTab.new",
+        "splitTab.reopenClosed",
+        ...SPLIT_TAB_SELECT_APP_COMMAND_IDS,
+        "panel.newTab",
         "panel.reopenClosedTab",
+        "panel.close",
         "browser.focusLocation",
         "browser.reload",
         "browser.find",

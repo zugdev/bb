@@ -304,6 +304,7 @@ function makeThread(
     deletedAt: null,
     lastReadAt: null,
     latestAttentionAt: 1,
+    lastUserMessageAt: null,
     createdAt: 1,
     updatedAt: threadUpdatedAt,
     activity: {

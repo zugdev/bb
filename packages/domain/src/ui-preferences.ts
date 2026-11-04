@@ -52,6 +52,7 @@ export const UI_PREFERENCE_KEYS = [
   "composer.provider",
   "infoPanel.collapsedSections",
   "threadContextCard.pinned",
+  "panes.splitDirection",
 ] as const;
 export type UiPreferenceKey = (typeof UI_PREFERENCE_KEYS)[number];
 const uiPreferenceKeySchema = z.enum(UI_PREFERENCE_KEYS);
@@ -155,6 +156,11 @@ export const uiPreferenceDefinitions = {
     uiPreferenceStringSchema,
     "__automatic__",
     "Plugin that draws the composer's input box: a plugin key such as bb--composer/composer, or __automatic__ for the first composer from a plugin you installed, then the bundled Composer plugin. With no composer plugin enabled, no composer is shown.",
+  ),
+  "panes.splitDirection": defineUiPreference(
+    z.enum(["right", "down"]),
+    "right",
+    "Direction the Split pane command opens a new pane in: right puts it beside the focused pane, down puts it below. Split pane the other way uses the opposite direction.",
   ),
   "threadContextCard.pinned": defineUiPreference(
     z.boolean(),

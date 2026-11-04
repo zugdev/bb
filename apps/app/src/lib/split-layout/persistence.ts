@@ -68,7 +68,7 @@ const splitNodeSchema: z.ZodType<SplitNode> = z
     }
   });
 
-const splitLayoutSchema: z.ZodType<SplitLayout> = z
+export const splitLayoutSchema: z.ZodType<SplitLayout> = z
   .object({
     root: layoutNodeSchema,
     focusedPaneId: z.string().min(1),

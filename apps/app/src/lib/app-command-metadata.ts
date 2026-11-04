@@ -1,6 +1,7 @@
 import {
   QUESTION_SELECT_APP_COMMAND_IDS,
   PANE_FOCUS_APP_COMMAND_IDS,
+  SPLIT_TAB_SELECT_APP_COMMAND_IDS,
   THREAD_JUMP_APP_COMMAND_IDS,
   type AppCommandId,
 } from "@bb/domain";
@@ -206,6 +207,16 @@ export const APP_COMMAND_GROUPS: readonly AppCommandGroup[] = [
         ),
       ),
       command(
+        "pane.split.right",
+        "Split chat pane",
+        "Open a new chat pane beside the focused pane, or below it when the split direction setting is Below.",
+      ),
+      command(
+        "pane.split.down",
+        "Split chat pane the other way",
+        "Open a new chat pane in the direction opposite to the split direction setting.",
+      ),
+      command(
         "pane.maximize.toggle",
         "Toggle focused chat pane size",
         "Maximize the focused chat pane or restore its split layout.",
@@ -213,7 +224,35 @@ export const APP_COMMAND_GROUPS: readonly AppCommandGroup[] = [
       command(
         "pane.close",
         "Close focused chat pane",
-        "Close the focused chat pane when more than one is open.",
+        "Close the focused chat pane, or its tab when it is the tab's last pane.",
+      ),
+      command(
+        "splitTab.new",
+        "New pane tab",
+        "Open a tab with its own chat panes, starting on a new thread.",
+      ),
+      command(
+        "splitTab.newForProject",
+        "New project tab",
+        "Pick a project and open a tab for it. The sidebar shows only that project's threads while the tab is active.",
+      ),
+      command(
+        "splitTab.reopenClosed",
+        "Reopen closed pane or tab",
+        "Reopen the chat pane or tab closed most recently.",
+      ),
+      ...SPLIT_TAB_SELECT_APP_COMMAND_IDS.map((id, index) =>
+        index === 0
+          ? command(
+              id,
+              "Go to Home",
+              "Open Home, the overview of every project's threads.",
+            )
+          : paletteHiddenCommand(
+              id,
+              `Switch to pane tab ${index}`,
+              `Switch to the pane tab after Home numbered ${index}.`,
+            ),
       ),
       command(
         "logs.openServerDaemon",

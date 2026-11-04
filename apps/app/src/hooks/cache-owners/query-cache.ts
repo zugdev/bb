@@ -566,12 +566,12 @@ export function updateCachedThreadListStatusState(
 export function updateCachedThreadStatusState(
   queryClient: QueryClient,
   threadId: string,
-  { status, runtime, latestAttentionAt, updatedAt }: ThreadStatusChangeMetadata,
+  { status, runtime, latestAttentionAt, lastUserMessageAt, updatedAt }: ThreadStatusChangeMetadata,
 ): void {
   patchThreadEntity(
     queryClient,
     threadId,
-    { status, runtime, latestAttentionAt, updatedAt },
+    { status, runtime, latestAttentionAt, lastUserMessageAt, updatedAt },
     updatedAt,
   );
 }

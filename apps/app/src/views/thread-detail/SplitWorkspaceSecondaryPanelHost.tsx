@@ -45,14 +45,8 @@ import {
   PANEL_RESIZE_HANDLE_LAYER_CLASS,
   PANEL_RESIZE_HIT_TARGET_CLASS,
 } from "@/components/secondary-panel/panelTransitionTokens";
-import {
-  getBbDesktopInfo,
-  MACOS_APP_REGION_NO_DRAG_CLASS,
-  MACOS_CHROME_CONTROL_AXIS_CLASS,
-  MACOS_TITLE_BAR_CONTROL_SIZE_CLASS,
-  MACOS_TITLE_BAR_PINNED_TOGGLE_CLASS,
-  shouldUseMacosDesktopChrome,
-} from "@/lib/bb-desktop";
+import { MACOS_APP_REGION_NO_DRAG_CLASS } from "@/lib/bb-desktop";
+import { useRootComposePinnedPanelToggleBoxClassName } from "@/views/RootComposeSecondaryContent";
 import { useIsSidebarFramed } from "@/components/ui/sidebar.js";
 import { PluginComposerHostProvider } from "@/components/plugin/plugin-composer-host";
 import { usePanelResizeSnap } from "@/components/secondary-panel/usePanelResizeSnap";
@@ -160,9 +154,8 @@ export function SplitWorkspaceSecondaryPanelHost({
     toggleWindowPanel();
     return true;
   });
-  const [desktopInfo] = useState(getBbDesktopInfo);
-  const usesDesktopChrome = shouldUseMacosDesktopChrome(desktopInfo);
   const isSidebarFramed = useIsSidebarFramed();
+  const pageToggleBoxClassName = useRootComposePinnedPanelToggleBoxClassName();
 
   const setPanelWidthPercent = useSetAtom(widthPercentAtom);
   const lastEmptyPanelSizeRef = useRef(0);
@@ -212,15 +205,10 @@ export function SplitWorkspaceSecondaryPanelHost({
         <div
           data-testid="split-workspace-panel-toggle"
           className={cn(
-            "absolute right-4 top-2.5 z-40",
+            pageToggleBoxClassName,
+            "z-40",
             !showsCornerToggle && "hidden",
             MACOS_APP_REGION_NO_DRAG_CLASS,
-            usesDesktopChrome && MACOS_CHROME_CONTROL_AXIS_CLASS,
-            usesDesktopChrome && [
-              "flex h-7 items-center",
-              MACOS_TITLE_BAR_CONTROL_SIZE_CLASS,
-            ],
-            isSidebarFramed && MACOS_TITLE_BAR_PINNED_TOGGLE_CLASS,
           )}
         >
           <AppCommandShortcutHint

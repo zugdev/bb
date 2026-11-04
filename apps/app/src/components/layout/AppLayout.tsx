@@ -100,6 +100,7 @@ import {
   getSettingsProjectRoutePath,
   getRootComposeRoutePath,
   getThreadRoutePath,
+  HOME_ROUTE_PATH,
   isProjectlessProjectId,
   SETTINGS_ROUTE_PATH,
 } from "@/lib/route-paths";
@@ -602,7 +603,11 @@ function AppLayoutContent({ children }: AppLayoutProps) {
   const startWidthRef = useRef(0);
   const liveWidthRef = useRef(0);
   const animationFrameRef = useRef<number | null>(null);
-  const showHeader = !isThreadView && !isRootView && pluginPanelRoute === null;
+  const showHeader =
+    !isThreadView &&
+    !isRootView &&
+    pluginPanelRoute === null &&
+    location.pathname !== HOME_ROUTE_PATH;
   const [desktopInfo] = useState(getBbDesktopInfo);
   const desktopWindowState = useDesktopWindowState();
   const usesDesktopChrome = shouldUseMacosDesktopChrome(desktopInfo);

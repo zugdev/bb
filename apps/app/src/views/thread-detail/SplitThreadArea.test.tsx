@@ -1350,25 +1350,28 @@ describe("SplitThreadArea", () => {
       fireEvent.click(window);
 
       await waitFor(() =>
-        expect(store.get(maximizedPaneIdAtom)).toBe("pane-2"),
+        expect(store.get(maximizedPaneIdAtom)).toBe("pane-1"),
       );
       expect(store.get(splitLayoutAtom)?.root).toMatchObject({
         type: "split",
         children: [
           {
             type: "pane",
-            paneId: "pane-1",
+            paneId: "pane-2",
             content: { kind: "thread", threadId: "thr-b" },
           },
           {
             type: "pane",
-            paneId: "pane-2",
+            paneId: "pane-1",
             content: { kind: "thread", threadId: "thr-a" },
           },
         ],
       });
-      expect(paneA.className).toContain("invisible");
-      expect(paneB.getAttribute("data-maximized")).toBe("true");
+      expect(paneB.className).toContain("invisible");
+      expect(paneA.getAttribute("data-maximized")).toBe("true");
+      expect(document.querySelector('[data-split-pane-id="pane-1"]')).toBe(
+        paneA,
+      );
     } finally {
       document.elementsFromPoint = originalElementsFromPoint;
     }
@@ -1955,7 +1958,7 @@ describe("SplitThreadArea", () => {
     ).toBeTruthy();
   });
 
-  it("drops the corner reserve while the hosted plugin panel holds the toggle", async () => {
+  it("leaves the pane header free while the hosted plugin panel holds the toggle", async () => {
     const layout = pluginSplitLayout();
     layout.focusedPaneId = "pane-2";
     renderSplitArea({
@@ -1966,7 +1969,7 @@ describe("SplitThreadArea", () => {
 
     await screen.findByTestId("hosted-plugin-app-panel");
     const close = screen.getByRole("button", { name: "Close pane" });
-    expect(close.nextElementSibling?.tagName).toBe("SPAN");
+    expect(close.nextElementSibling).toBeNull();
 
     fireEvent.click(screen.getByRole("button", { name: "Show right panel" }));
     await waitFor(() =>
@@ -2628,7 +2631,7 @@ describe("SplitThreadArea", () => {
     expect(dragHandle?.className).toContain("[-webkit-app-region:no-drag]");
   });
 
-  it("makes only top-row split headers desktop window-drag regions", async () => {
+  it("leaves window dragging to the tab bar for every split header", async () => {
     const desktopInfo: BbDesktopInfo = {
       lastCheckedAt: null,
       latestVersion: null,
@@ -2664,12 +2667,12 @@ describe("SplitThreadArea", () => {
       routeContent: pluginContent("bottom-right"),
     });
 
-    for (const path of ["top-left", "top-right"]) {
-      const header = (await screen.findByText(path)).closest("header");
-      expect(header?.className).toContain("[app-region:drag]");
-      expect(header?.className).toContain("[-webkit-app-region:drag]");
-    }
-    for (const path of ["bottom-left", "bottom-right"]) {
+    for (const path of [
+      "top-left",
+      "top-right",
+      "bottom-left",
+      "bottom-right",
+    ]) {
       const header = (await screen.findByText(path)).closest("header");
       expect(header?.className).not.toContain("[app-region:drag]");
       expect(header?.className).not.toContain("[-webkit-app-region:drag]");
@@ -2717,7 +2720,7 @@ describe("SplitThreadArea", () => {
     }
   });
 
-  it("reserves collapsed window-left chrome only for the structural top-left plugin pane", async () => {
+  it("reserves no collapsed window-left chrome in split headers below the tab bar", async () => {
     const desktopInfo: BbDesktopInfo = {
       lastCheckedAt: null,
       latestVersion: null,
@@ -2758,10 +2761,12 @@ describe("SplitThreadArea", () => {
       (await screen.findByText(path))
         .closest("header")
         ?.querySelector('[data-testid="app-page-header-content-row"]');
-    expect((await contentRow("top-left"))?.className).toContain(
-      "pl-(--bb-macos-collapsed-top-left-reserve)",
-    );
-    for (const path of ["top-right", "bottom-left", "bottom-right"]) {
+    for (const path of [
+      "top-left",
+      "top-right",
+      "bottom-left",
+      "bottom-right",
+    ]) {
       expect((await contentRow(path))?.className).not.toContain(
         "pl-(--bb-macos-collapsed-top-left-reserve)",
       );
@@ -2854,7 +2859,7 @@ describe("SplitThreadArea", () => {
     ).not.toBe(0);
   });
 
-  it("reserves the window toggle corner for a plugin pane at the top right", async () => {
+  it("keeps the window toggle out of the top right plugin pane header", async () => {
     setPluginSlotRegistrations(
       "docs",
       makePluginRegistrationSet({
@@ -2894,22 +2899,13 @@ describe("SplitThreadArea", () => {
     await screen.findByText("Docs panel");
     expect(screen.getByTestId("split-workspace-panel-toggle")).toBeTruthy();
     const [pluginClose] = screen.getAllByRole("button", { name: "Close pane" });
-    const reserve = pluginClose?.parentElement?.nextElementSibling;
-    expect(reserve?.tagName).toBe("SPAN");
-    expect(reserve?.getAttribute("aria-hidden")).toBe("true");
-
-    fireEvent.click(
-      screen.getAllByRole("button", { name: /Maximize pane/ })[0]!,
-    );
-    await waitFor(() =>
-      expect(
-        screen.getAllByRole("button", { name: "Close pane" })[0]?.parentElement
-          ?.nextElementSibling,
-      ).toBeNull(),
-    );
+    expect(pluginClose?.parentElement?.nextElementSibling).toBeNull();
+    expect(
+      screen.getByTestId("split-workspace-panel-toggle").className,
+    ).toContain("fixed");
   });
 
-  it("drops the corner reserve once an open panel hosts the toggle", async () => {
+  it("shows the page toggle without a pane reserve once the panel closes", async () => {
     const layout = pluginSplitLayout();
     layout.focusedPaneId = "pane-1";
     renderSplitArea({
@@ -2926,10 +2922,12 @@ describe("SplitThreadArea", () => {
     fireEvent.click(screen.getByRole("button", { name: "Hide right panel" }));
     await waitFor(() =>
       expect(
-        screen.getByRole("button", { name: "Close pane" }).nextElementSibling
-          ?.tagName,
-      ).toBe("SPAN"),
+        screen.getByTestId("split-workspace-panel-toggle").classList,
+      ).not.toContain("hidden"),
     );
+    expect(
+      screen.getByRole("button", { name: "Close pane" }).nextElementSibling,
+    ).toBeNull();
   });
 
   it("uses page-owned breadcrumbs in the split-owned plugin header", async () => {

@@ -133,7 +133,7 @@ export function AppPageHeader({
           "relative z-10 gap-1 md:gap-2",
           isCompactViewport && "pointer-events-none",
           usesDesktopChrome && [
-            MACOS_CHROME_CONTROL_AXIS_CLASS,
+            isWindowDragRegion && MACOS_CHROME_CONTROL_AXIS_CLASS,
             MACOS_TITLE_BAR_CONTROL_SIZE_CLASS,
           ],
           "transition-[padding] duration-200 ease-linear",

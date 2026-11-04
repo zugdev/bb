@@ -127,6 +127,7 @@ export function makeThread(overrides: MakeThreadArgs): Thread {
     deletedAt: null,
     lastReadAt: null,
     latestAttentionAt: Date.now(),
+    lastUserMessageAt: null,
     createdAt: Date.now(),
     updatedAt: Date.now(),
     ...overrides,

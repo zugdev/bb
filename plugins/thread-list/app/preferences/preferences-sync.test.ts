@@ -266,7 +266,7 @@ describe("preferences sync", () => {
     await hydratePreferences(rpc);
     const store = getDefaultStore();
     const modeAtom = createSyncedPreferenceAtom("organizationMode");
-    store.set(modeAtom, "chronological");
+    store.set(modeAtom, "project");
     vi.advanceTimersByTime(200);
     await flushPreferenceWritesForTest();
     expect(

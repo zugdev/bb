@@ -11,9 +11,9 @@ import {
   CHROME_ROW_HEIGHT_CLASS,
   getBbDesktopInfo,
   MACOS_APP_REGION_NO_DRAG_CLASS,
-  MACOS_CHROME_CONTROL_AXIS_CLASS,
   MACOS_TITLE_BAR_CONTROL_SIZE_CLASS,
   MACOS_TITLE_BAR_PINNED_TOGGLE_CLASS,
+  MACOS_TITLE_BAR_ROW_CLASS,
   MACOS_WINDOW_DRAG_CLASS,
   shouldUseMacosDesktopChrome,
 } from "@/lib/bb-desktop";
@@ -22,20 +22,17 @@ import { RootComposeHome } from "./RootComposeHome";
 import { useOptionalPaneContext } from "./thread-detail/PaneContext";
 
 const ROOT_COMPOSE_PINNED_PANEL_TOGGLE_POSITION_CLASS =
-  "right-[calc(1rem+env(safe-area-inset-right))] top-[calc(0.625rem+env(safe-area-inset-top))] max-md:pointer-coarse:top-[calc(0.375rem+env(safe-area-inset-top))]";
+  "right-[calc(1rem+env(safe-area-inset-right))] top-[env(safe-area-inset-top)]";
 
 export function useRootComposePinnedPanelToggleBoxClassName(): string {
   const [desktopInfo] = useState(getBbDesktopInfo);
   const usesDesktopChrome = shouldUseMacosDesktopChrome(desktopInfo);
   const isSidebarFramed = useIsSidebarFramed();
   return cn(
-    "fixed mr-(--bb-window-frame-lip)",
+    "fixed mr-(--bb-window-frame-lip) flex items-center",
     ROOT_COMPOSE_PINNED_PANEL_TOGGLE_POSITION_CLASS,
-    usesDesktopChrome && [
-      MACOS_CHROME_CONTROL_AXIS_CLASS,
-      "flex h-7 items-center",
-      MACOS_TITLE_BAR_CONTROL_SIZE_CLASS,
-    ],
+    isSidebarFramed ? MACOS_TITLE_BAR_ROW_CLASS : "h-7",
+    usesDesktopChrome && MACOS_TITLE_BAR_CONTROL_SIZE_CLASS,
     isSidebarFramed && MACOS_TITLE_BAR_PINNED_TOGGLE_CLASS,
   );
 }

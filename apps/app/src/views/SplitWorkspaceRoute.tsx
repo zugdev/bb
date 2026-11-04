@@ -15,6 +15,7 @@ import type { PaneContent } from "@/lib/split-layout";
 import { useRouteState } from "@/hooks/useRouteState";
 import { LegacyProjectComposeRedirect } from "./LegacyProjectComposeRedirect";
 import { SplitThreadArea } from "./thread-detail/SplitThreadArea";
+import { SplitTabBar } from "./thread-detail/SplitTabBar";
 import { paneContentForPathname } from "./thread-detail/splitThreadNavigation";
 import { LazyPluginsView } from "./ToolsViewSplits";
 
@@ -68,5 +69,10 @@ export default function SplitWorkspaceRoute() {
       />
     );
   }
-  return <SplitThreadArea routeContent={routeContent} />;
+  return (
+    <>
+      <SplitTabBar />
+      <SplitThreadArea routeContent={routeContent} />
+    </>
+  );
 }

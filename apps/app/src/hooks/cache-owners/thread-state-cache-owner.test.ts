@@ -48,6 +48,7 @@ function makeThreadWithRuntime(
     status: "active",
     lastReadAt: null,
     latestAttentionAt: 50,
+    lastUserMessageAt: null,
     createdAt: 1,
     updatedAt: 1,
     runtime: {
@@ -129,6 +130,7 @@ describe("thread state cache owner", () => {
         ...activeThread,
         title: "Updated title",
         latestAttentionAt: 200,
+        lastUserMessageAt: null,
       });
       queryClient.setQueryData(listKey, [activeEntry]);
       queryClient.setQueryData(
@@ -148,6 +150,7 @@ describe("thread state cache owner", () => {
         ...activeThread,
         title: "Updated title",
         latestAttentionAt: 200,
+        lastUserMessageAt: null,
         lastReadAt,
       });
       expect(queryClient.getQueryData(listKey)).toEqual(
@@ -382,11 +385,13 @@ describe("thread state cache owner", () => {
       id: threadId,
       lastReadAt: 10,
       latestAttentionAt: 50,
+      lastUserMessageAt: null,
     });
     const unreadListEntry = makeThreadListEntry({
       id: threadId,
       lastReadAt: 10,
       latestAttentionAt: 50,
+      lastUserMessageAt: null,
     });
     const threadListKey = threadListQueryKey({
       archived: false,
@@ -455,6 +460,7 @@ it.each([null, 80, 100])(
       id: threadId,
       lastReadAt: 10,
       latestAttentionAt: 20,
+      lastUserMessageAt: null,
     });
     queryClient.setQueryData(
       threadQueryKey(threadId),
@@ -474,6 +480,7 @@ it.each([null, 80, 100])(
       ...original,
       lastReadAt,
       latestAttentionAt: 200,
+      lastUserMessageAt: null,
       title: "New title",
     });
     const sibling = makeThreadListEntry({ id: "new-sibling", lastReadAt: 300 });
@@ -490,6 +497,7 @@ it.each([null, 80, 100])(
     const expected = {
       lastReadAt: lastReadAt === 100 ? 10 : lastReadAt,
       latestAttentionAt: 200,
+      lastUserMessageAt: null,
       title: "New title",
     };
     expect(queryClient.getQueryData(threadQueryKey(threadId))).toMatchObject(
@@ -671,6 +679,7 @@ it("preserves concurrent state when an older status event reaches detail and sid
     status: "idle" as const,
     runtime: { displayStatus: "idle" as const },
     latestAttentionAt: 20,
+    lastUserMessageAt: null,
     activity: original.activity,
     updatedAt: 20,
   };

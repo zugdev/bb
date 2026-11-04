@@ -129,6 +129,7 @@ export const threadSchema = z.object({
   deletedAt: z.number().nullable(),
   lastReadAt: z.number().nullable(),
   latestAttentionAt: z.number(),
+  lastUserMessageAt: z.number().nullable(),
   createdAt: z.number(),
   updatedAt: z.number(),
 });

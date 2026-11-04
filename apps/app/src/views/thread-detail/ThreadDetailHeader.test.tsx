@@ -15,8 +15,6 @@ import { ThreadTitleMentionResourcesProvider } from "@/components/thread/ThreadT
 import { makeThreadListEntry } from "@bb/test-helpers/domain-fixtures";
 import { sdk } from "@/lib/sdk";
 import { createBbDesktopApi } from "@/test/bb-desktop-test-utils";
-import { MACOS_TITLE_BAR_TRAILING_TOGGLE_CLASS } from "@/lib/bb-desktop";
-import { SidebarProvider } from "@/components/ui/sidebar";
 import { MemoryRouter } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AppCommandProvider } from "@/components/commands/AppCommandProvider";
@@ -70,6 +68,10 @@ vi.mock("@/components/layout/AppPageHeader", () => ({
 const viewportState = vi.hoisted(() => ({
   isCompactViewport: false,
   isPointerCoarse: false,
+}));
+
+vi.mock("@/hooks/queries/sidebar-navigation-query", () => ({
+  useSidebarNavigation: () => ({ data: undefined }),
 }));
 
 vi.mock("@/hooks/queries/system-queries", () => ({
@@ -737,44 +739,6 @@ describe("ThreadDetailHeader", () => {
     );
   });
 
-  it("places the window toggle's reserved slot over the title-bar toggle so its whole box stays clickable", () => {
-    window.bbDesktop = createBbDesktopApi({
-      lastCheckedAt: null,
-      latestVersion: null,
-      pendingVersion: null,
-      platform: "macos",
-      updateAvailable: false,
-      updateDownloaded: false,
-      version: "0.0.0-test",
-    });
-    const { container } = render(
-      <MemoryRouter>
-        <SidebarProvider framed>
-          <PaneContext.Provider
-            value={{ ...PANE_CONTEXT, reservesWindowPanelToggle: true }}
-          >
-            <ThreadDetailHeader
-              actionsMenu={null}
-              isSecondaryPanelOpen={false}
-              onToggleSecondaryPanel={vi.fn()}
-              thread={THREAD_TARGET}
-              threadTitle="Pinned toggle"
-            />
-          </PaneContext.Provider>
-        </SidebarProvider>
-      </MemoryRouter>,
-    );
-
-    const slot = container.querySelector(
-      "span[aria-hidden].header-icon-button",
-    );
-    expect(slot).not.toBeNull();
-    const classes = slot?.className.split(" ") ?? [];
-    for (const token of MACOS_TITLE_BAR_TRAILING_TOGGLE_CLASS.split(" ")) {
-      expect(classes).toContain(token);
-    }
-  });
-
   it("does not start a pane drag while the header title is being edited", async () => {
     const beginPaneDrag = vi.fn();
     render(
@@ -829,18 +793,16 @@ describe("ThreadDetailHeader", () => {
     return menuArgs;
   }
 
-  async function expectRenamePresentation(
-    outcome: RenamePresentationOutcome,
-  ) {
+  async function expectRenamePresentation(outcome: RenamePresentationOutcome) {
     if (outcome === "none") {
       expect(screen.queryByRole("textbox", { name: "Thread name" })).toBeNull();
       return;
     }
     const input = await screen.findByRole("textbox", { name: "Thread name" });
     expect(input).toHaveProperty("value", "Focused thread");
-    expect(input.closest('[role="dialog"]') === null ? "inline" : "dialog").toBe(
-      outcome,
-    );
+    expect(
+      input.closest('[role="dialog"]') === null ? "inline" : "dialog",
+    ).toBe(outcome);
     fireEvent.keyDown(input, { key: "Escape" });
     await waitFor(() =>
       expect(screen.queryByRole("textbox", { name: "Thread name" })).toBeNull(),
