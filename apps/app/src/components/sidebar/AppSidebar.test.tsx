@@ -156,6 +156,27 @@ describe("AppSidebar", () => {
     expect(screen.queryByTestId("sidebar-header-slot")).toBeNull();
   });
 
+  it.each([
+    ["navigation/top-list", false],
+    ["navigation/rail", true],
+  ])(
+    "extends the framed %s sidebar body through the title bar with a leading border only beside a rail",
+    (preference, hasLeadingBorder) => {
+      renderSidebar(preference, true);
+
+      const body = screen.getByTestId("nav-rail-sidebar-body");
+      for (const extension of [
+        "before:bottom-full",
+        "before:h-(--bb-window-title-bar-height)",
+        "before:bg-sidebar",
+        "[clip-path:inset(calc(var(--bb-window-title-bar-height)*-1)_-6px_0_0)]",
+      ]) {
+        expect(body.classList.contains(extension)).toBe(true);
+      }
+      expect(body.classList.contains("border-l-0")).toBe(!hasLeadingBorder);
+    },
+  );
+
   it("keeps the footer after the navigation in one column for list navigation, so docking plugins can inset it", () => {
     renderSidebar("navigation/top-list");
 
