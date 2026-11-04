@@ -188,6 +188,12 @@ function activateTabLayout(
   return layout;
 }
 
+export const activateSplitTabsAtom = atom(
+  null,
+  (_get, set, next: { state: SplitTabsState; layout: SplitLayout }) =>
+    activateTabLayout(set, next.state, next.layout),
+);
+
 export const openSplitTabAtom = atom(
   null,
   (get, set, projectId: string | null = null): SplitLayout | null => {

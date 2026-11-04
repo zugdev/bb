@@ -49,7 +49,7 @@ interface CreateWorktreeArgs {
   targetPath: string;
   completionPath: string;
   ownWorktreesRoot: string;
-  branchName: string;
+  branchName: string | null;
   baseBranch: ResolvedWorktreeBaseBranch | null;
   branchMode: BranchMode;
   onProgress?: ProgressCallback | undefined;
@@ -115,9 +115,11 @@ function classifyConcurrentRemoteRefUpdateError(
   return null;
 }
 
+const DETACHED_COMPLETION_MARKER = "HEAD";
+
 async function ensureExistingWorkspaceMatches(
   targetPath: string,
-  branchName: string,
+  branchName: string | null,
   signal: AbortSignal | undefined,
 ): Promise<boolean> {
   try {
@@ -129,7 +131,7 @@ async function ensureExistingWorkspaceMatches(
   try {
     const currentBranch = await getCurrentBranch(targetPath);
     throwIfProvisionAborted(signal);
-    return currentBranch === branchName;
+    return (currentBranch ?? null) === branchName;
   } catch (error) {
     if (signal?.aborted) throw error;
     return false;
@@ -157,10 +159,11 @@ async function isPathInside(root: string, target: string): Promise<boolean> {
 async function removeAbandonedAttemptWorktree(args: {
   sourcePath: string;
   ownWorktreesRoot: string;
-  branchName: string;
+  branchName: string | null;
   onProgress: ProgressCallback | undefined;
   signal: AbortSignal | undefined;
 }): Promise<void> {
+  if (args.branchName === null) return;
   const holder = await findWorktreeForBranch(args.sourcePath, args.branchName);
   if (holder === null || !(await isPathInside(args.ownWorktreesRoot, holder))) {
     return;
@@ -511,7 +514,11 @@ async function finishWorktreeSetup(args: CreateWorktreeArgs): Promise<void> {
     onProgress: args.onProgress,
     signal: args.signal,
   });
-  await fs.writeFile(args.completionPath, `${args.branchName}\n`, "utf8");
+  await fs.writeFile(
+    args.completionPath,
+    `${args.branchName ?? DETACHED_COMPLETION_MARKER}\n`,
+    "utf8",
+  );
 }
 
 async function removeCreateTarget(args: CreateWorktreeArgs): Promise<void> {
@@ -532,7 +539,10 @@ export async function createWorktree(
     args.signal,
   );
   if (existingWorkspaceMatches) {
-    if ((await readCompletedBranch(args.completionPath)) === args.branchName) {
+    if (
+      (await readCompletedBranch(args.completionPath)) ===
+      (args.branchName ?? DETACHED_COMPLETION_MARKER)
+    ) {
       return { path: args.targetPath };
     }
     try {
@@ -577,13 +587,15 @@ export async function createWorktree(
   await ensureWorkspaceParentDirectory(args.targetPath);
 
   throwIfProvisionAborted(args.signal);
+  const branchName = args.branchName;
   const reuseExistingBranch =
+    branchName !== null &&
     args.branchMode === "reuse-existing" &&
-    (await hasRef(args.sourcePath, `refs/heads/${args.branchName}`));
+    (await hasRef(args.sourcePath, `refs/heads/${branchName}`));
 
   let gitArgs: string[];
   if (reuseExistingBranch) {
-    gitArgs = ["worktree", "add", args.targetPath, args.branchName];
+    gitArgs = ["worktree", "add", args.targetPath, branchName];
   } else {
     const baseBranch = args.baseBranch;
     if (!baseBranch) {
@@ -600,15 +612,18 @@ export async function createWorktree(
       onProgress: args.onProgress,
       signal: args.signal,
     });
-    gitArgs = [
-      "worktree",
-      "add",
-      "--no-track",
-      "-B",
-      args.branchName,
-      args.targetPath,
-      baseBranch.ref,
-    ];
+    gitArgs =
+      branchName === null
+        ? ["worktree", "add", "--detach", args.targetPath, baseBranch.ref]
+        : [
+            "worktree",
+            "add",
+            "--no-track",
+            "-B",
+            branchName,
+            args.targetPath,
+            baseBranch.ref,
+          ];
   }
 
   const worktreeStartedAt = Date.now();
