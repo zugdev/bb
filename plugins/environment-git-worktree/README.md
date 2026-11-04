@@ -4,7 +4,7 @@ Creates an isolated Git worktree from the project checkout on an enrolled machin
 
 Bundled and installed automatically. Select it through the environment picker or `bb thread spawn --environment-provider git-worktree`. Use `bb environment providers --json` for its inputs and availability.
 
-New branches start at the selected base without an upstream. Publish with `git push -u origin HEAD` to track the task's remote branch. Existing branches keep their upstream configuration.
+A new worktree starts on a detached HEAD at the selected base, and the plugin's agent instructions tell the agent to check out an existing branch or create one named after the task before its first commit. Publish with `git push -u origin HEAD`. Existing branches keep their upstream configuration.
 
 The Plugin Guide documents the experimental environment-provider contract. Core owns durable launches, retries, cancellation, retirement, and teardown; this plugin owns resource creation and removal.
 
