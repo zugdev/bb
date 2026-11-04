@@ -1,4 +1,5 @@
 import { createStore } from "jotai";
+import { PERSONAL_PROJECT_ID } from "@bb/domain";
 import { describe, expect, it } from "vitest";
 import { splitLayoutAtom } from "./atoms";
 import { listPanes, splitPane } from "./ops";
@@ -87,6 +88,9 @@ describe("split tabs", () => {
 
     store.set(openSplitTabAtom, "p2");
     expect(store.get(rootComposeProjectIdAtom)).toBe("p2");
+
+    store.set(openSplitTabAtom);
+    expect(store.get(rootComposeProjectIdAtom)).toBe(PERSONAL_PROJECT_ID);
   });
 
   it("opens another new thread tab while one is already empty", () => {

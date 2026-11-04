@@ -23,25 +23,24 @@ import type { ProjectWithThreadsResponse } from "@bb/server-contract";
 import { Icon } from "@bb/shared-ui/icon";
 import { cn } from "@bb/shared-ui/lib/utils";
 import { useSidebarNavigation } from "@/hooks/queries/sidebar-navigation-query";
-import { ThreadStatusDot } from "@/components/thread/ThreadStatusDot";
+import { PluginHomepageSection } from "@/components/plugin/PluginHomepageSections";
+import { usePluginSlots } from "@/lib/plugin-slots";
 import {
   useAppCommandRunner,
   useAppCommandShortcut,
 } from "@/components/commands/AppCommandProvider";
 import { useQuickCreateProjectController } from "@/hooks/useQuickCreateProject";
 import { createJsonLocalStorage } from "@/lib/browser-storage";
-import { formatRelativeTime } from "@/lib/relative-time";
 import { getSettingsProjectRoutePath } from "@/lib/route-paths";
 import { openSplitTabAtom, openThreadInTabAtom } from "@/lib/split-layout/tabs";
-import { getThreadDisplayTitle } from "@/lib/thread-title";
 import {
   DEFAULT_HOME_LAYOUT,
   HOME_THREAD_SORTS,
-  homeThreadDot,
+  homeAttention,
   homeThreadTime,
   isHomeLayoutPrefs,
   moveHomeSection,
-  overviewProjectThreads,
+  pluginSectionId,
   projectSectionId,
   repoWebUrl,
   resolveHomeSections,
@@ -50,6 +49,7 @@ import {
   type HomeLayoutPrefs,
   type HomeThreadSort,
 } from "./home-overview";
+import { ThreadRow, type OpenThread } from "./HomeThreadRow";
 import {
   SplitTabBar,
   useShowSplitTabLayout,
@@ -83,45 +83,8 @@ const homeThreadOldestFirstAtom = atomWithStorage<boolean>(
   { getOnInit: true },
 );
 
-type OpenThread = (thread: ThreadListEntry) => void;
-
 const ICON_BUTTON_CLASS =
   "flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-state-hover hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
-
-function ThreadRow({
-  thread,
-  projectName,
-  time,
-  onOpen,
-}: {
-  thread: ThreadListEntry;
-  projectName: string | null;
-  time: number;
-  onOpen: OpenThread;
-}) {
-  return (
-    <button
-      type="button"
-      className="-mx-2 flex h-8 min-w-0 items-center gap-2.5 rounded-md px-2 text-left text-sm transition-colors hover:bg-state-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-      onClick={() => onOpen(thread)}
-    >
-      <span className="flex size-4 shrink-0 items-center justify-center">
-        <ThreadStatusDot dot={homeThreadDot(thread)} />
-      </span>
-      <span className="min-w-0 flex-1 truncate">
-        {getThreadDisplayTitle(thread)}
-      </span>
-      {projectName === null ? null : (
-        <span className="max-w-32 shrink-0 truncate text-xs text-muted-foreground">
-          {projectName}
-        </span>
-      )}
-      <span className="shrink-0 text-xs text-muted-foreground tabular-nums">
-        {formatRelativeTime({ timestamp: time, now: Date.now() })}
-      </span>
-    </button>
-  );
-}
 
 function AttentionColumn({
   title,
@@ -453,24 +416,18 @@ export default function HomeView() {
     () => new Map(projects.map((project) => [project.id, project.name])),
     [projects],
   );
-  const attention = useMemo(() => {
-    const overviews = projects.map((project) =>
-      overviewProjectThreads(project.threads),
-    );
-    const byAttention = (a: ThreadListEntry, b: ThreadListEntry) =>
-      b.latestAttentionAt - a.latestAttentionAt;
-    return {
-      needsYou: overviews
-        .flatMap((o) => o.needsYou.map((item) => item.thread))
-        .sort(byAttention),
-      replies: overviews
-        .flatMap((o) => o.unread.map((item) => item.thread))
-        .sort(byAttention),
-    };
-  }, [projects]);
+  const attention = useMemo(() => homeAttention(projects), [projects]);
+  const { homepageSections } = usePluginSlots();
+  const pluginSections = new Map(
+    homepageSections.map((section) => [
+      pluginSectionId(section.pluginId, section.id),
+      section,
+    ]),
+  );
   const sections = resolveHomeSections(
     prefs,
     projects.map((project) => project.id),
+    [...pluginSections.keys()],
   );
   const openThread: OpenThread = (thread) =>
     show(
@@ -493,6 +450,13 @@ export default function HomeView() {
             onOpen={openThread}
           />
         ),
+      };
+    const pluginSection = pluginSections.get(id);
+    if (pluginSection !== undefined)
+      return {
+        icon: "Puzzle",
+        label: pluginSection.title,
+        body: <PluginHomepageSection section={pluginSection} />,
       };
     const project = projects.find((p) => projectSectionId(p.id) === id);
     if (project === undefined) return null;
