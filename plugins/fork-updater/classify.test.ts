@@ -27,4 +27,23 @@ describe("classifyChanges", () => {
       classifyChanges(checkout, ["plugins/assistant/app.tsx", "pnpm-lock.yaml"], plugins),
     ).toEqual({ kind: "rebuild" });
   });
+
+  it("needs no rebuild when only files that never ship changed", () => {
+    expect(
+      classifyChanges(checkout, ["docs/fork-roadmap.md", "AGENTS.md", "scripts/README.md", ".github/workflows/ci.yml"], plugins),
+    ).toEqual({ kind: "docs" });
+  });
+
+  it("ignores docs next to local plugin changes", () => {
+    expect(classifyChanges(checkout, ["docs/fork-roadmap.md", "plugins/assistant/app.tsx"], plugins)).toEqual({
+      kind: "plugins",
+      pluginIds: ["assistant"],
+    });
+  });
+
+  it("rebuilds when docs change alongside shipped files", () => {
+    for (const shipped of ["apps/server/src/index.ts", "packages/db/README.md", "plugins/git/README.md", "scripts/fork-update.sh", "package.json", "pnpm-lock.yaml", "turbo.json"]) {
+      expect(classifyChanges(checkout, ["docs/fork-roadmap.md", shipped], plugins)).toEqual({ kind: "rebuild" });
+    }
+  });
 });

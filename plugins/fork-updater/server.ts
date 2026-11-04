@@ -103,12 +103,14 @@ export default async function forkUpdaterPlugin(bb: BbPluginApi): Promise<void> 
       const classified = result.builtIsAncestor
         ? classifyChanges(path, result.changedFiles, await localPlugins())
         : ({ kind: "rebuild" } as const);
+      const docsOnly = classified.kind === "docs";
+      if (docsOnly) await saveBuiltCommit(await runStep("fast-forward", path));
       setStatus({
         checkoutPath: path,
         builtCommit,
         remoteCommit: result.remoteCommit,
-        commits: result.commits,
-        kind: classified.kind,
+        commits: docsOnly ? [] : result.commits,
+        kind: docsOnly ? "up-to-date" : classified.kind,
         reloadPluginIds: classified.kind === "plugins" ? classified.pluginIds : [],
         checkedAt: Date.now(),
         ...(result.swapError === null ? {} : { progress: null }),
