@@ -8,6 +8,13 @@ import { Button } from "@/components/ui/button";
 import { forkUpdaterRpcContract, type ForkUpdaterStatus } from "./contract.js";
 
 export const FOOTER_ITEM_ID = "update";
+const ACCENT_BUTTON = "bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground";
+
+function headline(status: ForkUpdaterStatus, failure: string | null): string {
+  if (failure !== null) return "Update failed";
+  if (status.kind === "up-to-date") return "bb is up to date";
+  return `${status.commits.length} ${status.commits.length === 1 ? "commit" : "commits"} behind main`;
+}
 
 export function footerCss(pluginId: string, status: ForkUpdaterStatus | undefined): string {
   const button = `[data-testid="plugin-sidebar-footer-item-${pluginId}-${FOOTER_ITEM_ID}"]`;
@@ -48,18 +55,17 @@ export function UpdatePanel() {
   }
   const busy = data.progress !== null || update.isPending;
   const failure = data.error ?? update.error?.message ?? null;
+  const run = (reopen: boolean) => void update.mutate({ reopen }).catch(() => undefined);
   return (
     <div className="flex flex-col gap-2 p-3 text-xs">
-      <div className="font-medium text-sidebar-foreground">
-        {data.kind === "up-to-date"
-          ? "bb is up to date"
-          : `${data.commits.length} ${data.commits.length === 1 ? "commit" : "commits"} behind main`}
+      <div className={failure === null ? "font-medium text-sidebar-foreground" : "font-medium text-destructive"}>
+        {headline(data, failure)}
       </div>
       {data.kind === "up-to-date" ? null : (
         <div className="text-muted-foreground">
           {data.kind === "plugins"
             ? `Reloads ${data.reloadPluginIds.join(", ")}, no restart`
-            : "Rebuilds bb.app and restarts bb"}
+            : "Rebuilds and reinstalls bb.app, which quits bb"}
         </div>
       )}
       {data.commits.length === 0 ? null : (
@@ -78,10 +84,19 @@ export function UpdatePanel() {
       {failure === null ? null : (
         <pre className="max-h-32 overflow-auto whitespace-pre-wrap text-destructive">{failure}</pre>
       )}
-      {data.kind === "up-to-date" ? null : (
-        <Button size="sm" disabled={busy} onClick={() => void update.mutate({}).catch(() => undefined)}>
+      {data.kind === "up-to-date" ? null : data.kind === "plugins" ? (
+        <Button size="sm" className={ACCENT_BUTTON} disabled={busy} onClick={() => run(true)}>
           {busy ? "Updating" : "Update"}
         </Button>
+      ) : (
+        <div className="flex gap-2">
+          <Button size="sm" className={`flex-1 ${ACCENT_BUTTON}`} disabled={busy} autoFocus onClick={() => run(true)}>
+            {busy ? "Updating" : "Update and reopen"}
+          </Button>
+          <Button size="sm" variant="outline" disabled={busy} onClick={() => run(false)}>
+            Update
+          </Button>
+        </div>
       )}
     </div>
   );
