@@ -1,8 +1,12 @@
 import {
+  createContext,
+  useContext,
+  useMemo,
   useState,
   type MouseEvent as ReactMouseEvent,
   type ReactNode,
 } from "react";
+import { createPortal } from "react-dom";
 import { cn } from "@bb/shared-ui/lib/utils";
 import {
   useCloseMobileSidebar,
@@ -22,6 +26,44 @@ import { SidebarHistoryNavigationControls } from "./SidebarHistoryNavigationCont
 import { useSidebarNavigationPlacement } from "./sidebarNavigationProvider";
 
 const FRAMED_CARD_TOP_BORDER_OFFSET_CLASS = "-mt-px";
+
+interface SidebarTitleBarSlotValue {
+  element: HTMLElement | null;
+  setElement: (element: HTMLElement | null) => void;
+}
+
+const SidebarTitleBarSlotContext =
+  createContext<SidebarTitleBarSlotValue | null>(null);
+
+export function SidebarTitleBarSlotProvider({
+  children,
+}: {
+  children: ReactNode;
+}) {
+  const [element, setElement] = useState<HTMLElement | null>(null);
+  const value = useMemo(() => ({ element, setElement }), [element]);
+  return (
+    <SidebarTitleBarSlotContext.Provider value={value}>
+      {children}
+    </SidebarTitleBarSlotContext.Provider>
+  );
+}
+
+export function SidebarTitleBarSlotTarget() {
+  const setElement = useContext(SidebarTitleBarSlotContext)?.setElement;
+  return (
+    <div
+      ref={setElement}
+      data-testid="sidebar-title-bar-header"
+      className="flex items-center"
+    />
+  );
+}
+
+export function SidebarTitleBarSlot({ children }: { children: ReactNode }) {
+  const element = useContext(SidebarTitleBarSlotContext)?.element ?? null;
+  return element === null ? null : createPortal(children, element);
+}
 
 export function useSidebarHeaderControlAxisClass(): string | undefined {
   const isFramed = useIsSidebarFramed();

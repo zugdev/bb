@@ -47,6 +47,7 @@ import {
   SidebarNavigationRegion,
   useSidebarNavigationCustomize,
 } from "./SidebarNavigationHost";
+import { SidebarNavigationHeader } from "./SidebarNavigationHeader";
 import { SidebarNavigationModelProvider } from "./SidebarNavigationModel";
 import { SidebarVisibilityCustomize } from "./SidebarVisibilityControls";
 
@@ -81,6 +82,11 @@ const ALL_KEYS = [
 function ListHarness({ splitEnabled }: { splitEnabled: boolean }) {
   const location = useLocation();
   const customize = useSidebarNavigationCustomize();
+  const resolved = {
+    kind: "plugin" as const,
+    slot: bundledNavigationSlot("top-list"),
+    fallback: null,
+  };
   return (
     <SidebarNavigationModelProvider
       onNavigate={mocks.onNavigate}
@@ -88,14 +94,9 @@ function ListHarness({ splitEnabled }: { splitEnabled: boolean }) {
       onOpenCustomize={customize.open}
       splitEnabled={splitEnabled}
     >
+      <SidebarNavigationHeader resolved={resolved} />
       <SidebarNavigationRegion placement="list" customize={customize}>
-        <SidebarNavigationProviderMount
-          resolved={{
-            kind: "plugin",
-            slot: bundledNavigationSlot("top-list"),
-            fallback: null,
-          }}
-        />
+        <SidebarNavigationProviderMount resolved={resolved} />
       </SidebarNavigationRegion>
       <output data-testid="pathname">{location.pathname}</output>
     </SidebarNavigationModelProvider>
@@ -135,6 +136,10 @@ function renderList(
 
 function list(): HTMLElement {
   return screen.getByTestId("sidebar-navigation-list");
+}
+
+function header(): HTMLElement {
+  return screen.getByTestId("sidebar-header-slot");
 }
 
 function rowButtons(container: HTMLElement): HTMLElement[] {
@@ -199,14 +204,14 @@ afterEach(() => {
 });
 
 describe("SidebarNavigationList", () => {
-  it("labels each visible destination in a row and puts hidden ones, New thread included, behind More", async () => {
+  it("labels each visible destination in a row and puts hidden ones, New thread included, behind the header's More", async () => {
     renderList(THREAD_PATH, {
       visibleKeys: ["__bb__/extensions", "garden/docs"],
     });
 
-    expect(rowLabels()).toEqual(["Plugins", "Docs", "More"]);
+    expect(rowLabels()).toEqual(["Plugins", "Docs"]);
 
-    fireEvent.keyDown(within(list()).getByRole("button", { name: "More" }), {
+    fireEvent.keyDown(within(header()).getByRole("button", { name: "More" }), {
       key: "Enter",
     });
     const menu = await screen.findByTestId("sidebar-navigation-more-menu");
@@ -222,7 +227,7 @@ describe("SidebarNavigationList", () => {
     ]);
   });
 
-  it("scrolls the destinations, New thread among them, keeping More in view", () => {
+  it("scrolls the destinations, New thread among them", () => {
     renderList(THREAD_PATH);
 
     const destinations = screen.getByTestId("sidebar-navigation-destinations");
@@ -230,15 +235,13 @@ describe("SidebarNavigationList", () => {
     expect(
       rowButtons(destinations).map((button) => button.textContent),
     ).toEqual(["New thread", "Plugins", "Skills", "Docs"]);
-    const more = within(list()).getByRole("button", { name: "More" });
-    expect(destinations.contains(more)).toBe(false);
   });
 
   it("hides New thread from Customize like any other row", async () => {
     const store = createStore();
     renderList(THREAD_PATH, { store });
 
-    fireEvent.keyDown(within(list()).getByRole("button", { name: "More" }), {
+    fireEvent.keyDown(within(header()).getByRole("button", { name: "More" }), {
       key: "Enter",
     });
     fireEvent.click(
@@ -249,7 +252,7 @@ describe("SidebarNavigationList", () => {
       within(editor).getByRole("checkbox", { name: /New thread/u }),
     );
 
-    expect(rowLabels()).toEqual(["Plugins", "Skills", "Docs", "More"]);
+    expect(rowLabels()).toEqual(["Plugins", "Skills", "Docs"]);
     expect(store.get(pluginNavVisiblePanelKeysAtom)).not.toContain(
       "__bb__/new-thread",
     );
@@ -293,7 +296,7 @@ describe("SidebarNavigationList", () => {
     registerDocsBadge({ label: "Needs review" });
     renderList(THREAD_PATH, { visibleKeys: ["__bb__/extensions"] });
 
-    const more = within(list()).getByRole("button", {
+    const more = within(header()).getByRole("button", {
       name: "More, Docs: Needs review",
     });
     expect(more.querySelector('[data-nav-rail-badge="dot"]')).not.toBeNull();
@@ -301,7 +304,7 @@ describe("SidebarNavigationList", () => {
 
   it("customizes the list from More and returns focus to More", async () => {
     renderList(THREAD_PATH);
-    const more = within(list()).getByRole("button", { name: "More" });
+    const more = within(header()).getByRole("button", { name: "More" });
 
     fireEvent.keyDown(more, { key: "Enter" });
     fireEvent.click(
@@ -329,7 +332,7 @@ describe("SidebarNavigationList", () => {
       visibleKeys: ALL_KEYS,
     });
 
-    expect(rowLabels()).not.toContain("More");
+    expect(within(header()).queryByRole("button")).toBeNull();
   });
 
   it("opens a row's options from its menu button and customizes from there", async () => {
