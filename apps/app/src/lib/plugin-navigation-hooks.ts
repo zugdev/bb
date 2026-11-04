@@ -24,6 +24,7 @@ import { getThreadConversationCollapsedAtom } from "@/components/secondary-panel
 import { lookupCachedThread } from "@/lib/cached-thread";
 import { useSetRootComposeProjectId } from "@/lib/root-compose-selection";
 import { openThreadInSplit } from "@/lib/split-layout/openThreadInSplit";
+import { openThreadInTab } from "@/lib/split-layout/tabs";
 import { useAppNavigationHost } from "@/lib/app-navigation-host";
 import {
   normalizeExperimentalFileOpenOptions,
@@ -70,6 +71,10 @@ export function useBbNavigate(): BbNavigate {
       onNavigate?.();
       const open = (projectId: string) => {
         store.set(getThreadConversationCollapsedAtom(threadId), false);
+        if (options?.experimental_tab && !isCompact) {
+          openThreadInTab(store, navigate, { projectId, threadId });
+          return;
+        }
         if (options?.split) {
           openThreadInSplit({
             store,

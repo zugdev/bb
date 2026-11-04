@@ -1,7 +1,7 @@
 import { useMemo, useState, type CSSProperties, type ReactNode } from "react";
 import { useAtom, useStore } from "jotai";
 import { atomWithStorage } from "jotai/utils";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import {
   closestCenter,
   DndContext,
@@ -32,7 +32,7 @@ import { useQuickCreateProjectController } from "@/hooks/useQuickCreateProject";
 import { createJsonLocalStorage } from "@/lib/browser-storage";
 import { formatRelativeTime } from "@/lib/relative-time";
 import { getSettingsProjectRoutePath } from "@/lib/route-paths";
-import { openSplitTabAtom, openThreadInTabAtom } from "@/lib/split-layout/tabs";
+import { openSplitTabAtom, openThreadInTab } from "@/lib/split-layout/tabs";
 import { getThreadDisplayTitle } from "@/lib/thread-title";
 import {
   DEFAULT_HOME_LAYOUT,
@@ -434,6 +434,7 @@ export default function HomeView() {
   const { data } = useSidebarNavigation();
   const store = useStore();
   const show = useShowSplitTabLayout();
+  const navigate = useNavigate();
   const [prefs, setPrefs] = useAtom(homeLayoutAtom);
   const [isEditing, setIsEditing] = useState(false);
   const quickCreateProject = useQuickCreateProjectController();
@@ -473,12 +474,10 @@ export default function HomeView() {
     projects.map((project) => project.id),
   );
   const openThread: OpenThread = (thread) =>
-    show(
-      store.set(openThreadInTabAtom, {
-        projectId: thread.projectId,
-        threadId: thread.id,
-      }),
-    );
+    openThreadInTab(store, navigate, {
+      projectId: thread.projectId,
+      threadId: thread.id,
+    });
 
   const describe = (id: string) => {
     if (id === "attention")

@@ -474,11 +474,24 @@ describe("ThreadRow", () => {
   it.each([
     ["meta", { metaKey: true }],
     ["ctrl", { ctrlKey: true }],
-  ])("opens the thread in a split on %s-click", (_label, modifier) => {
+  ])("opens the thread in a new pane tab on %s-click", (_label, modifier) => {
     const slot = renderThreadRow();
     const link = screen.getByRole("link", { name: "Open Thread" });
     const event = fireEvent.click(link, modifier);
     expect(event).toBe(false);
+    expect(slot.inspection.navigateCalls).toEqual([
+      {
+        method: "toThread",
+        threadId: "thr_test",
+        options: { experimental_tab: true },
+      },
+    ]);
+  });
+
+  it("opens the thread in a split on alt-click", () => {
+    const slot = renderThreadRow();
+    const link = screen.getByRole("link", { name: "Open Thread" });
+    expect(fireEvent.click(link, { altKey: true })).toBe(false);
     expect(slot.inspection.navigateCalls).toEqual([
       { method: "toThread", threadId: "thr_test", options: { split: true } },
     ]);
@@ -488,7 +501,7 @@ describe("ThreadRow", () => {
     ["meta", { metaKey: true }],
     ["ctrl", { ctrlKey: true }],
   ])(
-    "selects the row on %s-shift-click and still splits without shift with multi-select on",
+    "selects the row on %s-shift-click and still opens a tab without shift with multi-select on",
     (_label, modifier) => {
       const slot = renderThreadRow({ experiments: ["sidebarMultiSelect"] });
       const link = screen.getByRole("link", { name: "Open Thread" });
@@ -502,7 +515,11 @@ describe("ThreadRow", () => {
       expect(fireEvent.click(link, modifier)).toBe(false);
       expect(row?.hasAttribute("data-sidebar-thread-selected")).toBe(false);
       expect(slot.inspection.navigateCalls).toEqual([
-        { method: "toThread", threadId: "thr_test", options: { split: true } },
+        {
+          method: "toThread",
+          threadId: "thr_test",
+          options: { experimental_tab: true },
+        },
       ]);
     },
   );

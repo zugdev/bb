@@ -5214,8 +5214,14 @@ export interface BbNavigate {
    * split by default, focus when already open, replace at the pane cap) and
    * falls back to plain navigation where splits are off. Opening also expands
    * the thread's conversation if the side panel had collapsed it.
+   * `experimental_tab: true` opens it in a new pane tab, or focuses the tab
+   * that already shows it, and falls back to plain navigation where tabs are
+   * off. It takes precedence over `split`.
    */
-  toThread(threadId: string, options?: { split?: boolean }): void;
+  toThread(
+    threadId: string,
+    options?: { split?: boolean; experimental_tab?: boolean },
+  ): void;
   toProject(projectId: string): void;
   /**
    * Navigate to one of this plugin's own nav panels by its `path`.
