@@ -24,6 +24,8 @@ and `bb plugin rpc inspect <plugin-id> provider-usage.v1.listResources --json`
 to inspect their published contracts. RPC calls accept JSON through
 `--input-file`. See the Plugin Guide for the contract API.
 
+Every 5 minutes the plugin reads usage for all usage providers on connected machines and shared sources, reusing measurements under 4 minutes old. When a window that was at 90% or more rolls over to a later reset time, it sends one notification through the Push notifications plugin, such as "Claude Code: Five-hour limit reset" with the account email as the body. The first reading of a window only records it. The `resetNotifications` setting (default `true`, labelled "Notify when a usage limit resets" on the plugin page) turns this off: `bb plugin config bb--provider-usage set resetNotifications false`. With Push notifications disabled, sends fail and are logged to `bb plugin logs bb--provider-usage`.
+
 `bb settings usage --json` and `bb.sdk.system.usageLimits()` remain the
 host-local provider-maintenance view; they do not aggregate shared pool accounts.
 

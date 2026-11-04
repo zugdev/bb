@@ -20,6 +20,11 @@ import {
   usageSourceRpcContract,
   type UsageResource as Resource,
 } from "./usage-source-contract.js";
+import {
+  notificationOutputSchema,
+  usageWindowReset,
+  type UsageReading,
+} from "./usage-resets.js";
 
 interface SourceResult {
   pluginId: string;
@@ -156,6 +161,15 @@ function resourceProvider(
 }
 
 export default function providerUsagePlugin(bb: BbPluginApi): void {
+  const settings = bb.settings.define({
+    resetNotifications: {
+      type: "boolean",
+      label: "Notify when a usage limit resets",
+      description:
+        "Send a notification through Push notifications when a usage window that reached 90% resets.",
+      default: true,
+    },
+  });
   const inventories = new Map<string, SourceResult>();
   const measurements = new Map<
     string,
@@ -378,4 +392,69 @@ export default function providerUsagePlugin(bb: BbPluginApi): void {
   };
   bb.events.on("thread.idle", markDirty);
   bb.events.on("thread.failed", markDirty);
+  bb.background.schedule(
+    "usage-reset-notifications",
+    "*/5 * * * *",
+    async () => {
+      if (!(await settings.get()).resetNotifications) return;
+      const providers = await bb.sdk.providers.list({ capability: "usage" });
+      await readUsage({
+        force: false,
+        machineIds: null,
+        providerIds: providers.map((provider) => provider.id),
+        maxAgeMs: 240_000,
+      });
+      const previous =
+        (await bb.storage.kv.get<Record<string, UsageReading>>(
+          "reset-readings",
+        )) ?? {};
+      const current: Record<string, UsageReading> = {};
+      const now = Date.now();
+      for (const source of inventories.values())
+        for (const resource of source.resources) {
+          const resourceKey = keyOf(source.pluginId, resource.id);
+          const measurement = measurements.get(resourceKey)?.value;
+          if (measurement?.usage.status !== "ok") continue;
+          const account = measurement.usage.accountEmail ?? resource.label;
+          const providerName =
+            providers.find((provider) => provider.id === resource.providerId)
+              ?.displayName ?? resource.providerId;
+          for (const window of measurement.usage.windows) {
+            const windowKey = JSON.stringify([
+              measurement.accountKey ?? resourceKey,
+              resource.providerId,
+              window.kind,
+              window.label,
+            ]);
+            if (windowKey in current) continue;
+            const reading = {
+              usedPercent: window.usedPercent,
+              resetsAt: window.resetsAt,
+            };
+            current[windowKey] = reading;
+            if (!usageWindowReset(previous[windowKey], reading, now)) continue;
+            await bb.sdk.plugins
+              .callRpc({
+                pluginId: "push-notifications",
+                method: "notifications.send",
+                input: {
+                  title: `${providerName}: ${window.label} reset`,
+                  body:
+                    resource.scope.kind === "host"
+                      ? `${account} on ${resource.scope.hostName}`
+                      : account,
+                },
+                outputSchema: notificationOutputSchema,
+                signal: AbortSignal.timeout(30_000),
+              })
+              .catch((error: unknown) =>
+                bb.log.warn(
+                  `Usage reset notification failed: ${error instanceof Error ? error.message : String(error)}`,
+                ),
+              );
+          }
+        }
+      await bb.storage.kv.set("reset-readings", { ...previous, ...current });
+    },
+  );
 }

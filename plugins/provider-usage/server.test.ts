@@ -355,3 +355,113 @@ it("collapses known account observations per machine, preserves unknown identiti
     await harness.lifecycle.dispose();
   }
 });
+
+async function runResetSchedule(resetNotifications: boolean) {
+  const reading = { usedPercent: 95, resetsAt: "2026-11-03T13:00:00.000Z" };
+  const sends: unknown[] = [];
+  let sendFails = false;
+  const host = createFakePluginHost({
+    pluginId: "provider-usage",
+    settings: { resetNotifications },
+    sdk: {
+      system: { config: async () => ({ primaryHostId: null }) },
+      hosts: { list: async () => [] },
+      providers: {
+        list: async () => [
+          { id: "claude-code", displayName: "Claude Code", logoUrl: null },
+        ],
+      },
+      plugins: {
+        experimental_discoverRpc: async () => [
+          { pluginId: "pool", displayName: "Pool", method: usageListMethod },
+        ],
+        callRpc: async ({ method, input }) => {
+          if (method === "notifications.send") {
+            sends.push(input);
+            if (sendFails) throw new Error("Push notifications is disabled");
+            return { ok: true, channels: ["mobile"] };
+          }
+          if (method === usageListMethod)
+            return {
+              label: "Pool",
+              resources: [
+                {
+                  id: "claude",
+                  providerId: "claude-code",
+                  label: "Claude",
+                  scope: { kind: "shared" },
+                },
+              ],
+            };
+          return {
+            accountKey: "anthropic:account:1",
+            observedAt: 123,
+            usage: {
+              status: "ok",
+              accountEmail: "claude@example.com",
+              planLabel: null,
+              windows: [
+                {
+                  id: "0:Current session",
+                  kind: "five-hour",
+                  label: "Current session",
+                  model: null,
+                  cost: null,
+                  ...reading,
+                },
+              ],
+            },
+          };
+        },
+      },
+    },
+  });
+  plugin(host.bb);
+  vi.useFakeTimers({ toFake: ["Date"] });
+  try {
+    vi.setSystemTime(new Date("2026-11-03T12:00:00.000Z"));
+    await host.harness.behavior.runSchedule("usage-reset-notifications");
+    vi.setSystemTime(new Date("2026-11-03T13:05:00.000Z"));
+    Object.assign(reading, {
+      usedPercent: 3,
+      resetsAt: "2026-11-03T18:00:00.000Z",
+    });
+    await host.harness.behavior.runSchedule("usage-reset-notifications");
+    vi.setSystemTime(new Date("2026-11-03T13:10:00.000Z"));
+    await host.harness.behavior.runSchedule("usage-reset-notifications");
+    vi.setSystemTime(new Date("2026-11-03T18:05:00.000Z"));
+    Object.assign(reading, {
+      usedPercent: 99,
+      resetsAt: "2026-11-03T23:00:00.000Z",
+    });
+    await host.harness.behavior.runSchedule("usage-reset-notifications");
+    vi.setSystemTime(new Date("2026-11-03T23:05:00.000Z"));
+    Object.assign(reading, {
+      usedPercent: 0,
+      resetsAt: "2026-11-04T04:00:00.000Z",
+    });
+    sendFails = true;
+    await host.harness.behavior.runSchedule("usage-reset-notifications");
+    return sends;
+  } finally {
+    vi.useRealTimers();
+    await host.harness.lifecycle.dispose();
+  }
+}
+
+it("notifies once per rolled over window and tolerates a failed send", async () => {
+  expect(await runResetSchedule(true)).toEqual([
+    {
+      title: "Claude Code: Five-hour limit reset",
+      body: "claude@example.com",
+    },
+    {
+      title: "Claude Code: Five-hour limit reset",
+      body: "claude@example.com",
+    },
+  ]);
+});
+
+it("sends no reset notifications when the setting is off", async () => {
+  expect(await runResetSchedule(false)).toEqual([]);
+});
