@@ -24,6 +24,7 @@ import {
   resetThreadActionRegistryForTest,
 } from "@/lib/thread-actions/thread-action-registry";
 import type { ThreadDetailHeaderActionsMenuArgs } from "./ThreadDetailHeader";
+import type { ParentThreadSection } from "./useParentThreadSection";
 import { useRenameController } from "@bb/shared-ui/inline-rename";
 import {
   RENAME_PRESENTATION_CASES,
@@ -37,6 +38,12 @@ import type {
 
 const mocks = vi.hoisted(() => ({
   renameThreadAsync: vi.fn(),
+  openThreadInTab: vi.fn(),
+}));
+
+vi.mock("@/lib/split-layout/tabs", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/split-layout/tabs")>()),
+  openThreadInTab: mocks.openThreadInTab,
 }));
 
 vi.mock("@/components/thread/ThreadActionsProvider", () => ({
@@ -201,6 +208,7 @@ afterEach(() => {
   viewportState.isCompactViewport = false;
   viewportState.isPointerCoarse = false;
   mocks.renameThreadAsync.mockReset();
+  mocks.openThreadInTab.mockReset();
   vi.restoreAllMocks();
   window.localStorage.clear();
   delete window.bbDesktop;
@@ -969,4 +977,77 @@ describe("ThreadDetailHeader", () => {
       }
     },
   );
+
+  describe("parent thread link", () => {
+    const PARENT_TARGET = { projectId: "proj_header", threadId: "thr_parent" };
+    const PARENT_THREAD: ParentThreadSection = {
+      parentThreadTitle: "Orchestrator",
+      href: "/projects/proj_header/threads/thr_parent",
+      relationship: "parent",
+      target: PARENT_TARGET,
+      isLoaded: true,
+    };
+
+    function renderWithParent(
+      parentThread: ParentThreadSection,
+      navigateInPane = vi.fn(),
+    ) {
+      render(
+        <MemoryRouter>
+          <PaneContext.Provider value={{ ...PANE_CONTEXT, navigateInPane }}>
+            <ThreadDetailHeader
+              actionsMenu={null}
+              isSecondaryPanelOpen={false}
+              onToggleSecondaryPanel={vi.fn()}
+              parentThread={parentThread}
+              thread={THREAD_TARGET}
+              threadTitle="Child"
+            />
+          </PaneContext.Provider>
+        </MemoryRouter>,
+      );
+      return navigateInPane;
+    }
+
+    it("opens the parent in the same pane on click", () => {
+      const navigateInPane = renderWithParent(PARENT_THREAD);
+
+      fireEvent.click(screen.getByRole("link", { name: /Orchestrator/ }));
+
+      expect(navigateInPane).toHaveBeenCalledWith(PARENT_TARGET);
+      expect(mocks.openThreadInTab).not.toHaveBeenCalled();
+    });
+
+    it.each([{ metaKey: true }, { ctrlKey: true }])(
+      "opens the parent in a new tab on %o click",
+      (modifier) => {
+        const navigateInPane = renderWithParent(PARENT_THREAD);
+
+        fireEvent.click(
+          screen.getByRole("link", { name: /Orchestrator/ }),
+          modifier,
+        );
+
+        expect(mocks.openThreadInTab).toHaveBeenCalledWith(
+          expect.anything(),
+          expect.any(Function),
+          PARENT_TARGET,
+        );
+        expect(navigateInPane).not.toHaveBeenCalled();
+      },
+    );
+
+    it("waits for the parent thread to load", () => {
+      renderWithParent({ ...PARENT_THREAD, isLoaded: false });
+
+      expect(screen.queryByRole("link")).toBeNull();
+    });
+
+    it("leaves the parent link to the thread menu at compact width", () => {
+      viewportState.isCompactViewport = true;
+      renderWithParent(PARENT_THREAD);
+
+      expect(screen.queryByRole("link")).toBeNull();
+    });
+  });
 });

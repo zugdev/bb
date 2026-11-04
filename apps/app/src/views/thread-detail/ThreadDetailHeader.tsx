@@ -4,6 +4,7 @@ import {
   useThreadDot,
 } from "@/components/thread/ThreadStatusDot";
 import {
+  type MouseEvent as ReactMouseEvent,
   useCallback,
   useContext,
   useLayoutEffect,
@@ -59,6 +60,10 @@ import { useRootComposePinnedPanelToggleBoxClassName } from "@/views/RootCompose
 import { usePaneContext } from "./PaneContext";
 import { PaneMaximizeButton } from "./PaneMaximizeButton";
 import { PaneDragHandle } from "./PaneDragHandle";
+import {
+  useOpenParentThread,
+  type ParentThreadSection,
+} from "./useParentThreadSection";
 
 const THREAD_HEADER_ACTION_BUTTON_CLASS = cn(
   COARSE_POINTER_TOOLBAR_ACTION_BUTTON_CLASS,
@@ -79,6 +84,7 @@ interface ThreadDetailHeaderProps {
   isSecondaryPanelOpen: boolean;
   onClosePane?: () => void;
   onToggleSecondaryPanel: () => void;
+  parentThread?: ParentThreadSection | null;
   pluginActions?: ReactNode;
   thread: PluginThreadActionTarget;
   threadTitle: string;
@@ -89,6 +95,7 @@ export function ThreadDetailHeader({
   isSecondaryPanelOpen,
   onClosePane,
   onToggleSecondaryPanel,
+  parentThread = null,
   pluginActions,
   thread,
   threadTitle,
@@ -236,6 +243,12 @@ export function ThreadDetailHeader({
 
   const center = (
     <>
+      {parentThread?.isLoaded && !usesResponsiveActionOverflow ? (
+        <ThreadParentLink
+          parentThread={parentThread}
+          usesDesktopChrome={usesDesktopChrome}
+        />
+      ) : null}
       <div
         data-pane-header-focus-tab={
           isSplitPaneHeader && isFocused ? "" : undefined
@@ -381,5 +394,43 @@ export function ThreadDetailHeader({
       ownsWindowTopLeft={false}
       className={cn(beginPaneDrag && "z-[21]")}
     />
+  );
+}
+
+function ThreadParentLink({
+  parentThread,
+  usesDesktopChrome,
+}: {
+  parentThread: ParentThreadSection;
+  usesDesktopChrome: boolean;
+}) {
+  const openParentThread = useOpenParentThread();
+  const label =
+    parentThread.relationship === "fork" ? "Forked from" : "Parent thread";
+  const handleClick = (event: ReactMouseEvent<HTMLAnchorElement>) => {
+    if (event.button !== 0 || event.shiftKey || event.altKey) return;
+    event.preventDefault();
+    openParentThread(parentThread, event.metaKey || event.ctrlKey);
+  };
+  return (
+    <a
+      href={parentThread.href}
+      data-thread-header-parent-link=""
+      title={`${label}: ${parentThread.parentThreadTitle}`}
+      onClick={handleClick}
+      className={cn(
+        "mr-1 flex min-w-0 max-w-48 shrink items-center gap-1 rounded-md px-1.5 py-0.5 text-sm text-muted-foreground hover:bg-state-hover hover:text-foreground",
+        usesDesktopChrome && MACOS_WINDOW_NO_DRAG_CLASS,
+      )}
+    >
+      <span aria-hidden>↑</span>
+      <span className="sr-only">{label}: </span>
+      <span className="min-w-0 truncate">
+        <ThreadTitle title={parentThread.parentThreadTitle} />
+      </span>
+      <span aria-hidden className="ml-1 text-muted-foreground/60">
+        /
+      </span>
+    </a>
   );
 }
