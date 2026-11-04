@@ -169,6 +169,7 @@ describe("GET /api/v1/system/usage-limits", () => {
               supportsNativeUserQuestion: false,
               supportsFork: false,
               supportsSessionRewind: false,
+              supportsManualCompaction: false,
               modelCatalogScope: "workspace",
               permissionModes: ["full"],
             },
@@ -178,7 +179,6 @@ describe("GET /api/v1/system/usage-limits", () => {
           serverCapabilities: {
             reasoningLevels: ["medium"],
             fork: "none",
-            supportsManualCompaction: false,
           },
         }),
       );

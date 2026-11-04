@@ -128,7 +128,7 @@ describe("bb.providers.register (server)", () => {
           reasoningLevels: ["low", "medium", "high"],
         },
       });
-      expect(registration?.serverCapabilities.supportsManualCompaction).toBe(
+      expect(registration?.info.capabilities.supportsManualCompaction).toBe(
         true,
       );
 

@@ -109,8 +109,10 @@ import {
   useCreateThread,
   useCancelThreadPlan,
   useClearThreadGoal,
+  useCompactThread,
   useStopThread,
 } from "@/hooks/mutations/thread-runtime-mutations";
+import { getContextCompactionDisabledReason } from "@/components/thread/timeline/thread-context-window-usage";
 import {
   useRestoreThreadEnvironment,
   useUnarchiveThread,
@@ -499,6 +501,7 @@ export function ThreadDetailPromptArea({
     },
   );
   const stopThread = useStopThread();
+  const compactThread = useCompactThread();
   const cancelThreadPlan = useCancelThreadPlan();
   const clearThreadGoal = useClearThreadGoal();
   const unarchiveThread = useUnarchiveThread();
@@ -910,6 +913,16 @@ export function ThreadDetailPromptArea({
       : null;
   const compactFirst =
     compactBeforeSendTokens !== null && fullHistoryThreadId !== thread.id;
+  const contextCompaction = {
+    disabledReason: getContextCompactionDisabledReason({
+      supportsManualCompaction:
+        providers.find((provider) => provider.id === thread.providerId)
+          ?.capabilities.supportsManualCompaction ?? false,
+      displayStatus: runtimeDisplayStatus,
+      isRequesting: compactThread.isPending,
+    }),
+    onCompact: () => compactThread.mutate(thread.id),
+  };
   const shouldSteerWhenReady =
     runtimeDisplayStatus === "provisioning" ||
     runtimeDisplayStatus === "starting";
@@ -2354,6 +2367,7 @@ export function ThreadDetailPromptArea({
       environmentSummary={environmentSummary}
       compactEnvironmentSummary={compactEnvironmentSummary}
       contextWindowUsage={contextWindowUsage ?? null}
+      contextCompaction={contextCompaction}
       compactBeforeSend={
         compactBeforeSendTokens === null
           ? null

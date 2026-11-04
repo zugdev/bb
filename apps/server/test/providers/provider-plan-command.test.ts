@@ -16,6 +16,7 @@ const BASE_INFO = {
     supportsNativeUserQuestion: false,
     supportsFork: false,
     supportsSessionRewind: false,
+    supportsManualCompaction: false,
     modelCatalogScope: "workspace" as const,
     permissionModes: ["full" as const],
   },
@@ -48,7 +49,6 @@ function registryWith(): ReturnType<typeof createProviderRegistryService> {
           composerActions: [...composerActions],
         },
         serverCapabilities: {
-          supportsManualCompaction: false,
           reasoningLevels: ["medium"],
           fork: "none",
         },

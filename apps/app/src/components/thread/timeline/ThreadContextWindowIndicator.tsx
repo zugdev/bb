@@ -15,19 +15,52 @@ import {
   ThreadContextWindowSegments,
 } from "./ThreadContextWindowDetails.js";
 
+export interface ThreadContextCompactionControl {
+  disabledReason: string | null;
+  onCompact: () => void;
+}
+
 interface ThreadContextWindowCardProps {
   usage: ThreadContextWindowUsage;
+  compaction?: ThreadContextCompactionControl | null;
   className?: string;
 }
 
 interface ThreadContextWindowIndicatorProps {
   usage: ThreadContextWindowUsage;
+  compaction?: ThreadContextCompactionControl | null;
   defaultOpen?: boolean;
+}
+
+function ThreadContextCompactButton({
+  compaction,
+}: {
+  compaction: ThreadContextCompactionControl;
+}) {
+  const disabled = compaction.disabledReason !== null;
+  return (
+    <div className="mt-2 flex items-center justify-between gap-2 border-t pt-2 text-xs text-muted-foreground max-md:pointer-coarse:mt-3 max-md:pointer-coarse:pt-3 max-md:pointer-coarse:text-sm">
+      <span className="min-w-0">{compaction.disabledReason}</span>
+      <button
+        type="button"
+        disabled={disabled}
+        title={
+          compaction.disabledReason ??
+          "Summarize the conversation to free context"
+        }
+        onClick={compaction.onCompact}
+        className="shrink-0 cursor-pointer rounded-xs border px-2 py-0.5 font-medium text-foreground hover:bg-state-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent max-md:pointer-coarse:px-3 max-md:pointer-coarse:py-1.5"
+      >
+        Compact
+      </button>
+    </div>
+  );
 }
 
 const CONTEXT_WINDOW_POPOVER_CLOSE_DELAY_MS = 60;
 export function ThreadContextWindowCard({
   usage,
+  compaction = null,
   className,
 }: ThreadContextWindowCardProps) {
   const details = usage.snapshot?.categories.length
@@ -164,12 +197,16 @@ export function ThreadContextWindowCard({
           </button>
         </>
       ) : null}
+      {compaction ? (
+        <ThreadContextCompactButton compaction={compaction} />
+      ) : null}
     </div>
   );
 }
 
 export function ThreadContextWindowIndicator({
   usage,
+  compaction = null,
   defaultOpen,
 }: ThreadContextWindowIndicatorProps) {
   const details = usage.snapshot?.categories.length
@@ -181,8 +218,9 @@ export function ThreadContextWindowIndicator({
     contentHoverProps,
     handleOpenChange,
   } = useHoverPopover({
-    closeDelayMs: details ? 200 : CONTEXT_WINDOW_POPOVER_CLOSE_DELAY_MS,
-    hoverableContent: details !== undefined,
+    closeDelayMs:
+      details || compaction ? 200 : CONTEXT_WINDOW_POPOVER_CLOSE_DELAY_MS,
+    hoverableContent: details !== undefined || compaction !== null,
   });
   const open = defaultOpen || hoverOpen;
 
@@ -258,6 +296,7 @@ export function ThreadContextWindowIndicator({
       >
         <ThreadContextWindowCard
           usage={usage}
+          compaction={compaction}
           className="max-md:w-full max-md:rounded-none max-md:border-0 max-md:bg-transparent max-md:px-4 max-md:pt-2 max-md:pb-[max(1rem,env(safe-area-inset-bottom))] max-md:shadow-none"
         />
       </PopoverContent>

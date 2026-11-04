@@ -148,9 +148,10 @@ export interface FollowUpComposerProps {
   threadRuntimeDisplayStatus: ThreadRuntimeDisplayStatus;
 }
 
-type ContextWindowUsage = ComponentProps<
+type ContextWindowIndicatorProps = ComponentProps<
   typeof ThreadContextWindowIndicator
->["usage"];
+>;
+type ContextWindowUsage = ContextWindowIndicatorProps["usage"];
 
 export interface FollowUpPromptBoxProps {
   id?: string;
@@ -161,6 +162,7 @@ export interface FollowUpPromptBoxProps {
   environmentSummary: ReactNode | null;
   compactEnvironmentSummary?: ReactNode;
   contextWindowUsage: ContextWindowUsage | null;
+  contextCompaction?: ContextWindowIndicatorProps["compaction"];
   compactBeforeSend?: CompactBeforeSendOffer | null;
   execution: ExecutionControlsProps;
   permission: ExecutionPermissionConfig;
@@ -240,6 +242,7 @@ function FollowUpPromptBoxWithComposer({
   environmentSummary,
   compactEnvironmentSummary = null,
   contextWindowUsage,
+  contextCompaction = null,
   compactBeforeSend = null,
   execution,
   permission,
@@ -829,7 +832,10 @@ function FollowUpPromptBoxWithComposer({
             {sessionOptionsControl}
             {permissionControl}
             {contextWindowUsage ? (
-              <ThreadContextWindowIndicator usage={contextWindowUsage} />
+              <ThreadContextWindowIndicator
+                usage={contextWindowUsage}
+                compaction={contextCompaction}
+              />
             ) : null}
           </div>
         </div>

@@ -59,6 +59,7 @@ describe("buildPluginProviderRegistration", () => {
         supportsNativeUserQuestion: true,
         supportsFork: true,
         supportsSessionRewind: true,
+        supportsManualCompaction: false,
         modelCatalogScope: "workspace",
         permissionModes: ["accept-edits", "full"],
       },
@@ -88,8 +89,6 @@ describe("buildPluginProviderRegistration", () => {
     expect(registration.serverCapabilities).toStrictEqual({
       reasoningLevels: ["low", "medium", "high"],
       fork: "checkpoint",
-      supportsManualCompaction:
-        normalized.capabilities.supportsManualCompaction,
     });
     expect(registration.bridgeOptions).toStrictEqual({
       launch: { command: "my-agent" },
