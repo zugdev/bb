@@ -408,9 +408,8 @@ export function AppSidebar({
                 "col-start-2 row-start-1",
                 (isBodyHidden || placement === "list") && "row-span-2",
                 isFramed &&
-                  !isBodyHidden &&
-                  placement === "rail" &&
-                  "rounded-bl-none border-b-0 [clip-path:inset(0_-6px_0_0_round_var(--bb-frame-card-radius)_0_0_0)]",
+                  "[clip-path:inset(calc(var(--bb-window-title-bar-height)*-1)_-6px_0_0)] before:pointer-events-none before:absolute before:right-0 before:bottom-full before:-left-px before:h-(--bb-window-title-bar-height) before:border-l before:border-border before:bg-sidebar",
+                isFramed && placement === "list" && "border-l-0 before:border-l-0",
               )}
             >
               <div
@@ -443,11 +442,7 @@ export function AppSidebar({
                 data-testid="sidebar-footer-body"
                 contentInFlow
                 hidden={isBodyHidden}
-                className={cn(
-                  "col-start-2 row-start-2",
-                  isFramed &&
-                    "rounded-tl-none border-t-0 [clip-path:inset(0_-6px_0_0_round_0_0_0_var(--bb-frame-card-radius))]",
-                )}
+                className="col-start-2 row-start-2"
               >
                 {footer}
               </SidebarCollapsibleBody>
