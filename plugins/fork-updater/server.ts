@@ -11,6 +11,7 @@ const BUILT_COMMIT_KEY = "built-commit";
 const SEED_BUILT_COMMIT = "5008564189";
 const DEFAULT_CHECKOUT = "/Users/gus/prog/bb/.claude/worktrees/trunk";
 const LONG_STEP_TIMEOUT_MS = 30 * 60_000;
+const SELF_RELOAD_DELAY_MS = 1_000;
 
 const JSON_OPTION = { type: "boolean", description: "Emit machine-readable JSON" } as const;
 
@@ -57,6 +58,7 @@ export default async function forkUpdaterPlugin(bb: BbPluginApi): Promise<void> 
   let swapError: string | null = null;
   let checking: Promise<ForkUpdaterStatus> | null = null;
   let updating: Promise<ForkUpdaterStatus> | null = null;
+  let selfReloadPending = false;
 
   function setStatus(patch: Partial<ForkUpdaterStatus>): void {
     status = { ...status, ...patch };
@@ -152,7 +154,8 @@ export default async function forkUpdaterPlugin(bb: BbPluginApi): Promise<void> 
         await saveBuiltCommit(head);
         setStatus({ progress: null, builtCommit: head });
         if (current.reloadPluginIds.includes(bb.pluginId)) {
-          void bb.sdk.plugins.reload({ pluginId: bb.pluginId });
+          setStatus({ kind: "up-to-date", commits: [], reloadPluginIds: [] });
+          selfReloadPending = true;
         }
         return status;
       }
@@ -174,7 +177,11 @@ export default async function forkUpdaterPlugin(bb: BbPluginApi): Promise<void> 
       .finally(() => {
         updating = null;
       })
-      .then(() => check());
+      .then(() => {
+        if (!selfReloadPending) return check();
+        setTimeout(() => void bb.sdk.plugins.reload({ pluginId: bb.pluginId }), SELF_RELOAD_DELAY_MS);
+        return status;
+      });
     return updating;
   }
 
