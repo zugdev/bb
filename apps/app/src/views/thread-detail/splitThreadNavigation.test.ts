@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  findPane,
   findPaneByContent,
   findPaneByThread,
   listPanes,
@@ -238,9 +239,7 @@ describe("applyThreadPaneActionToLayout", () => {
 describe("placeThreadBesideSplit", () => {
   const picked = { projectId: "p1", threadId: "thread-9" };
 
-  function tabsWith(
-    ...layouts: (SplitLayout | null)[]
-  ): SplitTabsState {
+  function tabsWith(...layouts: (SplitLayout | null)[]): SplitTabsState {
     return {
       tabs: layouts.map((layout, index) => ({
         id: `tab-${index + 1}`,
@@ -286,11 +285,7 @@ describe("placeThreadBesideSplit", () => {
     const split = twoPaneLayout();
     const other = twoPaneLayout();
 
-    const result = placeThreadBesideSplit(
-      tabsWith(null, other),
-      split,
-      picked,
-    );
+    const result = placeThreadBesideSplit(tabsWith(null, other), split, picked);
 
     expect(result?.layout).toEqual(createSinglePaneLayout(picked));
     expect(result?.state.tabs).toHaveLength(3);
@@ -324,5 +319,51 @@ describe("placeThreadBesideSplit", () => {
       projectId: "p1",
     });
     expect(result?.state.tabs[3]?.layout).toBeNull();
+  });
+});
+
+describe("thread panel tab panes", () => {
+  const diffPane = {
+    kind: "thread-panel-tab",
+    projectId: "p1",
+    threadId: "thread-1",
+    tabId: "git-diff",
+  } as const;
+
+  it("routes a panel tab pane to its thread with the tab in the query", () => {
+    const layout = splitPane(twoPaneLayout(), "pane-1", "bottom", diffPane);
+
+    expect(focusedPaneRoute(layout)).toBe(
+      "/projects/p1/threads/thread-1?panelTab=git-diff",
+    );
+  });
+
+  it("keeps the thread pane and its panel tab pane apart on navigation", () => {
+    const layout = splitPane(twoPaneLayout(), "pane-1", "bottom", diffPane);
+    const panelPaneId = layout.focusedPaneId;
+    const threadPaneId = findPaneByThread(
+      layout.root,
+      "p1",
+      "thread-1",
+    )?.paneId;
+
+    const onPanelRoute = reconcileLayoutForContent(layout, diffPane);
+    const onThreadRoute = reconcileLayoutForContent(layout, {
+      kind: "thread",
+      projectId: "p1",
+      threadId: "thread-1",
+    });
+    const onOtherTab = reconcileLayoutForContent(layout, {
+      ...diffPane,
+      tabId: "terminal-1",
+    });
+
+    expect(onPanelRoute).toBe(layout);
+    expect(onThreadRoute.focusedPaneId).toBe(threadPaneId);
+    expect(listPanes(onThreadRoute.root)).toHaveLength(3);
+    expect(findPane(onOtherTab.root, panelPaneId)?.content).toEqual({
+      ...diffPane,
+      tabId: "terminal-1",
+    });
   });
 });

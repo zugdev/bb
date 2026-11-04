@@ -214,6 +214,8 @@ export interface ThreadSecondaryPanelProps {
   onToggleConversationCollapse: () => void;
   renderAsDrawer: boolean;
   isAtWindowTop?: boolean;
+  chromeActions?: ReactNode;
+  onOpenTabInPane?: (tabId: string) => void;
 }
 
 function panelTabPluginId(
@@ -266,6 +268,8 @@ function ThreadSecondaryPanelContent({
   onToggleConversationCollapse,
   renderAsDrawer,
   isAtWindowTop = false,
+  chromeActions,
+  onOpenTabInPane,
 }: ThreadSecondaryPanelProps) {
   const newTabShortcut = useAppCommandShortcut("panel.newTab");
   const togglePanelShortcut = useAppCommandShortcut("panel.toggle");
@@ -702,6 +706,34 @@ function ThreadSecondaryPanelContent({
       activeSurfaceFixedTab?.contentFillsRegion === true;
     const isSurfaceTerminalActive =
       activeSurfaceModel?.kind === "terminal" && hasActiveSurfaceTab;
+    const openInPaneTabId =
+      activeSurfaceModel?.id ?? activeSurfaceFixedTab?.tab.id ?? null;
+    const openInPaneButton =
+      onOpenTabInPane === undefined ||
+      renderAsDrawer ||
+      openInPaneTabId === null ? null : (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className={cn(
+                HEADER_PANE_ACTION_ICON_BUTTON_CLASS,
+                CHROME_SUBTLE_ICON_BUTTON_FOREGROUND_CLASS,
+                "shrink-0",
+                usesDesktopChrome && MACOS_WINDOW_NO_DRAG_CLASS,
+              )}
+              aria-label="Open tab in pane"
+              onClick={() => onOpenTabInPane(openInPaneTabId)}
+            >
+              <Icon name="Columns2" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Open tab in pane</TooltipContent>
+        </Tooltip>
+      );
+    const surfaceChromeActions = showOuterControls ? chromeActions : null;
 
     return (
       <ImageTabLightboxProvider
@@ -762,7 +794,8 @@ function ThreadSecondaryPanelContent({
             </div>
             {showOuterControls ||
             onRemoveSplit ||
-            usesPaneArrangementControl ? (
+            usesPaneArrangementControl ||
+            openInPaneButton !== null ? (
               <div
                 className={cn(
                   "flex min-w-0 shrink-0 items-center gap-1",
@@ -770,6 +803,8 @@ function ThreadSecondaryPanelContent({
                 )}
                 onPointerDown={(event) => event.stopPropagation()}
               >
+                {openInPaneButton}
+                {surfaceChromeActions}
                 {usesPaneArrangementControl || showOuterControls
                   ? renderConversationCollapseButton({
                       isFullScreen,
