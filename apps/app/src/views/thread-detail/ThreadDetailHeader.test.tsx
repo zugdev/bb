@@ -215,31 +215,14 @@ afterEach(() => {
 });
 
 describe("ThreadDetailHeader", () => {
-  it("leaves the open right-panel collapse control to the panel header", () => {
-    render(
-      <PaneContext.Provider value={PANE_CONTEXT}>
-        <ThreadDetailHeader
-          actionsMenu={null}
-          isSecondaryPanelOpen
-          onToggleSecondaryPanel={vi.fn()}
-          thread={THREAD_TARGET}
-          threadTitle="Panel state"
-        />
-      </PaneContext.Provider>,
-    );
-
-    expect(
-      screen.queryByRole("button", { name: "Hide right panel" }),
-    ).toBeNull();
-  });
-
-  it("keeps one right-panel toggle mounted and hides it while the panel is open", () => {
+  it("keeps the single pane right-panel toggle in the header while the panel is open", () => {
+    const onToggleSecondaryPanel = vi.fn();
     const header = (isSecondaryPanelOpen: boolean) => (
       <PaneContext.Provider value={PANE_CONTEXT}>
         <ThreadDetailHeader
           actionsMenu={null}
           isSecondaryPanelOpen={isSecondaryPanelOpen}
-          onToggleSecondaryPanel={vi.fn()}
+          onToggleSecondaryPanel={onToggleSecondaryPanel}
           thread={THREAD_TARGET}
           threadTitle="Panel state"
         />
@@ -247,20 +230,19 @@ describe("ThreadDetailHeader", () => {
     );
     const view = render(header(false));
     const toggle = screen.getByRole("button", { name: "Show right panel" });
-    expect(toggle.hasAttribute("inert")).toBe(false);
+    expect(toggle.closest("[data-thread-header-pane-actions]")).not.toBeNull();
 
     view.rerender(header(true));
 
     expect(toggle.isConnected).toBe(true);
-    expect(toggle.classList.contains("hidden")).toBe(true);
-    expect(toggle.hasAttribute("inert")).toBe(true);
-    expect(toggle.getAttribute("aria-label")).toBe("Show right panel");
-
-    view.rerender(header(false));
-
-    expect(toggle.isConnected).toBe(true);
     expect(toggle.classList.contains("hidden")).toBe(false);
     expect(toggle.hasAttribute("inert")).toBe(false);
+    expect(toggle.getAttribute("aria-label")).toBe("Hide right panel");
+    expect(toggle.getAttribute("aria-expanded")).toBe("true");
+
+    fireEvent.click(toggle);
+
+    expect(onToggleSecondaryPanel).toHaveBeenCalledOnce();
   });
 
   it("retains the compact trigger while the open shelf hides page actions", () => {

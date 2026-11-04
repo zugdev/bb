@@ -157,6 +157,13 @@ function ThreadDetailSecondaryContentBody({
             onToggleConversationCollapse={onToggleMainCollapse}
             resizablePanelId={resizablePanelId}
             isAtWindowTop={paneContext?.isTopRow !== false}
+            inlinePanelToggle={
+              paneContext?.secondaryPanelHost == null &&
+              presentation === "inline" &&
+              !isMainCollapsed
+                ? "hidden"
+                : "button"
+            }
             metadataContent={metadataContent}
           />
         )}
