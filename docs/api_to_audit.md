@@ -2447,6 +2447,19 @@ Docs: `frontend-core-slots.md`.
    standard slot-owned CSS retention are the right failure semantics for UI
    that may have no in-layout representation.
 
+## `app.slots.experimental_threadHeaderLeading` (`@get-bb/plugin-sdk/app`)
+
+Renders a plugin component before the thread title in every open thread's header, including each split pane's, with `threadId` and `isNarrow` props. `isNarrow` is true at compact width and in split panes narrower than 560px, the same rule that folds `placement: "header"` thread actions into the thread menu. A crash hides only that component, and a component that renders nothing leaves no gap before the title.
+
+Core caller: `ThreadDetailHeader` through `PluginThreadHeaderLeading`. First plugin: `plugins/parent-link` (fork), which draws the parent thread link and pairs it with a `placement: "header"` thread action for narrow headers.
+
+**Audit before stabilizing.**
+
+1. **Name and boundary.** Decide whether "leading" content stays limited to breadcrumbs and badges, or whether bb should own a breadcrumb primitive instead of arbitrary components.
+2. **Narrow state.** `isNarrow` mirrors one header rule. Decide whether the thread action item input should get the same flag, which would let a plugin pair a header link with a narrow menu row without its own shared state.
+3. **Width budget.** Several plugins can register; nothing caps their total width against the title.
+4. **Other headers.** Side chats and thread panel tab panes have no `ThreadDetailHeader`; decide whether they should render the slot.
+
 ## `app.slots.experimental_newThreadPanelAction` (`@get-bb/plugin-sdk/app`)
 
 **Kept experimental (2026-08-22).** There are no consumers, and item 5 is

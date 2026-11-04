@@ -24,7 +24,12 @@ import {
   resetThreadActionRegistryForTest,
 } from "@/lib/thread-actions/thread-action-registry";
 import type { ThreadDetailHeaderActionsMenuArgs } from "./ThreadDetailHeader";
-import type { ParentThreadSection } from "./useParentThreadSection";
+import {
+  resetPluginSlotStoreForTest,
+  setPluginSlotRegistrations,
+} from "@/lib/plugin-slots";
+import { makePluginRegistrationSet } from "@/test/fixtures/plugins";
+import { resetAllCrashedPluginSlotsForTest } from "@/components/plugin/PluginSlotMount";
 import { useRenameController } from "@bb/shared-ui/inline-rename";
 import {
   RENAME_PRESENTATION_CASES,
@@ -38,12 +43,6 @@ import type {
 
 const mocks = vi.hoisted(() => ({
   renameThreadAsync: vi.fn(),
-  openThreadInTab: vi.fn(),
-}));
-
-vi.mock("@/lib/split-layout/tabs", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@/lib/split-layout/tabs")>()),
-  openThreadInTab: mocks.openThreadInTab,
 }));
 
 vi.mock("@/components/thread/ThreadActionsProvider", () => ({
@@ -208,7 +207,8 @@ afterEach(() => {
   viewportState.isCompactViewport = false;
   viewportState.isPointerCoarse = false;
   mocks.renameThreadAsync.mockReset();
-  mocks.openThreadInTab.mockReset();
+  resetPluginSlotStoreForTest();
+  resetAllCrashedPluginSlotsForTest();
   vi.restoreAllMocks();
   window.localStorage.clear();
   delete window.bbDesktop;
@@ -960,76 +960,65 @@ describe("ThreadDetailHeader", () => {
     },
   );
 
-  describe("parent thread link", () => {
-    const PARENT_TARGET = { projectId: "proj_header", threadId: "thr_parent" };
-    const PARENT_THREAD: ParentThreadSection = {
-      parentThreadTitle: "Orchestrator",
-      href: "/projects/proj_header/threads/thr_parent",
-      relationship: "parent",
-      target: PARENT_TARGET,
-      isLoaded: true,
-    };
-
-    function renderWithParent(
-      parentThread: ParentThreadSection,
-      navigateInPane = vi.fn(),
+  describe("plugin leading slot", () => {
+    function registerLeading(
+      component: (props: { threadId: string; isNarrow: boolean }) => ReactNode,
     ) {
+      setPluginSlotRegistrations(
+        "leading-plugin",
+        makePluginRegistrationSet({
+          threadHeaderLeadings: [{ id: "breadcrumb", component }],
+        }),
+      );
+    }
+
+    function renderHeader() {
       render(
         <MemoryRouter>
-          <PaneContext.Provider value={{ ...PANE_CONTEXT, navigateInPane }}>
+          <PaneContext.Provider value={PANE_CONTEXT}>
             <ThreadDetailHeader
               actionsMenu={null}
               isSecondaryPanelOpen={false}
               onToggleSecondaryPanel={vi.fn()}
-              parentThread={parentThread}
               thread={THREAD_TARGET}
               threadTitle="Child"
             />
           </PaneContext.Provider>
         </MemoryRouter>,
       );
-      return navigateInPane;
     }
 
-    it("opens the parent in the same pane on click", () => {
-      const navigateInPane = renderWithParent(PARENT_THREAD);
+    it.each([
+      { isCompactViewport: false, isNarrow: "false" },
+      { isCompactViewport: true, isNarrow: "true" },
+    ])(
+      "renders before the title with isNarrow $isNarrow when compact is $isCompactViewport",
+      ({ isCompactViewport, isNarrow }) => {
+        viewportState.isCompactViewport = isCompactViewport;
+        registerLeading((props) => (
+          <span data-testid="leading">
+            {props.threadId}:{String(props.isNarrow)}
+          </span>
+        ));
+        renderHeader();
 
-      fireEvent.click(screen.getByRole("link", { name: /Orchestrator/ }));
-
-      expect(navigateInPane).toHaveBeenCalledWith(PARENT_TARGET);
-      expect(mocks.openThreadInTab).not.toHaveBeenCalled();
-    });
-
-    it.each([{ metaKey: true }, { ctrlKey: true }])(
-      "opens the parent in a new tab on %o click",
-      (modifier) => {
-        const navigateInPane = renderWithParent(PARENT_THREAD);
-
-        fireEvent.click(
-          screen.getByRole("link", { name: /Orchestrator/ }),
-          modifier,
-        );
-
-        expect(mocks.openThreadInTab).toHaveBeenCalledWith(
-          expect.anything(),
-          expect.any(Function),
-          PARENT_TARGET,
-        );
-        expect(navigateInPane).not.toHaveBeenCalled();
+        const leading = screen.getByTestId("leading");
+        expect(leading.textContent).toBe(`${THREAD_ID}:${isNarrow}`);
+        expect(
+          leading.compareDocumentPosition(screen.getByText("Child")) &
+            Node.DOCUMENT_POSITION_FOLLOWING,
+        ).toBeTruthy();
       },
     );
 
-    it("waits for the parent thread to load", () => {
-      renderWithParent({ ...PARENT_THREAD, isLoaded: false });
+    it("keeps the title when the slot component crashes", () => {
+      vi.spyOn(console, "error").mockImplementation(() => {});
+      registerLeading(() => {
+        throw new Error("boom");
+      });
+      renderHeader();
 
-      expect(screen.queryByRole("link")).toBeNull();
-    });
-
-    it("leaves the parent link to the thread menu at compact width", () => {
-      viewportState.isCompactViewport = true;
-      renderWithParent(PARENT_THREAD);
-
-      expect(screen.queryByRole("link")).toBeNull();
+      expect(screen.getByText("Child")).not.toBeNull();
     });
   });
 });

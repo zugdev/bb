@@ -113,10 +113,6 @@ import {
 import { THREAD_INFO_FIXED_TAB_REFERENCE } from "@/components/secondary-panel/thread-info-fixed-tab-navigation";
 import { ThreadDetailHeader } from "./ThreadDetailHeader";
 import {
-  useOpenParentThread,
-  useParentThreadSection,
-} from "./useParentThreadSection";
-import {
   CORE_THREAD_CONTEXT_CARD_ROWS,
   CORE_THREAD_CONTEXT_CARD_SECTIONS,
 } from "./ThreadContextCardCore";
@@ -1392,9 +1388,6 @@ function ThreadDetailViewInternal(
     [openLiveFilePreview, thread?.environmentId],
   );
 
-  const parentThreadLink = useParentThreadSection(thread, true);
-  const openParentThread = useOpenParentThread();
-
   if (threadQueryState.status === "loading") {
     return (
       <RouteLoadingSkeleton isBoundedPane={isBoundedPane}>
@@ -1524,20 +1517,6 @@ function ThreadDetailViewInternal(
           inline={
             includeResponsiveActions
               ? [
-                  ...(parentThreadLink?.isLoaded
-                    ? [
-                        {
-                          key: "parent-thread",
-                          group: THREAD_HEADER_ACTIONS_GROUP,
-                          action: {
-                            icon: "ChevronLeft",
-                            label: `Go to ${parentThreadLink.relationship === "fork" ? "fork source" : "parent"}: ${parentThreadLink.parentThreadTitle}`,
-                            run: () =>
-                              openParentThread(parentThreadLink, false),
-                          },
-                        } satisfies PluginThreadActionsInlineItem,
-                      ]
-                    : []),
                   ...responsiveWorkspaceActions,
                   ...headerActions.map(
                     ({ key, action }): PluginThreadActionsInlineItem => ({
@@ -1556,7 +1535,6 @@ function ThreadDetailViewInternal(
       isSecondaryPanelOpen={isSecondaryPanelOpen}
       onClosePane={onRequestClose ?? undefined}
       onToggleSecondaryPanel={toggleSecondaryPanel}
-      parentThread={parentThreadLink}
       pluginActions={
         <PluginThreadHeaderActions
           threadId={thread.id}

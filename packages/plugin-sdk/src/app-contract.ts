@@ -859,6 +859,30 @@ export interface ExperimentalAppOverlayRegistration {
   component: ComponentType<ExperimentalAppOverlayProps>;
 }
 
+/** Props passed to an `experimental_threadHeaderLeading` component. */
+export interface ExperimentalThreadHeaderLeadingProps {
+  /** The thread whose header renders the component. */
+  threadId: string;
+  /**
+   * True at compact width and in split panes narrower than 560px, where the
+   * header folds its buttons into the thread menu. Header actions show in
+   * that menu only while this is true.
+   */
+  isNarrow: boolean;
+}
+
+/**
+ * Render a component in an open thread's header, before the thread title.
+ * Every header renders it, including each split pane's. bb supplies no
+ * chrome; return null to render nothing. Registrations are additive and a
+ * crash hides only that component.
+ */
+export interface ExperimentalThreadHeaderLeadingRegistration {
+  /** Unique within the plugin; letters, digits, `-`, `_`. */
+  id: string;
+  component: ComponentType<ExperimentalThreadHeaderLeadingProps>;
+}
+
 /**
  * A name the host resolves to a glyph, in this order: a name any plugin
  * registered with `app.experimental_icons.register()`, then a built-in BB icon
@@ -3755,6 +3779,14 @@ export interface PluginAppSlots {
    */
   experimental_appOverlay(
     registration: ExperimentalAppOverlayRegistration,
+  ): void;
+  /**
+   * Render a component before the thread title in the thread header (see
+   * {@link ExperimentalThreadHeaderLeadingRegistration}). Experimental: see
+   * docs/api_to_audit.md.
+   */
+  experimental_threadHeaderLeading(
+    registration: ExperimentalThreadHeaderLeadingRegistration,
   ): void;
   navPanel(registration: PluginNavPanelRegistration): void;
   /** Register a context-scoped tab. Experimental: see docs/api_to_audit.md. */
