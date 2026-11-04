@@ -136,6 +136,7 @@ describe("Git plugin server", () => {
             activeWorkflowCount: 0,
           },
           latestAttentionAt: 0,
+          lastUserMessageAt: null,
           updatedAt: 0,
         },
       },

@@ -34,6 +34,10 @@ vi.mock("./PluginThreadList", () => ({
   PluginThreadList: () => <div data-testid="thread-list" />,
 }));
 
+vi.mock("./ActiveTabThreadsSection", () => ({
+  ActiveTabThreadsSection: () => null,
+}));
+
 vi.mock("@/components/plugin/PluginSidebarFooterItems", () => ({
   PluginSidebarFooterDisclosure: () => null,
   PluginSidebarFooterItems: ({

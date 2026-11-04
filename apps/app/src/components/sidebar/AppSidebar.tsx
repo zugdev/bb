@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/sidebar.js";
 import { ThreadActionSurfaceVisibility } from "@/lib/thread-actions/thread-action-registry";
 import { PluginThreadList } from "./PluginThreadList";
+import { ActiveTabThreadsSection } from "./ActiveTabThreadsSection";
 import { useThreadListReplacement } from "./threadListProvider";
 import {
   PluginSidebarFooterDisclosure,
@@ -336,6 +337,7 @@ export function AppSidebar({
       {placement === "list" ? navigationRegion("shrink-0") : null}
       <SidebarContent>
         <ThreadActionSurfaceVisibility visible={isThreadListVisible}>
+          <ActiveTabThreadsSection onNavigate={closeOnMobile} />
           <PluginThreadList
             replacement={threadListReplacement}
             onNavigate={closeOnMobile}

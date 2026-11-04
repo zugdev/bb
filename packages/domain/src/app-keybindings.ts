@@ -49,6 +49,18 @@ export const PANE_FOCUS_APP_COMMAND_IDS = [
   "pane.focus.8",
 ] as const;
 
+export const SPLIT_TAB_SELECT_APP_COMMAND_IDS = [
+  "splitTab.select.1",
+  "splitTab.select.2",
+  "splitTab.select.3",
+  "splitTab.select.4",
+  "splitTab.select.5",
+  "splitTab.select.6",
+  "splitTab.select.7",
+  "splitTab.select.8",
+  "splitTab.select.9",
+] as const;
+
 export const APP_COMMAND_IDS = [
   "palette.open",
   "thread.new",
@@ -66,8 +78,14 @@ export const APP_COMMAND_IDS = [
   "pane.focus.previous",
   "pane.focus.next",
   ...PANE_FOCUS_APP_COMMAND_IDS,
+  "pane.split.right",
+  "pane.split.down",
   "pane.maximize.toggle",
   "pane.close",
+  "splitTab.new",
+  "splitTab.newForProject",
+  "splitTab.reopenClosed",
+  ...SPLIT_TAB_SELECT_APP_COMMAND_IDS,
   "window.new",
   "window.find",
   "window.reload",

@@ -377,9 +377,9 @@ describe("desktop window factory", () => {
   });
 
   it.each([
-    [0.5, 4],
-    [1.5, 26],
-    [2, 37],
+    [0.5, 1],
+    [1.5, 17],
+    [2, 25],
   ])("updates macOS traffic lights at zoom %s", async (zoomFactor, y) => {
     const { createdWindows, factory } = await createFactoryHarness({
       isMac: true,

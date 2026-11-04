@@ -8,6 +8,7 @@ import {
   type AppShortcut,
   QUESTION_SELECT_APP_COMMAND_IDS,
   PANE_FOCUS_APP_COMMAND_IDS,
+  SPLIT_TAB_SELECT_APP_COMMAND_IDS,
   THREAD_JUMP_APP_COMMAND_IDS,
 } from "@bb/domain";
 
@@ -97,7 +98,7 @@ function numberedChatBindings(
       { control: true },
       {
         ...options,
-        all: [...(options.all ?? []), "webSurface", "macPlatform"],
+        all: [...(options.all ?? []), "macPlatform"],
       },
     ),
     binding(
@@ -106,20 +107,26 @@ function numberedChatBindings(
       { mod: true, shift: true },
       {
         ...options,
-        all: [...(options.all ?? []), "webSurface"],
         none: [...(options.none ?? []), "macPlatform"],
       },
     ),
-    binding(
-      command,
-      String(index + 1),
-      { mod: true },
-      {
-        ...options,
-        desktopOnly: true,
-      },
-    ),
   ]);
+}
+
+function webAndDesktopBindings(
+  command: AppCommandId,
+  key: string,
+  web: ShortcutModifiers,
+  desktop: ShortcutModifiers,
+  options: BindingOptions,
+): AppKeybindings {
+  return [
+    binding(command, key, web, {
+      ...options,
+      all: [...(options.all ?? []), "webSurface"],
+    }),
+    binding(command, key, desktop, { ...options, desktopOnly: true }),
+  ];
 }
 
 const mainWithoutModal = {
@@ -245,13 +252,57 @@ export const DEFAULT_APP_KEYBINDINGS: AppDefaultKeybindings = [
   unassignedBinding("pane.focus.previous", splitWithoutModal),
   unassignedBinding("pane.focus.next", splitWithoutModal),
   ...numberedChatBindings(PANE_FOCUS_APP_COMMAND_IDS, splitWithoutModal),
+  ...webAndDesktopBindings(
+    "pane.split.right",
+    "d",
+    { alt: true },
+    { mod: true },
+    mainWithoutModalOrBrowser,
+  ),
+  ...webAndDesktopBindings(
+    "pane.split.down",
+    "d",
+    { alt: true, shift: true },
+    { mod: true, shift: true },
+    mainWithoutModalOrBrowser,
+  ),
   binding(
     "pane.maximize.toggle",
     "e",
     { mod: true, shift: true },
     splitWithoutModal,
   ),
-  binding("pane.close", "x", { mod: true, shift: true }, splitWithoutModal),
+  ...webAndDesktopBindings(
+    "pane.close",
+    "w",
+    { alt: true },
+    { mod: true },
+    mainWithoutModalOrBrowser,
+  ),
+  ...webAndDesktopBindings(
+    "splitTab.new",
+    "t",
+    { alt: true },
+    { mod: true },
+    mainWithoutModalOrBrowser,
+  ),
+  ...webAndDesktopBindings(
+    "splitTab.reopenClosed",
+    "t",
+    { alt: true, shift: true },
+    { mod: true, shift: true },
+    mainWithoutModalOrBrowser,
+  ),
+  unassignedBinding("splitTab.newForProject", mainWithoutModalOrBrowser),
+  ...SPLIT_TAB_SELECT_APP_COMMAND_IDS.flatMap((command, index) =>
+    webAndDesktopBindings(
+      command,
+      String(index + 1),
+      { alt: true },
+      { mod: true },
+      mainWithoutModalOrBrowser,
+    ),
+  ),
   ...macArrowBindings(
     "panel.previousTab",
     "ArrowLeft",
@@ -276,17 +327,29 @@ export const DEFAULT_APP_KEYBINDINGS: AppDefaultKeybindings = [
     { mod: true, control: true },
     mainWithoutModal,
   ),
-  binding("panel.newTab", "t", { mod: true }, mainWithoutModal),
+  ...webAndDesktopBindings(
+    "panel.newTab",
+    "t",
+    { mod: true },
+    { mod: true, alt: true },
+    mainWithoutModal,
+  ),
   binding(
     "panel.reopenClosedTab",
     "t",
-    { mod: true, shift: true },
+    { mod: true, alt: true, shift: true },
     {
       ...mainWithoutModal,
       desktopOnly: true,
     },
   ),
-  binding("panel.close", "w", { mod: true }, mainWithoutModal),
+  ...webAndDesktopBindings(
+    "panel.close",
+    "w",
+    { mod: true },
+    { mod: true, alt: true },
+    mainWithoutModal,
+  ),
   binding("panel.toggle", "j", { mod: true }, mainWithoutModal),
   unassignedBinding("panel.fullScreen.toggle", mainWithoutModal),
   binding("file.quickOpen", "p", { mod: true }, mainWithoutModal),
@@ -353,13 +416,13 @@ export const DEFAULT_APP_KEYBINDINGS: AppDefaultKeybindings = [
   ),
   binding(
     "modelPicker.cycleReasoning",
-    "t",
+    "r",
     { alt: true },
     composerWithoutModal,
   ),
   binding(
     "modelPicker.cycleReasoningBackward",
-    "t",
+    "r",
     { alt: true, shift: true },
     composerWithoutModal,
   ),
@@ -377,10 +440,10 @@ export const DEFAULT_APP_KEYBINDINGS: AppDefaultKeybindings = [
     { alt: true, shift: true },
     pickerOpenOnly,
   ),
-  binding("modelPicker.cycleReasoning", "t", { alt: true }, pickerOpenOnly),
+  binding("modelPicker.cycleReasoning", "r", { alt: true }, pickerOpenOnly),
   binding(
     "modelPicker.cycleReasoningBackward",
-    "t",
+    "r",
     { alt: true, shift: true },
     pickerOpenOnly,
   ),

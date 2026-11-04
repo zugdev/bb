@@ -319,16 +319,15 @@ export function swapPanes(
   if (pane === null || targetPane === null) {
     return layout;
   }
-  const withFirstSwap = replacePaneNode(layout.root, paneId, {
-    ...pane,
-    content: targetPane.content,
+  const swapSlotId = `${paneId}:${targetPaneId}`;
+  const withSlot = replacePaneNode(layout.root, paneId, {
+    ...targetPane,
+    paneId: swapSlotId,
   });
+  const withPaneMoved = replacePaneNode(withSlot, targetPaneId, pane);
   return {
-    root: replacePaneNode(withFirstSwap, targetPaneId, {
-      ...targetPane,
-      content: pane.content,
-    }),
-    focusedPaneId: targetPaneId,
+    root: replacePaneNode(withPaneMoved, swapSlotId, targetPane),
+    focusedPaneId: paneId,
   };
 }
 

@@ -32,6 +32,7 @@ import {
 import { clickTarget, isNewViewClick } from "./target.js";
 
 export const NEW_THREAD_ITEM_ID = "__bb__/new-thread";
+const SEARCH_THREADS_ITEM_ID = "__bb__/search-threads";
 
 const RAIL_ICON_CLASS = "size-(--bb-sidebar-control-icon-size)";
 const RAIL_MENU_SIDE_OFFSET = 12;
@@ -181,30 +182,59 @@ export function RailNewThreadButton() {
     experimental_useSidebarNavigation();
   const split = experimental_useSidebarNavigationSplit(NEW_THREAD_ITEM_ID);
   const item = items.find((candidate) => candidate.id === NEW_THREAD_ITEM_ID);
+  const search = items.find(
+    (candidate) => candidate.id === SEARCH_THREADS_ITEM_ID,
+  );
   if (item === undefined) return null;
   const shortcut = isShortcutModifierHeld ? item.shortcut : null;
 
   return (
-    <Button
-      type="button"
-      size="sm"
-      variant="ghost"
-      className={cn(PROJECT_LIST_ACTION_BUTTON_CLASS, "w-auto flex-1")}
-      disabled={item.isDisabled}
-      aria-keyshortcuts={item.shortcut?.ariaKeyShortcuts}
-      aria-label={
-        item.shortcut ? `${item.label} (${item.shortcut.label})` : undefined
-      }
-      {...split.splitProps}
-      onClick={(event) =>
-        actions.activate(item.id, {
-          target: clickTarget(event),
-        })
-      }
-    >
-      <SidebarNavigationIcon icon={item.icon} />
-      <span className="min-w-0 flex-1 truncate text-left">{item.label}</span>
-      {shortcut ? <ShortcutPill shortcut={shortcut} /> : null}
-    </Button>
+    <>
+      <Button
+        type="button"
+        size="sm"
+        variant="ghost"
+        className={cn(PROJECT_LIST_ACTION_BUTTON_CLASS, "w-auto flex-1")}
+        disabled={item.isDisabled}
+        aria-keyshortcuts={item.shortcut?.ariaKeyShortcuts}
+        aria-label={
+          item.shortcut ? `${item.label} (${item.shortcut.label})` : undefined
+        }
+        {...split.splitProps}
+        onClick={(event) =>
+          actions.activate(item.id, {
+            target: clickTarget(event),
+          })
+        }
+      >
+        <SidebarNavigationIcon icon={item.icon} />
+        <span className="min-w-0 flex-1 truncate text-left">{item.label}</span>
+        {shortcut ? <ShortcutPill shortcut={shortcut} /> : null}
+      </Button>
+      {search === undefined ? null : (
+        <Button
+          type="button"
+          size="sm"
+          variant="ghost"
+          className={cn(
+            PROJECT_LIST_ACTION_BUTTON_CLASS,
+            "w-auto shrink-0 gap-1.5 px-2",
+          )}
+          disabled={search.isDisabled}
+          aria-keyshortcuts={search.shortcut?.ariaKeyShortcuts}
+          aria-label={
+            search.shortcut
+              ? `${search.label} (${search.shortcut.label})`
+              : search.label
+          }
+          onClick={(event) =>
+            actions.activate(search.id, { target: clickTarget(event) })
+          }
+        >
+          <SidebarNavigationIcon icon={search.icon} />
+          {search.shortcut ? <ShortcutPill shortcut={search.shortcut} /> : null}
+        </Button>
+      )}
+    </>
   );
 }

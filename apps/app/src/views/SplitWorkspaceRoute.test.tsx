@@ -37,6 +37,10 @@ vi.mock("./thread-detail/SplitThreadArea", () => ({
   },
 }));
 
+vi.mock("./thread-detail/SplitTabBar", () => ({
+  SplitTabBar: () => null,
+}));
+
 vi.mock("./LegacyProjectComposeRedirect", () => ({
   LegacyProjectComposeRedirect: () => <div>legacy redirect</div>,
 }));

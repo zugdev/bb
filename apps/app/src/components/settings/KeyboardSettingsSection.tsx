@@ -50,6 +50,9 @@ import {
   SettingsWithControl,
 } from "@/components/ui/settings-section";
 import { ShortcutPill } from "@bb/shared-ui/shortcut-pill";
+import { ToggleGroup, ToggleGroupItem } from "@bb/shared-ui/toggle-group";
+import { useAtom } from "jotai";
+import { splitDirectionAtom } from "@/lib/split-layout/split-direction";
 import { getBbDesktopInfo } from "@/lib/bb-desktop";
 
 const EMPTY_OVERRIDES: AppKeybindingOverrides = [];
@@ -475,6 +478,7 @@ export function KeyboardSettingsSection() {
   } = useUpdateKeyboardSettings();
   const isDesktop = getBbDesktopInfo() !== null;
   const platform = browserPlatform();
+  const [splitDirection, setSplitDirection] = useAtom(splitDirectionAtom);
   const generalSettings =
     systemConfig.data?.generalSettings ?? defaultAppSettings;
   const {
@@ -750,6 +754,37 @@ export function KeyboardSettingsSection() {
               updateGeneralSettings.mutate({ showKeyboardHints })
             }
           />
+        </SettingsWithControl>
+        <SettingsWithControl
+          description={`${isDesktop ? "⌘D" : "⌥D"} opens a new chat pane this way. Add Shift to split the other way.`}
+          label="Split direction"
+        >
+          <ToggleGroup
+            type="single"
+            aria-label="Split direction"
+            value={splitDirection}
+            onValueChange={(value) => {
+              if (value === "right" || value === "down") {
+                setSplitDirection(value);
+              }
+            }}
+            className="rounded-md bg-surface-recessed p-0.5"
+          >
+            {(
+              [
+                ["right", "Side by side"],
+                ["down", "Stacked"],
+              ] as const
+            ).map(([value, label]) => (
+              <ToggleGroupItem
+                key={value}
+                value={value}
+                className="h-7 rounded-sm px-2.5 text-xs font-normal shadow-none hover:bg-state-hover data-[state=on]:bg-background data-[state=on]:text-foreground"
+              >
+                {label}
+              </ToggleGroupItem>
+            ))}
+          </ToggleGroup>
         </SettingsWithControl>
         <Input
           aria-label="Search keyboard shortcuts"

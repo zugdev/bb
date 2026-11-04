@@ -142,11 +142,11 @@ describe("split layout operations", () => {
     const swapped = swapPanes(replaced, "pane-1", "pane-2");
 
     expect(replaced.focusedPaneId).toBe("pane-1");
-    expect(findPane(swapped.root, "pane-2")?.content).toBe(replacement);
-    expect(findPane(swapped.root, "pane-1")?.content).toEqual(
-      threadContent("thread-2"),
-    );
-    expect(swapped.focusedPaneId).toBe("pane-2");
+    expect(listPanes(swapped.root)).toEqual([
+      { type: "pane", paneId: "pane-2", content: threadContent("thread-2") },
+      { type: "pane", paneId: "pane-1", content: replacement },
+    ]);
+    expect(swapped.focusedPaneId).toBe("pane-1");
   });
 
   it("removes panes, collapses single-child splits, and selects the nearest focus", () => {
@@ -200,7 +200,7 @@ describe("split layout operations", () => {
 
     expect(focused.focusedPaneId).toBe("pane-5");
     expect(resized).not.toBe(focused);
-    expect(swapped.focusedPaneId).toBe("pane-6");
+    expect(swapped.focusedPaneId).toBe("pane-5");
     expect(countPanes(closed.root)).toBe(MAX_PANES - 1);
     expect(findPane(closed.root, "pane-6")).toBeNull();
     expectValidFocus(closed);

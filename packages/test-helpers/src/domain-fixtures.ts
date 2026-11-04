@@ -147,6 +147,7 @@ export function makeThread(overrides: Partial<Thread> = {}): Thread {
     deletedAt: null,
     lastReadAt: 100,
     latestAttentionAt: 100,
+    lastUserMessageAt: null,
     createdAt: 0,
     updatedAt: 100,
     ...overrides,

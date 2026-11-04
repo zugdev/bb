@@ -341,7 +341,7 @@ describe("bb thread-list prefs", () => {
     ]);
     expect(JSON.parse(reset.stdout)).toEqual({
       key: "organizationMode",
-      value: "chronological",
+      value: "project",
     });
   });
 });

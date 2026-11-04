@@ -35,7 +35,7 @@ const rootComposeStoredProjectIdAtom = atomWithStorage<string | null>(
 );
 
 const rootComposeProjectChosenAtom = atom(false);
-const rootComposeProjectIdAtom = atom(
+export const rootComposeProjectIdAtom = atom(
   (get) => get(rootComposeStoredProjectIdAtom) ?? PERSONAL_PROJECT_ID,
   (_get, set, projectId: string) => {
     set(rootComposeProjectChosenAtom, true);

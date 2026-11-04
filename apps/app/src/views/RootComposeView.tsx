@@ -8,6 +8,11 @@ import {
   DEFAULT_THREAD_CREATION_PLACEMENT,
 } from "@/lib/thread-creation-placement";
 import { useRootComposePlacement } from "@/lib/root-compose-selection";
+import { useAtomValue } from "jotai";
+import { splitLayoutAtom } from "@/lib/split-layout/atoms";
+import { splitTabsAtom } from "@/lib/split-layout/tabs";
+import { findPaneByContent } from "@/lib/split-layout";
+import type { PromptDraftScope } from "@/hooks/usePromptDraftStorage";
 import { useInitialPromptDraft } from "@/components/promptbox/mentions/initial-prompt-draft";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -393,8 +398,29 @@ export function buildRootComposeTerminalSessions({
   return undefined;
 }
 
+function useComposerDraftScope(paneId: string): PromptDraftScope {
+  const layout = useAtomValue(splitLayoutAtom);
+  const { tabs, activeTabId } = useAtomValue(splitTabsAtom);
+  const firstComposerPaneId =
+    layout === null
+      ? null
+      : (findPaneByContent(layout.root, { kind: "new-thread" })?.paneId ??
+        null);
+  const usesSharedDraft =
+    tabs[0]?.id === activeTabId &&
+    (firstComposerPaneId === null || firstComposerPaneId === paneId);
+  return useMemo(
+    () =>
+      usesSharedDraft
+        ? { kind: "new-thread" }
+        : { kind: "split-new-thread", paneId: `${activeTabId}-${paneId}` },
+    [activeTabId, paneId, usesSharedDraft],
+  );
+}
+
 export function RootComposeView() {
-  const { navigateInPane } = usePaneContext();
+  const { navigateInPane, paneId } = usePaneContext();
+  const draftStorage = useComposerDraftScope(paneId);
   const [rootComposeProjectId, setRootComposeProjectId] =
     useRootComposeProjectId();
   const createThread = useCreateThread();
@@ -430,9 +456,10 @@ export function RootComposeView() {
 
   return (
     <NewThreadComposer
+      key={draftStorage.kind === "split-new-thread" ? draftStorage.paneId : ""}
       projectId={rootComposeProjectId}
       onProjectChange={setRootComposeProjectId}
-      draftStorage={{ kind: "new-thread" }}
+      draftStorage={draftStorage}
       selectionScope="new-thread"
       preferReadyProviderWhenUnset
       onSubmit={handleSubmit}

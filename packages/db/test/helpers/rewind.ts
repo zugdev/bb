@@ -56,6 +56,15 @@ export function dropMarketplaceSourceGitSubdirectoryColumn(
   }
 }
 
+export function dropThreadLastUserMessageAtColumn(db: DbConnection): void {
+  const columns = db.$client
+    .prepare<[], { name: string }>("PRAGMA table_info(threads)")
+    .all();
+  if (columns.some((column) => column.name === "last_user_message_at")) {
+    db.$client.exec("ALTER TABLE threads DROP COLUMN last_user_message_at");
+  }
+}
+
 export function dropThreadParentNotificationsColumn(db: DbConnection): void {
   const columns = db.$client
     .prepare<[], { name: string }>("PRAGMA table_info(threads)")

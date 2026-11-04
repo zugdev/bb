@@ -458,10 +458,7 @@ shows delayed shortcut badges while the modifier is held; shortcuts work
 either way.
 
 `Mod` means Command on macOS and Control on Windows/Linux. Numbered thread and
-pane shortcuts follow Slack's browser-safe convention: web uses
-`Control+1…9` on macOS and `Ctrl+Shift+1…9` on Windows/Linux, while desktop
-uses `Mod+1…9`. The web aliases leave native browser `Mod+1…9` tab switching
-untouched. Previous and next thread use `Mod+Shift+[/]` on desktop and
+pane shortcuts use `Control+1…9` on macOS and `Ctrl+Shift+1…9` on Windows/Linux in both the web and desktop apps, which leaves `Mod+1…9` to the browser's own tabs and, in the desktop app, to pane tabs. Previous and next thread use `Mod+Shift+[/]` on desktop and
 `Control+Shift+[/]` on the web; they follow the sidebar order.
 
 `history.back` / `history.forward` (Go back / Go forward) do the same thing
@@ -483,6 +480,13 @@ chat-pane focus). These start unassigned on Windows/Linux to preserve native
 Control-arrow editing. `pane.focus.previous` / `pane.focus.next` and
 `panel.fullScreen.toggle` start unassigned.
 
+`pane.split.right` (Split chat pane, `Alt+D` on the web and `Mod+D` in the desktop app) opens a new thread composer beside the focused chat pane, and `pane.split.down` (Split chat pane the other way, the same keys with Shift) opens one below it, up to eight panes. The `panes.splitDirection` UI preference (Settings → Keyboard → Split direction, or `bb settings ui set panes.splitDirection down`) swaps the two, so the unshifted key splits below. Each
+composer pane keeps its own draft, and sending turns that pane into the new
+thread. Drag a pane by the handle before its header title onto another pane's edge to move it
+there, or onto its middle to swap the two.
+
+Pane tab shortcuts use `Alt` on the web, because the browser keeps `Mod+W` and `Mod+T` for itself, and `Mod` in the desktop app. `splitTab.new` (`Alt+T` / `Mod+T`) opens a tab with its own chat panes, starting on a new thread, or switches to a tab that already holds an empty new thread composer. `Alt+2` to `Alt+9` (`Mod+2` to `Mod+9` on desktop) switch tabs, and there is no limit on how many tabs are open. `Alt+1` / `Mod+1` opens Home at `/home`, which lists each project's threads. Opening a thread from Home switches to the tab that shows it, reuses an empty new thread tab, or opens a tab for it. `pane.close` (`Alt+W` / `Mod+W`) closes the focused pane, or the tab when that pane is its last one, and `splitTab.reopenClosed` (`Alt+Shift+T` / `Mod+Shift+T`) reopens the pane or tab closed most recently. `splitTab.newForProject` has no default shortcut; run it from the palette or bind it in Keyboard settings. It opens a project picker and then a tab for the chosen project, and while that tab is active the sidebar thread list shows only that project's threads. Double click a tab's title to rename it, and clear the name to go back to the title of its focused thread. In the desktop app the right panel's tab shortcuts move to `Mod+Alt+T`, `Mod+Alt+Shift+T` and `Mod+Alt+W` to make room.
+
 `thread.rename`, `thread.archive`, `thread.markRead`, and `thread.pin` start
 unassigned and act on the focused pane's open thread; Mark read and Pin toggle
 like the matching thread menu item.
@@ -501,8 +505,11 @@ like the matching thread menu item.
 | Threads   | Open visible thread 1–9                      | Platform defaults above     | Web / desktop            |
 | Layout    | Previous / next chat pane                    | Unassigned                  | While split              |
 | Layout    | Focus chat pane 1–8                          | Platform defaults above     | Split (web / desktop)    |
+| Layout    | Split chat pane / the other way              | `Alt+D` / `Alt+Shift+D`; desktop `Mod+D` / `Mod+Shift+D` | All clients |
 | Layout    | Maximize / restore chat pane                 | `Mod+Shift+E`               | While split              |
-| Layout    | Close focused chat pane                      | `Mod+Shift+X`               | While split              |
+| Layout    | Close focused chat pane                      | `Alt+W`; desktop `Mod+W`    | All clients              |
+| Layout    | New pane tab / reopen closed pane or tab     | `Alt+T` / `Alt+Shift+T`; desktop `Mod+T` / `Mod+Shift+T` | All clients |
+| Layout    | Go to Home / switch to pane tab 1 to 8       | `Alt+1` / `Alt+2` to `Alt+9`; desktop `Mod+1` / `Mod+2` to `Mod+9` | All clients |
 | Layout    | Toggle sidebar                               | `Mod+\`                     | All clients              |
 | Window    | New window                                   | `Mod+Shift+N`               | Desktop                  |
 | Window    | Find in window                               | `Mod+F`                     | Desktop                  |
@@ -511,8 +518,8 @@ like the matching thread menu item.
 | Window    | Open local logs                              | Unassigned                  | Desktop                  |
 | Window    | Show all notifications                       | Unassigned                  | All clients              |
 | Plugins   | Turn plugin safe mode on / off               | Unassigned                  | All clients              |
-| Panel     | New tab / close tab / toggle                 | `Mod+T` / `Mod+W` / `Mod+J` | All clients              |
-| Panel     | Reopen closed tab                            | `Mod+Shift+T`               | Desktop                  |
+| Panel     | New tab / close tab / toggle                 | `Mod+T` / `Mod+W` / `Mod+J`; desktop `Mod+Alt+T` / `Mod+Alt+W` / `Mod+J` | All clients |
+| Panel     | Reopen closed tab                            | `Mod+Alt+Shift+T`           | Desktop                  |
 | Workspace | Quick open file / toggle diff                | `Mod+P` / `Mod+D`           | All clients              |
 | Workspace | Open terminal                                | `Mod+Shift+Enter`           | All clients              |
 | Terminal  | Find in scrollback                           | `Cmd+F` / `Ctrl+Shift+F`    | Terminal focus           |
@@ -521,7 +528,7 @@ like the matching thread menu item.
 | Composer  | Toggle model picker                          | `Mod+Shift+M`               | All clients              |
 | Composer  | Cycle model forward / backward               | `Alt+M` / `Alt+Shift+M`     | All clients              |
 | Composer  | Cycle provider forward / backward            | `Alt+P` / `Alt+Shift+P`     | All clients              |
-| Composer  | Cycle reasoning effort forward / backward    | `Alt+T` / `Alt+Shift+T`     | All clients              |
+| Composer  | Cycle reasoning effort forward / backward    | `Alt+R` / `Alt+Shift+R`     | All clients              |
 | Browser   | Focus location / reload / find in page       | `Mod+L` / `Mod+R` / `Mod+F` | Desktop embedded browser |
 | Questions | Choose visible answer 1–9                    | `1` … `9`                   | While a question is open |
 | Questions | Next question or submit answers              | `Mod+Enter`                 | While a question is open |
@@ -1258,7 +1265,7 @@ row's Customize actions, or `bb thread-list prefs get|set|reset <key>`
 
 | Key                   | Default                           | Values                                                                                                                                      |
 | --------------------- | --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| `organizationMode`    | `chronological`                   | `project`, `chronological` (Custom), or `machine`                                                                                           |
+| `organizationMode`    | `project`                         | `project`, `chronological` (Custom), or `machine`                                                                                           |
 | `environmentGrouping` | `auto`                            | `true` collapses sibling threads sharing a worktree into one row, `false` never does, `auto` groups except in `chronological`               |
 | `groupByReadStatus`   | `false`                           | Lists unread threads above the rest; exclusive with environment grouping                                                                    |
 | `chronologicalSort`   | `updated`                         | Sort field for `chronological`                                                                                                              |

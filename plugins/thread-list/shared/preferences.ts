@@ -120,7 +120,7 @@ export const preferenceDefinitions = {
   ),
   organizationMode: definePreference(
     organizationModeSchema,
-    "chronological",
+    "project",
     "How the list groups threads: by project, chronologically with custom sections, or by machine.",
     "sidebar.organizationMode",
   ),

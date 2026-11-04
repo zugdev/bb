@@ -154,3 +154,5 @@ export function resolveRouteHref({
     path: `${url.pathname}${url.search}${url.hash}`,
   };
 }
+
+export const HOME_ROUTE_PATH = "/home";

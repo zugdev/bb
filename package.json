@@ -16,6 +16,7 @@
     "start:worktree": "cross-env NODE_ENV=development dotenv --no-expand -c development -- node --conditions=source --import tsx packages/scripts/src/commands/run-dev.ts --worktree",
     "start:worktree-remote": "cross-env BB_SERVER_BIND_HOST=0.0.0.0 pnpm run start:worktree",
     "desktop": "cross-env NODE_ENV=production dotenv --no-expand -c production -- node --conditions=source --import tsx packages/scripts/src/commands/run-desktop.ts",
+    "fork:update": "sh scripts/fork-update.sh",
     "desktop:worktree": "cross-env NODE_ENV=development dotenv --no-expand -c development -- node --conditions=source --import tsx packages/scripts/src/commands/run-desktop.ts --worktree",
     "mobile:apk:dev": "pnpm exec turbo run build:android:dev --filter=@bb/mobile",
     "dev:remote": "cross-env BB_DEV_APP_HOST=0.0.0.0 BB_SERVER_BIND_HOST=0.0.0.0 pnpm run dev",

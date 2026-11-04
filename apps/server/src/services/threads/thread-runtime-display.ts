@@ -168,6 +168,7 @@ function toPublicThread(thread: Thread): Thread {
     deletedAt: thread.deletedAt,
     lastReadAt: thread.lastReadAt,
     latestAttentionAt: thread.latestAttentionAt,
+    lastUserMessageAt: thread.lastUserMessageAt,
     createdAt: thread.createdAt,
     updatedAt: thread.updatedAt,
   };
@@ -309,6 +310,7 @@ function toThreadStatusChangeMetadata(
       runtime: args.runtime,
       activity: args.activity,
       latestAttentionAt: args.thread.latestAttentionAt,
+      lastUserMessageAt: args.thread.lastUserMessageAt,
       updatedAt: args.thread.updatedAt,
     },
   };
