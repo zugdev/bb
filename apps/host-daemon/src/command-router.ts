@@ -74,6 +74,8 @@ export interface CommandRouterOptions {
   listCommands: CommandDispatchOptions["listCommands"];
   providerHealth: CommandDispatchOptions["providerHealth"];
   providerUsage: CommandDispatchOptions["providerUsage"];
+  listProviderSessions: CommandDispatchOptions["listProviderSessions"];
+  readProviderSession: CommandDispatchOptions["readProviderSession"];
   providerInstallationStatus: CommandDispatchOptions["providerInstallationStatus"];
   providerInstallationRun: CommandDispatchOptions["providerInstallationRun"];
   refreshShellEnv: CommandDispatchOptions["refreshShellEnv"];
@@ -313,6 +315,8 @@ export class CommandRouter {
       listCommands: this.options.listCommands,
       providerHealth: this.options.providerHealth,
       providerUsage: this.options.providerUsage,
+      listProviderSessions: this.options.listProviderSessions,
+      readProviderSession: this.options.readProviderSession,
       providerInstallationStatus: this.options.providerInstallationStatus,
       providerInstallationRun: this.options.providerInstallationRun,
       refreshShellEnv: this.options.refreshShellEnv,

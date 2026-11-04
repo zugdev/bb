@@ -46,6 +46,7 @@ describe("thread provisioning state", () => {
     const context = requestThreadProvision(
       { db, hub },
       {
+        seedWithoutRun: false,
         originPluginId: null,
         author: { initiator: "user", senderThreadId: null },
         thread,

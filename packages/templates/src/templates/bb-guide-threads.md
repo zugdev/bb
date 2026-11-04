@@ -167,6 +167,32 @@ Forking:
   a numbered prefix: "foo" becomes "(1) foo" and "(1) foo" becomes "(2) foo".
   Forks created with a first prompt get a title from that prompt.
 
+Importing a Claude Code session:
+
+  bb thread import --list [options]
+  bb thread import --all [options]
+  bb thread import <session-id> [options]
+
+    --list                    List the sessions recorded on the machine, newest first
+    --all                     Import every session that belongs to a project and has no thread yet
+    --project <id>            With --list or --all, only that project's sessions
+    --machine <id-or-name>    Machine that recorded the session (default: the local host)
+    --host <id-or-name>       Alias for --machine
+    --provider <id>           Provider that recorded the session (default: claude-code)
+    --json                    Print machine-readable JSON output
+
+  Sessions come from $CLAUDE_CONFIG_DIR/projects (default ~/.claude/projects)
+  on the machine. The list shows each session's working directory, its first
+  prompt, its size, and the thread that already imported it. Importing creates
+  an idle thread whose timeline holds the session's past turns, up to the 500
+  most recent, and the next message resumes the same Claude session. The
+  session's working directory must be a project's folder on that machine, or a
+  subfolder or git worktree of the repository a project uses; otherwise the
+  import fails and asks you to add the folder as a project. A
+  session that a live thread already holds is refused. `--all` imports one
+  session at a time, keeps going past failures, prints a line per session, and
+  exits nonzero if any import failed.
+
 Editing a sent message:
 
   bb thread edit-message <id> --message "Replacement text"

@@ -33,6 +33,7 @@ import {
   gitBranchNameSchema,
   gitBranchOptionsSchema,
   gitSourceInspectionSchema,
+  threadEventSchema,
 } from "@bb/domain";
 import { z } from "zod";
 import {
@@ -50,6 +51,7 @@ import {
   providerUsageResultSchema,
   providerUsageSchema,
   providerUsageWindowSchema,
+  providerSessionSummarySchema,
 } from "@bb/provider-bridge-protocol";
 
 export {
@@ -1198,6 +1200,66 @@ const providerUsageCommandSchema = z
   })
   .strict();
 
+const providerSessionsListCommandSchema = z
+  .object({
+    type: z.literal("provider.sessions.list"),
+    providerId: z.string().min(1),
+    bridgeLaunch: hostDaemonBridgeLaunchSchema,
+  })
+  .strict();
+
+const providerSessionsReadCommandSchema = z
+  .object({
+    type: z.literal("provider.sessions.read"),
+    providerId: z.string().min(1),
+    bridgeLaunch: hostDaemonBridgeLaunchSchema,
+    sessionId: z.string().min(1),
+  })
+  .strict();
+
+const repositoryRootSchema = z.string().min(1).nullable();
+
+export const providerSessionsListResultSchema = z
+  .object({
+    sessions: z.array(
+      providerSessionSummarySchema
+        .extend({ repositoryRoot: repositoryRootSchema })
+        .strict(),
+    ),
+  })
+  .strict();
+export type ProviderSessionsListResult = z.infer<
+  typeof providerSessionsListResultSchema
+>;
+
+const importedProviderSessionEventSchema = z
+  .object({
+    at: z.number().int().nonnegative(),
+    event: threadEventSchema,
+  })
+  .strict();
+
+const importedProviderSessionTurnSchema = z
+  .object({
+    prompt: z.string(),
+    startedAt: z.number().int().nonnegative(),
+    events: z.array(importedProviderSessionEventSchema),
+  })
+  .strict();
+
+export const providerSessionsReadResultSchema = z
+  .object({
+    sessionId: z.string().min(1),
+    cwd: z.string().min(1),
+    repositoryRoot: repositoryRootSchema,
+    turns: z.array(importedProviderSessionTurnSchema),
+    truncated: z.boolean(),
+  })
+  .strict();
+export type ProviderSessionsReadResult = z.infer<
+  typeof providerSessionsReadResultSchema
+>;
+
 const providerCliInstallResultSchema = z
   .object({
     events: z.array(providerCliInstallEventSchema),
@@ -1862,6 +1924,24 @@ export const hostDaemonCommandRegistry = {
     type: "provider.usage",
     schema: providerUsageCommandSchema,
     resultSchema: providerUsageResultSchema,
+    transport: "onlineRpc",
+    retryable: true,
+    flushEventsBeforeResult: false,
+    envLane: null,
+  }),
+  "provider.sessions.list": defineHostDaemonCommandDescriptor({
+    type: "provider.sessions.list",
+    schema: providerSessionsListCommandSchema,
+    resultSchema: providerSessionsListResultSchema,
+    transport: "onlineRpc",
+    retryable: true,
+    flushEventsBeforeResult: false,
+    envLane: null,
+  }),
+  "provider.sessions.read": defineHostDaemonCommandDescriptor({
+    type: "provider.sessions.read",
+    schema: providerSessionsReadCommandSchema,
+    resultSchema: providerSessionsReadResultSchema,
     transport: "onlineRpc",
     retryable: true,
     flushEventsBeforeResult: false,

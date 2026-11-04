@@ -61,6 +61,11 @@ import { syncThreadTitleToProvider } from "../../services/threads/thread-command
 import { requestThreadStorageDeletion } from "../../services/threads/thread-lifecycle.js";
 import { createThreadFromRequest } from "../../services/threads/thread-create.js";
 import { createThreadForkFromRequest } from "../../services/threads/thread-fork.js";
+import {
+  DEFAULT_IMPORT_PROVIDER_ID,
+  importProviderSession,
+} from "../../services/threads/thread-import.js";
+import { requirePrimaryHostId } from "../../services/hosts/primary-host.js";
 import { requireChildThreadsConfirmation } from "../../services/threads/child-thread-confirmation.js";
 import {
   toThreadListEntryResponses,
@@ -405,6 +410,16 @@ export function registerThreadBaseRoutes(app: Hono, deps: AppDeps): void {
 
   post(routes.fork, async (context, payload) => {
     const thread = await createThreadForkFromRequest(deps, payload);
+    return context.json(toThreadResponseFromThread(deps, { thread }), 201);
+  });
+
+  post(routes.import, async (context, payload) => {
+    const thread = await importProviderSession(deps, {
+      hostId: payload.hostId ?? requirePrimaryHostId(deps),
+      providerId: payload.providerId ?? DEFAULT_IMPORT_PROVIDER_ID,
+      sessionId: payload.sessionId,
+      origin: payload.origin ?? "sdk",
+    });
     return context.json(toThreadResponseFromThread(deps, { thread }), 201);
   });
 

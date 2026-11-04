@@ -166,6 +166,20 @@ export type {
   ThreadDeltaNotificationParams,
 } from "@bb/provider-bridge-protocol";
 
+export {
+  sessionsListParamsSchema as experimental_sessionsListParamsSchema,
+  sessionsListResultSchema as experimental_sessionsListResultSchema,
+  sessionsReadParamsSchema as experimental_sessionsReadParamsSchema,
+  sessionsReadResultSchema as experimental_sessionsReadResultSchema,
+} from "@bb/provider-bridge-protocol";
+export type {
+  ProviderSessionStep as ExperimentalProviderSessionStep,
+  ProviderSessionSummary as ExperimentalProviderSessionSummary,
+  ProviderSessionTurn as ExperimentalProviderSessionTurn,
+  SessionsListResult as ExperimentalSessionsListResult,
+  SessionsReadResult as ExperimentalSessionsReadResult,
+} from "@bb/provider-bridge-protocol";
+
 // ---------------------------------------------------------------------------
 // 3. The bridge kit
 // ---------------------------------------------------------------------------

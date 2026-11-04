@@ -52,6 +52,32 @@ export type HostDiscoveredReposResponse = z.infer<
   typeof hostDiscoveredReposResponseSchema
 >;
 
+export const hostProviderSessionsQuerySchema = z.object({
+  providerId: z.string().min(1).optional(),
+});
+export type HostProviderSessionsQuery = z.input<
+  typeof hostProviderSessionsQuerySchema
+>;
+
+export const hostProviderSessionSchema = z.object({
+  sessionId: z.string().min(1),
+  cwd: z.string().min(1),
+  title: z.string(),
+  updatedAt: z.number().int().nonnegative(),
+  sizeBytes: z.number().int().nonnegative(),
+  projectId: z.string().min(1).nullable(),
+  importedThreadId: z.string().min(1).nullable(),
+});
+export type HostProviderSession = z.infer<typeof hostProviderSessionSchema>;
+
+export const hostProviderSessionsResponseSchema = z.object({
+  providerId: z.string().min(1),
+  sessions: z.array(hostProviderSessionSchema),
+});
+export type HostProviderSessionsResponse = z.infer<
+  typeof hostProviderSessionsResponseSchema
+>;
+
 export const hostCloneDefaultPathQuerySchema = z.object({
   projectId: z.string().min(1),
 });

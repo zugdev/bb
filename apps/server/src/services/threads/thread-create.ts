@@ -25,6 +25,10 @@ import {
   rememberProjectExecutionDefaultsForCreate,
   resolveProjectExecutionDefaultsForCreate,
 } from "./project-execution-defaults.js";
+import {
+  appendImportedSessionHistory,
+  type ImportedThreadSession,
+} from "./thread-import-history.js";
 import { resolvePromptAttachmentReferences } from "../projects/attachments.js";
 import { projectCheckoutPathOnHost } from "../projects/project-workspace.js";
 import {
@@ -76,6 +80,7 @@ interface CreateProvisioningThreadArgs {
   environmentId: string | null;
   defaultModel: string | null;
   fork: ThreadForkPoint | null;
+  importedSession: ImportedThreadSession | null;
   request: ThreadCreateServiceRequest;
   providerInput?: ThreadCreateServiceRequestInput["input"];
 }
@@ -434,6 +439,7 @@ async function createPendingThreadAndAttemptFirstDispatch(
     ...(args.providerInput !== undefined
       ? { providerInput: args.providerInput }
       : {}),
+    seedWithoutRun: args.importedSession !== null,
     startedOnBehalfOf: args.request.startedOnBehalfOf,
     titleProvided: Boolean(args.request.title),
   };
@@ -477,6 +483,13 @@ async function createPendingThreadAndAttemptFirstDispatch(
       args.request,
       executionPlanArgs,
     );
+    if (args.importedSession !== null) {
+      appendImportedSessionHistory(deps, {
+        execution,
+        session: args.importedSession,
+        thread,
+      });
+    }
     await attemptDispatch(deps, {
       thread,
       payload: {
@@ -570,6 +583,7 @@ export async function createThreadFromRequest(
   options: {
     providerInput?: ThreadCreateServiceRequestInput["input"];
     forkSourceEnvironmentId?: string;
+    importedSession?: ImportedThreadSession;
   } = {},
 ) {
   const project = requirePublicProjectForThreadCreate(
@@ -842,6 +856,7 @@ export async function createThreadFromRequest(
     environmentIntent,
     defaultModel,
     fork,
+    importedSession: options.importedSession ?? null,
     ...(options.providerInput !== undefined
       ? { providerInput: options.providerInput }
       : {}),

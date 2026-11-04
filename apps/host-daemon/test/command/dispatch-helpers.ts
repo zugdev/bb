@@ -41,6 +41,8 @@ export const unexpectedProviderMaintenance: Pick<
   | "listCommands"
   | "providerHealth"
   | "providerUsage"
+  | "listProviderSessions"
+  | "readProviderSession"
   | "providerInstallationStatus"
   | "providerInstallationRun"
   | "refreshShellEnv"
@@ -56,6 +58,12 @@ export const unexpectedProviderMaintenance: Pick<
   },
   providerUsage: async () => {
     throw new Error("Unexpected provider.usage call");
+  },
+  listProviderSessions: async () => {
+    throw new Error("Unexpected provider.sessions.list call");
+  },
+  readProviderSession: async () => {
+    throw new Error("Unexpected provider.sessions.read call");
   },
   providerInstallationStatus: async () => {
     throw new Error("Unexpected provider.installation.status call");
@@ -336,6 +344,12 @@ export function createFakeRuntime() {
     },
     async providerUsage() {
       return { supported: false as const };
+    },
+    async listProviderSessions() {
+      return { sessions: [] };
+    },
+    async readProviderSession() {
+      throw new Error("Unexpected provider session read call");
     },
     async providerInstallationStatus() {
       throw new Error("Unexpected provider installation status call");

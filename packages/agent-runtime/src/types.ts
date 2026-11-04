@@ -21,6 +21,7 @@ import type {
   ProviderInstallationRunResult,
   ProviderInstallationStatus,
   ProviderUsageResult,
+  SessionsListResult,
   SkillsConfigureRoot,
 } from "@bb/provider-bridge-protocol";
 import type { RuntimeOpenBackgroundWork } from "./runtime-background-work-state.js";
@@ -300,6 +301,29 @@ interface ProviderMaintenanceArgs {
   cwd?: string;
 }
 
+export interface ProviderSessionArgs {
+  providerId: string;
+  bridgeLaunch: AgentRuntimeBridgeLaunch;
+}
+
+export interface ImportedProviderSessionEvent {
+  at: number;
+  event: ThreadEvent;
+}
+
+export interface ImportedProviderSessionTurn {
+  prompt: string;
+  startedAt: number;
+  events: ImportedProviderSessionEvent[];
+}
+
+export interface ImportedProviderSession {
+  sessionId: string;
+  cwd: string;
+  turns: ImportedProviderSessionTurn[];
+  truncated: boolean;
+}
+
 interface ProviderInstallationStatusArgs extends ProviderMaintenanceArgs {
   requirement?: "thread_rewind";
   checkUpdates?: boolean;
@@ -342,6 +366,12 @@ export interface AgentRuntime {
   providerHealth(args: ProviderMaintenanceArgs): Promise<ProviderHealthResult>;
 
   providerUsage(args: ProviderMaintenanceArgs): Promise<ProviderUsageResult>;
+
+  listProviderSessions(args: ProviderSessionArgs): Promise<SessionsListResult>;
+
+  readProviderSession(
+    args: ProviderSessionArgs & { sessionId: string },
+  ): Promise<ImportedProviderSession>;
 
   providerInstallationStatus(
     args: ProviderInstallationStatusArgs,

@@ -14,6 +14,8 @@ import {
   providerInstallationRunResultSchema,
   providerInstallationStatusSchema,
   providerUsageResultSchema,
+  sessionsListResultSchema,
+  sessionsReadResultSchema,
   ThreadEventGrammar,
   threadIdentityResultSchema,
 } from "@bb/provider-bridge-protocol";
@@ -73,6 +75,7 @@ import {
   type ResolvedThreadEnvironmentEntry,
 } from "./thread-shell-environment.js";
 import { bridgeLaunchProcessKey } from "./bridge-launch-process-key.js";
+import { assembleImportedProviderSession } from "./provider-session-import.js";
 
 interface RecordThreadExecutionOptionsArgs {
   options: AgentRuntimeExecutionOptions;
@@ -2461,6 +2464,45 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
         message: plan,
         resultSchema: providerUsageResultSchema,
       });
+    },
+
+    async listProviderSessions({ providerId, bridgeLaunch }) {
+      await runtime.ensureProvider({ providerId, bridgeLaunch });
+      const proc = providerProcesses.requireProviderProcess({
+        processKey: resolveProviderProcessKey({ bridgeLaunch, providerId }),
+        providerId,
+      });
+      const plan = proc.adapter.buildCommandPlan({ type: "sessions/list" });
+      if (plan.kind === "noop") {
+        return { sessions: [] };
+      }
+      return await sendCommand({
+        proc,
+        message: plan,
+        resultSchema: sessionsListResultSchema,
+      });
+    },
+
+    async readProviderSession({ providerId, bridgeLaunch, sessionId }) {
+      await runtime.ensureProvider({ providerId, bridgeLaunch });
+      const proc = providerProcesses.requireProviderProcess({
+        processKey: resolveProviderProcessKey({ bridgeLaunch, providerId }),
+        providerId,
+      });
+      const plan = requireProviderRequestPlan({
+        commandType: "sessions/read",
+        plan: proc.adapter.buildCommandPlan({
+          type: "sessions/read",
+          sessionId,
+        }),
+        providerId,
+      });
+      const session = await sendCommand({
+        proc,
+        message: plan,
+        resultSchema: sessionsReadResultSchema,
+      });
+      return assembleImportedProviderSession({ providerId, session });
     },
 
     async providerInstallationStatus({

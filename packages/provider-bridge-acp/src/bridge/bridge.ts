@@ -3802,6 +3802,7 @@ async function handleRequest(
           steerMode: "queue",
           skills: { configure: true },
           commands: { list: false },
+          sessions: { import: false },
         },
       };
       sendResult(request.id, result);

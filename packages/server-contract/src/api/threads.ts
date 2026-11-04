@@ -279,6 +279,16 @@ export const forkThreadRequestSchema = z
   });
 export type ForkThreadRequest = z.infer<typeof forkThreadRequestSchema>;
 
+export const importThreadRequestSchema = z
+  .object({
+    sessionId: z.string().min(1),
+    hostId: z.string().min(1).optional(),
+    providerId: z.string().min(1).optional(),
+    origin: threadCreateOriginSchema.optional(),
+  })
+  .strict();
+export type ImportThreadRequest = z.input<typeof importThreadRequestSchema>;
+
 const sendMessageRequestFieldsSchema = z.object({
   input: z.array(promptInputSchema).min(1),
   model: z.string().optional(),

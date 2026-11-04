@@ -10,5 +10,6 @@ export {
   getWorkspaceGitOperation,
   hasUncommittedChanges,
   readGitBlob,
+  resolveMainRepositoryRoot,
 } from "./git.js";
 export type { SharedGitRefsSnapshot } from "./git.js";

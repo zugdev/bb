@@ -3938,6 +3938,20 @@ Stabilize after deciding whether depth, recency window, and limit should be
 caller options, and after exercising slow or network-mounted home directories
 and Windows hosts.
 
+## `PluginBbSdk.hosts.experimental_listProviderSessions` and `PluginBbSdk.threads.experimental_importProviderSession`
+
+`hosts.experimental_listProviderSessions({ hostId, providerId? })` returns `{ providerId, sessions }` for the sessions a provider recorded on the machine, newest first. Each session has `sessionId`, `cwd`, `title` (the first typed prompt, truncated), `updatedAt` (file mtime), `sizeBytes`, the `projectId` bound to `cwd` on that host or null, and the `importedThreadId` of a live thread that already holds it or null. `threads.experimental_importProviderSession({ sessionId, hostId?, providerId?, origin? })` creates an idle thread in the project bound to the session's `cwd`, writes up to the 500 most recent turns as history (each typed prompt as a user request plus the provider's settled items, stamped with the transcript's times), and records the session as the thread's provider session so the next message resumes it. `hostId` defaults to the primary host and `providerId` to `claude-code`. It returns 400 when no project uses `cwd` on that host and 409 when a live thread already holds the session. Both ride the `provider.sessions.list` and `provider.sessions.read` daemon commands. Core callers: `bb thread import --list` and `bb thread import <session-id>`.
+
+Stabilize after an app surface uses the same calls, after deciding whether a session whose `cwd` is a subfolder of a project folder should import, and after deciding how a truncated import should mark the missing turns in the timeline.
+
+## Provider session import (`experimental_sessionsListParamsSchema`, `experimental_sessionsListResultSchema`, `experimental_sessionsReadParamsSchema`, `experimental_sessionsReadResultSchema`, `ExperimentalProviderSessionSummary`, `ExperimentalProviderSessionTurn`, `ExperimentalProviderSessionStep`, `ExperimentalSessionsListResult`, `ExperimentalSessionsReadResult`) (`@get-bb/plugin-sdk/provider-bridge`)
+
+A bridge that declares `sessions: { import: true }` in its handshake answers `sessions/list {}` with `{ sessions: [{ sessionId, cwd, title, updatedAt, sizeBytes }] }` and `sessions/read { sessionId }` with `{ sessionId, cwd, truncated, turns: [{ prompt, startedAt, steps: [{ at, deltas }] }] }`. Each turn's steps are ordinary `thread/delta` deltas that open and close one turn; the runtime assembles them with a fresh assembler per read and keeps only settled events. The runtime never sends either method to a bridge without the capability. The Claude Code bridge is the only implementation and the path `bb thread import` uses.
+
+Docs: [provider-bridge-protocol.md](provider-bridge-protocol.md).
+
+Stabilize after a second provider implements the methods, and after deciding whether `sessions/read` should page through long transcripts.
+
 ## Shared VCS process admission (`@get-bb/plugin-sdk/host`)
 
 `experimental_runVcsProcess(command, args, operation, options)` admits a `git`

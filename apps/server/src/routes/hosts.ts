@@ -59,6 +59,10 @@ import { getMachineEnrollmentService } from "../services/machines/machine-servic
 import { manualHostCommand } from "../services/machines/manual-provider.js";
 import { prepareReconnect } from "../services/machines/reconnect.js";
 import { emitPluginHostDeleted } from "../services/plugins/plugin-thread-events.js";
+import {
+  DEFAULT_IMPORT_PROVIDER_ID,
+  listProviderSessions,
+} from "../services/threads/thread-import.js";
 
 const DISCOVERED_REPOS_MAX_DEPTH = 5;
 const DISCOVERED_REPOS_SINCE_DAYS = 30;
@@ -365,6 +369,15 @@ export function registerHostRoutes(
       })),
       truncated: result.truncated,
     });
+  });
+
+  get(routes.providerSessions, async (context, query) => {
+    return context.json(
+      await listProviderSessions(deps, {
+        hostId: context.req.param("id"),
+        providerId: query.providerId ?? DEFAULT_IMPORT_PROVIDER_ID,
+      }),
+    );
   });
 
   get(routes.directory, async (context, query) => {

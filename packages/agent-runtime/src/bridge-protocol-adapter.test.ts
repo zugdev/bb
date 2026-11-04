@@ -311,6 +311,26 @@ describe("commands/list", () => {
   });
 });
 
+describe("sessions/list and sessions/read", () => {
+  it("are noops until the handshake declares sessions.import", () => {
+    const adapter = makeAdapter();
+    const list = { type: "sessions/list" as const };
+    const read = { type: "sessions/read" as const, sessionId: "session-1" };
+    expect(adapter.buildCommandPlan(list)).toMatchObject({ kind: "noop" });
+    expect(adapter.buildCommandPlan(read)).toMatchObject({ kind: "noop" });
+    completeHandshake(adapter, { sessions: { import: true } });
+    expect(adapter.buildCommandPlan(list)).toMatchObject({
+      kind: "request",
+      method: "sessions/list",
+    });
+    expect(adapter.buildCommandPlan(read)).toMatchObject({
+      kind: "request",
+      method: "sessions/read",
+      params: { sessionId: "session-1" },
+    });
+  });
+});
+
 describe("skills/configure", () => {
   it("is a noop until the handshake declares skills.configure", () => {
     const adapter = makeAdapter();

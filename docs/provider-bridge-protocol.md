@@ -343,6 +343,10 @@ with `cwd: null`. The host daemon probes from a dedicated empty
 receives an absolute working directory, so global provider commands are available
 before a personal workspace exists. Selected projects use their workspace path.
 
+### Session import
+
+`sessions/list {}` returns `{ sessions: [{ sessionId, cwd, title, updatedAt, sizeBytes }] }`: the sessions the provider recorded on the machine, with the first typed prompt as `title` and the transcript's mtime as `updatedAt`. `sessions/read { sessionId }` returns `{ sessionId, cwd, truncated, turns: [{ prompt, startedAt, steps: [{ at, deltas }] }] }`. Each turn's steps open with `turn.open`, carry the deltas the bridge would have streamed live, and end with a `turn.boundary`; `at` is the epoch-ms time of the transcript entry that produced them. `truncated` reports that older turns were dropped to stay under the bridge's cap. The runtime sends both **only to a bridge whose handshake declares `sessions: { import: true }`**; for any other bridge `sessions/list` answers an empty list and `sessions/read` fails. The runtime assembles each read with a fresh assembler, so deltas from a read never touch a live thread's state.
+
 The server caches each answer per machine, provider, and working directory,
 because a cold answer waits on a login-shell refresh and a bridge start. For
 60 seconds the cached list is served as is. After that, a request still gets

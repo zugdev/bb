@@ -232,6 +232,10 @@ function createFakeRuntime(): AgentRuntime {
     listCommands: vi.fn(async () => ({ commands: [] })),
     providerHealth: vi.fn(async () => ({ supported: false as const })),
     providerUsage: vi.fn(async () => ({ supported: false as const })),
+    listProviderSessions: vi.fn(async () => ({ sessions: [] })),
+    readProviderSession: vi.fn(async () => {
+      throw new Error("Unexpected provider session read call");
+    }),
     providerInstallationStatus: vi.fn(async () => {
       throw new Error("Unexpected provider installation status call");
     }),

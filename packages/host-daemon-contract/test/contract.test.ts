@@ -390,6 +390,39 @@ const ONLINE_RPC_RESPONSE_RESULT_FIXTURES: OnlineRpcResponseResultFixtures = {
       ],
     },
   },
+  "provider.sessions.list": {
+    sessions: [
+      {
+        sessionId: "session-1",
+        cwd: "/home/user/projects/bb",
+        title: "Fix the flaky test",
+        updatedAt: 1_780_000_000_000,
+        sizeBytes: 2048,
+      },
+    ],
+  },
+  "provider.sessions.read": {
+    sessionId: "session-1",
+    cwd: "/home/user/projects/bb",
+    truncated: false,
+    turns: [
+      {
+        prompt: "Fix the flaky test",
+        startedAt: 1_780_000_000_000,
+        events: [
+          {
+            at: 1_780_000_000_000,
+            event: {
+              type: "turn/started",
+              threadId: "",
+              providerThreadId: "",
+              scope: { kind: "turn", turnId: "turn-1" },
+            },
+          },
+        ],
+      },
+    ],
+  },
   "host.discover_repos": {
     repos: [
       {
@@ -1060,7 +1093,7 @@ describe("host-daemon command schemas", () => {
   });
 
   it("uses the current host-daemon protocol version", () => {
-    expect(HOST_DAEMON_PROTOCOL_VERSION).toBe(259);
+    expect(HOST_DAEMON_PROTOCOL_VERSION).toBe(260);
     expect(HOST_ARTIFACT_MAX_BYTES).toBe(256 * 1024 * 1024);
   });
 
@@ -1079,7 +1112,8 @@ describe("host-daemon command schemas", () => {
     expect(contract.isCompatibleHostDaemonProtocolVersion(256)).toBe(false);
     expect(contract.isCompatibleHostDaemonProtocolVersion(257)).toBe(false);
     expect(contract.isCompatibleHostDaemonProtocolVersion(258)).toBe(false);
-    expect(contract.isCompatibleHostDaemonProtocolVersion(259)).toBe(true);
+    expect(contract.isCompatibleHostDaemonProtocolVersion(259)).toBe(false);
+    expect(contract.isCompatibleHostDaemonProtocolVersion(260)).toBe(true);
     expect(contract.hostDaemonSupportsConnectNext(246)).toBe(false);
     expect(contract.hostDaemonSupportsConnectNext(247)).toBe(true);
     expect(contract.hostDaemonSupportsDesktopBrokerProof(247)).toBe(false);

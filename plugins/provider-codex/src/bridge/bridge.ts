@@ -1595,6 +1595,7 @@ function handleInitialize(id: string | number): void {
       steerMode: "inject",
       skills: { configure: true },
       commands: { list: false },
+      sessions: { import: false },
     },
   };
   sendResult(id, result);

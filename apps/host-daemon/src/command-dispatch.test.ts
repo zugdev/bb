@@ -161,6 +161,10 @@ function createRuntime(): FakeDispatchRuntime {
     listCommands: vi.fn(async () => ({ commands: [] })),
     providerHealth: vi.fn(async () => ({ supported: false as const })),
     providerUsage: vi.fn(async () => ({ supported: false as const })),
+    listProviderSessions: vi.fn(async () => ({ sessions: [] })),
+    readProviderSession: vi.fn(async () => {
+      throw new Error("Unexpected provider session read call");
+    }),
     providerInstallationStatus: vi.fn(async () => {
       throw new Error("Unexpected provider installation status call");
     }),
@@ -2461,6 +2465,77 @@ describe("dispatchCommand", () => {
     expect(providerUsage).toHaveBeenCalledWith({
       providerId: "pi",
       bridgeLaunch: dispatchTestRuntimeBridgeLaunch(options.dataDir),
+    });
+  });
+
+  it("routes provider session list and read to the targeted bridge runtime", async () => {
+    const runtime = createRuntime();
+    const manager = new RuntimeManager({
+      createRuntime: () => runtime,
+      provisionWorkspace: async () => createWorkspace(),
+    });
+    const session = {
+      sessionId: "session-1",
+      cwd: "/tmp/workspace",
+      title: "Fix the build",
+      updatedAt: 1_780_000_000_000,
+      sizeBytes: 512,
+    };
+    const imported = {
+      sessionId: "session-1",
+      cwd: "/tmp/workspace",
+      truncated: false,
+      turns: [{ prompt: "Fix the build", startedAt: 1, events: [] }],
+    };
+    const listProviderSessions = vi.fn(async () => ({ sessions: [session] }));
+    const readProviderSession = vi.fn(async () => imported);
+    const options = {
+      dataDir: "/tmp/bb-test-data",
+      logger: silentLogger,
+      eventSink: { emit: vi.fn(), flush: vi.fn(async () => undefined) },
+      fetchProjectAttachment: async () => {
+        throw new Error("Unexpected project attachment fetch");
+      },
+      fetchPluginHostArtifact: fetchDispatchTestArtifact,
+      ...unexpectedProviderMaintenance,
+      listProviderSessions,
+      readProviderSession,
+      runtimeManager: manager,
+      threadStorageRootPath: "/tmp/bb-thread-storage",
+    };
+
+    await expect(
+      dispatchOnlineRpcCommand(
+        {
+          type: "provider.sessions.list",
+          providerId: "claude-code",
+          bridgeLaunch: DISPATCH_TEST_BRIDGE_LAUNCH,
+        },
+        options,
+        new AbortController().signal,
+      ),
+    ).resolves.toEqual({ sessions: [{ ...session, repositoryRoot: null }] });
+    await expect(
+      dispatchOnlineRpcCommand(
+        {
+          type: "provider.sessions.read",
+          providerId: "claude-code",
+          bridgeLaunch: DISPATCH_TEST_BRIDGE_LAUNCH,
+          sessionId: "session-1",
+        },
+        options,
+        new AbortController().signal,
+      ),
+    ).resolves.toEqual({ ...imported, repositoryRoot: null });
+
+    expect(listProviderSessions).toHaveBeenCalledWith({
+      providerId: "claude-code",
+      bridgeLaunch: dispatchTestRuntimeBridgeLaunch(options.dataDir),
+    });
+    expect(readProviderSession).toHaveBeenCalledWith({
+      providerId: "claude-code",
+      bridgeLaunch: dispatchTestRuntimeBridgeLaunch(options.dataDir),
+      sessionId: "session-1",
     });
   });
 });

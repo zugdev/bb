@@ -522,6 +522,7 @@ async function handleRequest(
           steerMode: "inject",
           skills: { configure: true },
           commands: { list: false },
+          sessions: { import: false },
         },
       };
       sendResult(request.id, result);

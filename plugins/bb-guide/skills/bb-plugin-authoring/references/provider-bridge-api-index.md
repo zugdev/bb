@@ -11,6 +11,11 @@ Read the installed declarations for exact current signatures.
 - `ContextCategory`
 - `ContextEntry`
 - `ExperimentalIndexedSkillFile`
+- `ExperimentalProviderSessionStep`
+- `ExperimentalProviderSessionSummary`
+- `ExperimentalProviderSessionTurn`
+- `ExperimentalSessionsListResult`
+- `ExperimentalSessionsReadResult`
 - `ExperimentalSkillScanRoot`
 
 - `BRIDGE_INBOUND_REQUEST_METHODS`
@@ -103,6 +108,10 @@ Read the installed declarations for exact current signatures.
 - `experimental_recordProviderChildIo`
 - `experimental_resolveExecutablePath`
 - `experimental_scanSkillFiles`
+- `experimental_sessionsListParamsSchema`
+- `experimental_sessionsListResultSchema`
+- `experimental_sessionsReadParamsSchema`
+- `experimental_sessionsReadResultSchema`
 - `experimental_searchPresentation`
 - `experimental_selectedSkillMentions`
 - `experimental_spawnPortableProcess`
