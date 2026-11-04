@@ -1471,6 +1471,56 @@ describe("ThreadRow", () => {
     expect(tier?.querySelector('[aria-hidden="true"].w-px')).not.toBeNull();
   });
 
+  it.each([
+    {
+      label: "a working child",
+      child: { status: "active", runtimeStatus: "active" } as const,
+      indicator: "runtime",
+    },
+    {
+      label: "a child waiting for input",
+      child: { hasPendingInteraction: true },
+      indicator: "waiting-for-input",
+    },
+    {
+      label: "an archived working child",
+      child: {
+        status: "active",
+        runtimeStatus: "active",
+        archivedAt: 1,
+      } as const,
+      indicator: null,
+    },
+  ])(
+    "shows $indicator on an expanded parent with $label",
+    ({ child, indicator }) => {
+      renderThreadRow({
+        thread: createThread({ lastReadAt: 1, latestAttentionAt: 1 }),
+        options: {
+          kind: "parent",
+          depth: 1,
+          isCompact: false,
+          isCollapsed: false,
+          childCount: 1,
+          hiddenThreads: [
+            createThread({
+              id: "thr_child",
+              parentThreadId: "thr_test",
+              ...child,
+            }),
+          ],
+          onToggleCollapsed: vi.fn(),
+        },
+      });
+
+      expect(
+        document
+          .querySelector("[data-thread-status-glyph]")
+          ?.getAttribute("data-thread-status-glyph") ?? null,
+      ).toBe(indicator);
+    },
+  );
+
   it("shows its Command shortcut in place of an active indicator", () => {
     renderThreadRow({
       shortcutKey: "3",

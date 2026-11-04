@@ -23,6 +23,8 @@ import type { ProjectWithThreadsResponse } from "@bb/server-contract";
 import { Icon } from "@bb/shared-ui/icon";
 import { cn } from "@bb/shared-ui/lib/utils";
 import { useSidebarNavigation } from "@/hooks/queries/sidebar-navigation-query";
+import { threadEntryMapFor } from "@/lib/sidebar-thread-entries";
+import { threadDescendantsFor } from "@/components/thread/ThreadStatusDot";
 import { PluginHomepageSection } from "@/components/plugin/PluginHomepageSections";
 import { usePluginSlots } from "@/lib/plugin-slots";
 import {
@@ -49,7 +51,11 @@ import {
   type HomeLayoutPrefs,
   type HomeThreadSort,
 } from "./home-overview";
-import { ThreadRow, type OpenThread } from "./HomeThreadRow";
+import {
+  HomeThreadDescendantsContext,
+  ThreadRow,
+  type OpenThread,
+} from "./HomeThreadRow";
 import {
   SplitTabBar,
   useShowSplitTabLayout,
@@ -417,6 +423,7 @@ export default function HomeView() {
     [projects],
   );
   const attention = useMemo(() => homeAttention(projects), [projects]);
+  const descendants = threadDescendantsFor(threadEntryMapFor(data));
   const { homepageSections } = usePluginSlots();
   const pluginSections = new Map(
     homepageSections.map((section) => [
@@ -482,7 +489,7 @@ export default function HomeView() {
   };
 
   return (
-    <>
+    <HomeThreadDescendantsContext value={descendants}>
       <SplitTabBar />
       <div className="min-h-0 flex-1 overflow-y-auto">
         <div className="mx-auto flex max-w-3xl flex-col gap-8 pt-4 pb-10">
@@ -604,6 +611,6 @@ export default function HomeView() {
           ) : null}
         </div>
       </div>
-    </>
+    </HomeThreadDescendantsContext>
   );
 }

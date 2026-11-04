@@ -1,6 +1,7 @@
 import type { ThreadListEntry } from "@bb/domain";
 import { experimental_resolveThreadStatus } from "@get-bb/plugin-sdk/internal/thread-status";
 import { toThreadStatusThread } from "@/lib/plugin-sidebar-threads";
+import { SIDE_CHAT_PLUGIN_ID } from "@/lib/side-chat-plugin";
 import { getThreadDisplayTitle } from "@/lib/thread-title";
 
 export interface HomeThread {
@@ -31,17 +32,65 @@ export function homeTopLevelThreads(
 
 export type HomeThreadDot = "working" | "done" | "waiting" | "failed";
 
-function resolveHomeThreadStatus(thread: ThreadListEntry) {
+export type ThreadDescendants = (threadId: string) => ThreadListEntry[];
+
+export const NO_THREAD_DESCENDANTS: ThreadDescendants = () => [];
+
+function countsTowardParentStatus(thread: ThreadListEntry): boolean {
+  return (
+    thread.archivedAt === null &&
+    !(
+      thread.visibility === "hidden" &&
+      thread.originPluginId === SIDE_CHAT_PLUGIN_ID
+    )
+  );
+}
+
+export function liveThreadDescendants(
+  threads: Iterable<ThreadListEntry>,
+): ThreadDescendants {
+  const childrenByParentId = new Map<string, ThreadListEntry[]>();
+  for (const thread of threads) {
+    if (thread.parentThreadId === null || !countsTowardParentStatus(thread))
+      continue;
+    const siblings = childrenByParentId.get(thread.parentThreadId);
+    if (siblings === undefined)
+      childrenByParentId.set(thread.parentThreadId, [thread]);
+    else siblings.push(thread);
+  }
+  return (threadId) => {
+    const descendants: ThreadListEntry[] = [];
+    const seen = new Set([threadId]);
+    const pending = [threadId];
+    for (let id = pending.pop(); id !== undefined; id = pending.pop()) {
+      for (const child of childrenByParentId.get(id) ?? []) {
+        if (seen.has(child.id)) continue;
+        seen.add(child.id);
+        descendants.push(child);
+        pending.push(child.id);
+      }
+    }
+    return descendants;
+  };
+}
+
+function resolveHomeThreadStatus(
+  thread: ThreadListEntry,
+  descendants: ThreadDescendants,
+) {
   return experimental_resolveThreadStatus({
     thread: toThreadStatusThread(thread),
-    hiddenThreads: [],
+    hiddenThreads: descendants(thread.id).map(toThreadStatusThread),
     hasUnsubmittedDraft: false,
     rowStatus: null,
   });
 }
 
-export function homeThreadDot(thread: ThreadListEntry): HomeThreadDot | null {
-  const status = resolveHomeThreadStatus(thread);
+export function homeThreadDot(
+  thread: ThreadListEntry,
+  descendants: ThreadDescendants = NO_THREAD_DESCENDANTS,
+): HomeThreadDot | null {
+  const status = resolveHomeThreadStatus(thread, descendants);
   if (status.indicator === "waiting-for-input") return "waiting";
   if (status.indicator === "unread-error") return "failed";
   if (status.indicator === "queued-failed") return "failed";
@@ -52,6 +101,7 @@ export function homeThreadDot(thread: ThreadListEntry): HomeThreadDot | null {
 
 export function overviewProjectThreads(
   threads: readonly ThreadListEntry[],
+  descendants: ThreadDescendants = liveThreadDescendants(threads),
 ): ProjectOverview {
   const overview: ProjectOverview = {
     needsYou: [],
@@ -63,7 +113,7 @@ export function overviewProjectThreads(
     (a, b) => b.latestAttentionAt - a.latestAttentionAt,
   );
   for (const thread of topLevel) {
-    const status = resolveHomeThreadStatus(thread);
+    const status = resolveHomeThreadStatus(thread, descendants);
     const item = { thread, label: status.label };
     if (NEEDS_YOU_INDICATORS.has(status.indicator))
       overview.needsYou.push(item);
@@ -77,8 +127,11 @@ export function overviewProjectThreads(
 export function homeAttention(
   projects: readonly { threads: readonly ThreadListEntry[] }[],
 ): { needsYou: ThreadListEntry[]; replies: ThreadListEntry[] } {
+  const descendants = liveThreadDescendants(
+    projects.flatMap((project) => project.threads),
+  );
   const overviews = projects.map((project) =>
-    overviewProjectThreads(project.threads),
+    overviewProjectThreads(project.threads, descendants),
   );
   const byAttention = (a: ThreadListEntry, b: ThreadListEntry) =>
     b.latestAttentionAt - a.latestAttentionAt;

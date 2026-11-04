@@ -1,8 +1,17 @@
+import { createContext, useContext } from "react";
 import type { ThreadListEntry } from "@bb/domain";
 import { ThreadStatusDot } from "@/components/thread/ThreadStatusDot";
 import { formatRelativeTime } from "@/lib/relative-time";
 import { getThreadDisplayTitle } from "@/lib/thread-title";
-import { homeThreadDot } from "./home-overview";
+import {
+  homeThreadDot,
+  NO_THREAD_DESCENDANTS,
+  type ThreadDescendants,
+} from "./home-overview";
+
+export const HomeThreadDescendantsContext = createContext<ThreadDescendants>(
+  NO_THREAD_DESCENDANTS,
+);
 
 export type OpenThread = (
   thread: ThreadListEntry,
@@ -20,6 +29,7 @@ export function ThreadRow({
   time: number;
   onOpen: OpenThread;
 }) {
+  const descendants = useContext(HomeThreadDescendantsContext);
   return (
     <button
       type="button"
@@ -29,7 +39,7 @@ export function ThreadRow({
       }
     >
       <span className="flex size-4 shrink-0 items-center justify-center">
-        <ThreadStatusDot dot={homeThreadDot(thread)} />
+        <ThreadStatusDot dot={homeThreadDot(thread, descendants)} />
       </span>
       <span className="min-w-0 flex-1 truncate">
         {getThreadDisplayTitle(thread)}
