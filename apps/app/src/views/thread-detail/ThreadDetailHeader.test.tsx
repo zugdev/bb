@@ -368,13 +368,13 @@ describe("ThreadDetailHeader", () => {
             onToggleSecondaryPanel={vi.fn()}
             thread={THREAD_TARGET}
             threadTitle="Narrow split"
-            workspaceOpenButton={<button>Open workspace</button>}
+            onOpenDiff={() => {}}
           />
         </PaneContext.Provider>
       </>,
     );
 
-    expect(screen.queryByText("Open workspace")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Open diff" })).toBeNull();
     expect(screen.queryByText("Commit")).toBeNull();
     expect(screen.getByText("Thread menu")).not.toBeNull();
     expect(screen.getByText("Responsive menu actions")).not.toBeNull();
@@ -431,13 +431,13 @@ describe("ThreadDetailHeader", () => {
             onToggleSecondaryPanel={vi.fn()}
             thread={THREAD_TARGET}
             threadTitle="Wide split"
-            workspaceOpenButton={<button>Open workspace</button>}
+            onOpenDiff={() => {}}
           />
         </PaneContext.Provider>
       </>,
     );
 
-    expect(screen.getByText("Open workspace")).not.toBeNull();
+    expect(screen.getByRole("button", { name: "Open diff" })).not.toBeNull();
     expect(screen.getByText("Commit")).not.toBeNull();
     expect(screen.getByText("Thread menu")).not.toBeNull();
     expect(screen.queryByText("Responsive menu actions")).toBeNull();
