@@ -113,6 +113,7 @@ import {
   getRootComposeRoutePath,
 } from "@/lib/route-paths";
 import { isDesktopBrowserAvailable } from "@/lib/bb-desktop";
+import { useUsesSwipeChrome } from "@/components/layout/useUsesSwipeChrome";
 import {
   useFixedPanelTabsState,
   useFixedPanelTabsStorageMaintenance,
@@ -1306,7 +1307,9 @@ function RootComposeSurface({
   );
   const pinnedPanelToggleBoxClassName =
     useRootComposePinnedPanelToggleBoxClassName();
+  const hidesChromeToggles = useUsesSwipeChrome();
   const showPinnedToggle =
+    !hidesChromeToggles &&
     (paneContext?.secondaryPanelHost ?? null) === null &&
     (!isSecondaryPanelOpen || isCompactViewport);
   const rootPanelToggle = showPinnedToggle ? (

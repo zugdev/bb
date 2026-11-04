@@ -42,6 +42,7 @@ import {
   useIsSidebarShowing,
 } from "@/components/ui/sidebar.js";
 import { useIsCompactViewport } from "@bb/shared-ui/hooks/use-compact-viewport";
+import { useUsesSwipeChrome } from "@/components/layout/useUsesSwipeChrome";
 import {
   getBbDesktopInfo,
   MACOS_APP_REGION_NO_DRAG_CLASS,
@@ -461,6 +462,7 @@ export function SplitTabBar() {
   const isInTitleBar = useIsSidebarFramed();
   const isSidebarShowing = useIsSidebarShowing();
   const isCompactViewport = useIsCompactViewport();
+  const hidesChromeToggles = useUsesSwipeChrome();
   const [desktopInfo] = useState(getBbDesktopInfo);
   const usesDesktopChrome = shouldUseMacosDesktopChrome(desktopInfo);
   const noDragClassName = usesDesktopChrome && MACOS_WINDOW_NO_DRAG_CLASS;
@@ -473,13 +475,13 @@ export function SplitTabBar() {
     <div
       role="tablist"
       className={cn(
-        "-mx-4 -mt-4 mb-4 flex shrink-0 items-stretch md:-mx-5 md:-mt-5 md:mb-5 pr-12",
+        "-mx-4 -mt-4 mb-4 flex shrink-0 items-stretch md:-mx-5 md:-mt-5 md:mb-5",
+        !hidesChromeToggles && "pr-12",
         isInTitleBar
           ? [
               MACOS_TITLE_BAR_ROW_CLASS,
               (isCompactViewport || !isSidebarShowing) &&
-                MACOS_APP_REGION_NO_DRAG_CLASS,
-  MACOS_TITLE_BAR_COLLAPSED_SIDEBAR_RESERVE_CLASS,
+                MACOS_TITLE_BAR_COLLAPSED_SIDEBAR_RESERVE_CLASS,
             ]
           : "h-7 border-b border-border",
         usesDesktopChrome && MACOS_WINDOW_DRAG_CLASS,
