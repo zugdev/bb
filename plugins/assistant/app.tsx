@@ -40,9 +40,10 @@ function AssistantPanel() {
     method: "assistant.seen",
   });
   const unseen = badge?.unseen ?? 0;
+  const markSeen = seen.mutate;
   useEffect(() => {
-    if (unseen > 0) void seen.mutate({});
-  }, [unseen]);
+    if (unseen > 0) void markSeen({});
+  }, [unseen, markSeen]);
   if (error !== null) {
     return <p className="p-4 text-sm text-muted-foreground">{error.message}</p>;
   }

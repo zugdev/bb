@@ -218,7 +218,6 @@ function ProjectSection({
             aria-label={
               isOldestFirst ? "Show newest first" : "Show oldest first"
             }
-            title={isOldestFirst ? "Oldest first" : "Newest first"}
             className={ICON_BUTTON_CLASS}
             onClick={() => setIsOldestFirst(!isOldestFirst)}
           >
@@ -518,7 +517,6 @@ export default function HomeView() {
               <button
                 type="button"
                 aria-label={isEditing ? "Finish editing Home" : "Edit Home"}
-                title={isEditing ? "Done" : "Edit Home"}
                 aria-pressed={isEditing}
                 className={cn(
                   ICON_BUTTON_CLASS,

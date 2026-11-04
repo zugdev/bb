@@ -41,7 +41,7 @@ const contextHandlers: ExperimentalPluginRpcHandlersWithContext<
   ping(_input, context) {
     expectTypeOf(context.experimental_caller).toEqualTypeOf<
       | { readonly kind: "plugin"; readonly pluginId: string }
-      | { readonly kind: "client" }
+      | { readonly kind: "client"; readonly experimental_clientId?: string }
     >();
     return { ok: true };
   },
