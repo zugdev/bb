@@ -11,6 +11,11 @@ import {
   setFocus,
   splitPane,
 } from "@/lib/split-layout";
+import {
+  insertSplitTab,
+  selectSplitTab,
+  type SplitTabsState,
+} from "@/lib/split-layout/tabs";
 import { decideThreadDrop, type SplitZone } from "@/lib/split-drag";
 import type { PaneContent, SplitLayout } from "@/lib/split-layout";
 import { matchPath } from "react-router-dom";
@@ -153,6 +158,44 @@ export function reconcileLayoutForContent(
       : setFocus(withRouteState, existing.paneId);
   }
   return replacePaneContent(layout, layout.focusedPaneId, content);
+}
+
+export function placeThreadBesideSplit(
+  state: SplitTabsState,
+  activeLayout: SplitLayout | null,
+  thread: ThreadRoutePathArgs,
+): { state: SplitTabsState; layout: SplitLayout } | null {
+  if (activeLayout === null || countPanes(activeLayout.root) < 2) return null;
+  if (
+    findPaneByThread(activeLayout.root, thread.projectId, thread.threadId) !==
+    null
+  ) {
+    return null;
+  }
+  const focused = findPane(activeLayout.root, activeLayout.focusedPaneId);
+  if (focused === null || focused.content.kind === "new-thread") return null;
+  const layout = createSinglePaneLayout(thread);
+  const target = state.tabs.find(
+    (tab) =>
+      tab.id !== state.activeTabId &&
+      (tab.layout === null || countPanes(tab.layout.root) === 1),
+  );
+  const next =
+    target === undefined
+      ? insertSplitTab(state, activeLayout, layout, thread.projectId)
+      : selectSplitTab(state, activeLayout, target.id);
+  if (next === null) return null;
+  return {
+    state: {
+      ...next,
+      tabs: next.tabs.map((tab) =>
+        tab.id === next.activeTabId
+          ? { ...tab, layout, projectId: thread.projectId }
+          : tab,
+      ),
+    },
+    layout,
+  };
 }
 
 export function replaceOriginPaneContent(
