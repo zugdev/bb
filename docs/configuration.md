@@ -952,7 +952,7 @@ either way.
   question when the Archive confirmation setting is off. Dragging a selected row moves
   every selected thread onto a section, under a thread, or into Pinned, or drops
   them onto a composer as one mention per thread. Cmd/Ctrl-click still opens a
-  thread in a split. Plugins read it with
+  thread in a new pane tab, and Alt/Option-click in a split. Plugins read it with
   `experimental_useExperiment("sidebarMultiSelect")`.
 - `threadContextCard` moves a running thread's
   details into the thread context card at the upper-right of its pane: bb's parent

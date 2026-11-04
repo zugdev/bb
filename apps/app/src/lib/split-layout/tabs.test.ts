@@ -1,14 +1,15 @@
 import { createStore } from "jotai";
 import { PERSONAL_PROJECT_ID } from "@bb/domain";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { splitLayoutAtom } from "./atoms";
-import { listPanes, splitPane } from "./ops";
+import { findPane, listPanes, splitPane } from "./ops";
 import { rootComposeProjectIdAtom } from "@/lib/root-compose-selection";
 import {
   closeSplitTabAtom,
   focusThreadInOtherTabAtom,
   movePaneToTabAtom,
   openSplitTabAtom,
+  openThreadInTab,
   openThreadInTabAtom,
   parseSplitTabsState,
   recordClosedPaneAtom,
@@ -91,6 +92,25 @@ describe("split tabs", () => {
 
     store.set(openSplitTabAtom);
     expect(store.get(rootComposeProjectIdAtom)).toBe(PERSONAL_PROJECT_ID);
+  });
+
+  it("routes to the thread it focuses when opening a tab", () => {
+    const store = createStore();
+    store.set(splitLayoutAtom, threadLayout("a"));
+    const navigate = vi.fn();
+
+    openThreadInTab(store, navigate, { projectId: "p1", threadId: "b" });
+
+    const layout = store.get(splitLayoutAtom)!;
+    expect(findPane(layout.root, layout.focusedPaneId)?.content).toEqual({
+      kind: "thread",
+      projectId: "p1",
+      threadId: "b",
+    });
+    expect(store.get(splitTabsAtom).tabs).toHaveLength(2);
+    expect(navigate).toHaveBeenCalledWith("/projects/p1/threads/b", {
+      replace: true,
+    });
   });
 
   it("opens another new thread tab while one is already empty", () => {
