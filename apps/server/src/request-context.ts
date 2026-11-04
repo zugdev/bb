@@ -1,8 +1,11 @@
+import { AsyncLocalStorage } from "node:async_hooks";
 import { isLoopbackAddress } from "@bb/config/loopback";
 import { getConnInfo } from "@hono/node-server/conninfo";
 import {
   APP_SURFACE_API,
   APP_SURFACE_HEADER_NAME,
+  CLIENT_ID_HEADER_NAME,
+  parseClientId,
   parseRequestAppSurface,
   type RequestAppSurface,
 } from "@bb/config/app-surface";
@@ -100,4 +103,20 @@ export function resolveRequestAppSurface(context: Context): RequestAppSurface {
     parseRequestAppSurface(context.req.header(APP_SURFACE_HEADER_NAME)) ??
     APP_SURFACE_API
   );
+}
+
+const requestClientIdStorage = new AsyncLocalStorage<string | null>();
+
+export function runWithRequestClientId<T>(
+  context: GateAuthHeaderReader,
+  callback: () => T,
+): T {
+  return requestClientIdStorage.run(
+    parseClientId(context.req.header(CLIENT_ID_HEADER_NAME)) ?? null,
+    callback,
+  );
+}
+
+export function getRequestClientId(): string | null {
+  return requestClientIdStorage.getStore() ?? null;
 }

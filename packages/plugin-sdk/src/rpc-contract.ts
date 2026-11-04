@@ -282,7 +282,15 @@ export function defineRpcContract<
  */
 export type ExperimentalPluginRpcCaller =
   | { readonly kind: "plugin"; readonly pluginId: string }
-  | { readonly kind: "client" };
+  | {
+      readonly kind: "client";
+      /**
+       * The bb app client that sent the call, from its `x-bb-client-id`
+       * header: one id per browser profile, desktop app, or mobile WebView,
+       * stable across reloads. Absent for the CLI, the SDK and agents.
+       */
+      readonly experimental_clientId?: string;
+    };
 
 /** Second argument of every rpc handler. */
 export interface ExperimentalPluginRpcHandlerContext {

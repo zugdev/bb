@@ -89,6 +89,7 @@ import {
   captureTrustedRemoteAddress,
   resolveRequestAccessRoute,
   resolveRequestAppSurface,
+  runWithRequestClientId,
 } from "./request-context.js";
 import { runEventLoopWork } from "./services/system/event-loop-work.js";
 import { setTurnTelemetryDeps } from "./services/system/turn-telemetry.js";
@@ -537,7 +538,7 @@ export function createApp(
         appSurface: resolveRequestAppSurface(context),
         accessRoute: resolveRequestAccessRoute(context),
       },
-      next,
+      () => runWithRequestClientId(context, next),
     );
   });
   app.use("*", async (context, next) => {

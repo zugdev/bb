@@ -302,8 +302,13 @@ export interface PluginThreadEventPayloads {
    * this is the moment to drop anything the plugin keeps per host.
    */
   "experimental_host.deleted": { host: Host };
-  /** Fired after a thread row is created. */
-  "thread.created": { thread: ThreadResponse };
+  /**
+   * Fired after a thread row is created. `experimental_clientId` names the bb
+   * app client (one browser profile, desktop app, or mobile WebView) whose
+   * request created it, from its `x-bb-client-id` header; it is absent for
+   * the CLI, the SDK, plugins and threads core creates on its own.
+   */
+  "thread.created": { thread: ThreadResponse; experimental_clientId?: string };
   /** Fired when a thread transitions into `active`. */
   "thread.active": { thread: ThreadResponse };
   /** Fired when a thread transitions into `idle`. `lastAssistantText` is

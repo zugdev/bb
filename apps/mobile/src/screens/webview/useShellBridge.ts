@@ -20,6 +20,7 @@ export interface ShellBridgeCallbacks {
   onPath(path: string): void;
   onOpenNative(screen: NativeScreen): void;
   onSwitchServer(id: string): void;
+  pushSubscriptionId(): string | null;
 }
 
 export interface ShellBridge {
@@ -82,6 +83,15 @@ export function useShellBridge(
             } catch (error) {
               respond(message.id, { ok: false, error: describeError(error) });
             }
+            return;
+          }
+          if (message.request.kind === "push-subscription") {
+            respond(message.id, {
+              ok: true,
+              result: {
+                subscriptionId: callbacksRef.current.pushSubscriptionId(),
+              },
+            });
             return;
           }
           if (message.request.kind === "share") {

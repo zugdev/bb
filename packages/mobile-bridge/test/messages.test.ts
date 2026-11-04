@@ -53,6 +53,11 @@ describe("parsePageToShellMessage", () => {
           payload: { url: "https://bee.getbb.app/threads/thr_1" },
         },
       },
+      {
+        type: "request",
+        id: "r1-push",
+        request: { kind: "push-subscription", payload: {} },
+      },
     ];
     for (const value of cases) {
       const parsed = parsePageToShellMessage(json(value));

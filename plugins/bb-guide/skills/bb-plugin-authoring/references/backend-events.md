@@ -8,7 +8,7 @@ bb.events.on("experimental_thread.parentChanged", ({ thread, previousParentThrea
 bb.events.on("experimental_terminal.input", ({ terminal }) => { ... });
 bb.events.on("experimental_environment.removed", ({ removal }) => { ... });
 bb.events.on("experimental_host.deleted", ({ host }) => { ... });
-bb.events.on("thread.created", ({ thread }) => { ... });
+bb.events.on("thread.created", ({ thread, experimental_clientId }) => { ... }); // experimental_clientId?: string, the app client that created it
 bb.events.on("thread.active", ({ thread }) => { ... });
 bb.events.on("thread.idle", ({ thread, lastAssistantText }) => { ... });   // lastAssistantText: string | null
 bb.events.on("thread.failed", ({ thread, error }) => { ... });             // error: string | null

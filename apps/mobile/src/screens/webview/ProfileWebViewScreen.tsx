@@ -48,6 +48,7 @@ import { Button, EmptyStatePanel, Spinner, Text, toast } from "@/ui";
 import { describeError } from "@/lib/describe-error";
 import { Linking } from "react-native";
 import { useShellBridge } from "./useShellBridge";
+import { getPushStore } from "@/notifications/push-storage";
 import {
   SHELL_NATIVE_DOWNLOADS_SUPPORTED,
   useShellFileSaver,
@@ -152,6 +153,10 @@ export function ProfileWebViewScreen() {
     onOpenNative: (screen) => {
       if (screen === "device-settings") openDeviceSettings();
     },
+    pushSubscriptionId: () =>
+      profile === null
+        ? null
+        : (getPushStore().getRegistration(profile.id)?.subscriptionId ?? null),
     onSwitchServer: (id) => {
       if (!canSwitchToProfile(profiles, activeProfile?.id ?? null, id)) return;
       router.setParams({ profileId: undefined, path: undefined });

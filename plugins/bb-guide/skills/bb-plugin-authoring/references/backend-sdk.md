@@ -118,7 +118,10 @@ another plugin's `bb.rpc` handler. Each handler receives a context whose
 `experimental_caller` is `{ kind: "plugin", pluginId }` for a call through a
 loaded plugin's own `bb.sdk.plugins.callRpc`, verified with a per-load token
 only the server holds, and `{ kind: "client" }` for everything else: the app,
-CLI, agents, and bb. Tests set it with
+CLI, agents, and bb. A call from the bb app also carries
+`experimental_clientId`, the id of that browser profile, desktop app, or
+mobile WebView from its `x-bb-client-id` header; `thread.created` carries the
+same id for threads the app created. Tests set it with
 `harness.callRpc(method, input, { experimental_caller })`.
 
 ```ts

@@ -4,6 +4,8 @@ Get a notification when an agent asks a question, finishes a turn, or stops on a
 
 Mobile devices receive push messages through Expo, including when the app is closed. Web browsers and the desktop app receive system notifications over bb's live connection while a tab or window stays open; web delivery needs HTTPS (or localhost) and notification permission. Mobile WebViews use mobile push only.
 
+A thread's notifications go only to the device that started it, and a child thread inherits its parent's device. A browser or desktop app qualifies while it has permission, its channel is on, and it checked in within 5 minutes; a phone qualifies through its push subscription. Otherwise, as for threads started from the CLI, SDK, or a plugin, every device is notified.
+
 Each thread has a level: `all` (questions, approvals, errors, finished turns), `input-only` (no finished turns), or `muted`. A thread uses its own level, else `childLevel` if it has a parent, else `defaultLevel`; every ancestor's own level caps it. Muting a parent mutes its whole subtree, but a parent never makes workers louder. The level applies on top of the suppressions below.
 
 Click a notification to open its thread, or bb when it has none; in the desktop app the click also restores and focuses the window. With the `skipFocusedThreadNotifications` experiment (on for early adopters), a thread open in a visible, focused window or tab is not notified. Events arriving together are combined, with pending questions taking priority. Read, archived, deleted, and hidden threads are suppressed. Tabs of the same origin deduplicate delivery.
@@ -25,4 +27,4 @@ Channel switches apply to this server and save immediately. Browser permission i
 
 ## CLI and SDK
 
-`bb push-notifications` manages mobile devices, shows status, sends and tests notifications, and reads or sets a thread's level; `bb plugin config push-notifications` changes the settings above. The bundled `push-notifications` skill documents every command and RPC method. Plugins and agents send notifications with the discoverable `notifications.send` RPC; `bb plugin rpc inspect push-notifications notifications.send` prints its schemas. Permission requests still require a click in the target client.
+`bb push-notifications` manages mobile devices, shows status, sends and tests notifications, and reads or sets a thread's level; `bb plugin config push-notifications` changes the settings above. The bundled `push-notifications` skill documents every command and RPC method. `devices` lists targets and `send --device <id>` notifies one, as in "send this to my phone"; without it, `send` reaches every device. Plugins and agents send notifications with the discoverable `notifications.send` RPC; `bb plugin rpc inspect push-notifications notifications.send` prints its schemas. Permission requests still require a click in the target client.

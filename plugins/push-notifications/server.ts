@@ -16,12 +16,15 @@ import {
   NOTIFICATION_BODY_MAX_LENGTH,
   NOTIFICATION_TITLE_MAX_LENGTH,
   pushNotificationsRpcContract,
+  registerClientInputSchema,
   sendNotificationInputSchema,
   sendNotificationRpcContract,
   type ClientNotification,
   type DeliveryChannel,
+  type NotificationDevice,
   type PushSubscriptionSummary,
 } from "./contract.js";
+import { createAppClientStore } from "./clients.js";
 import {
   createNotificationPreferences,
   describeNotificationSource,
@@ -75,6 +78,22 @@ function formatSubscriptions(
         subscription.platform,
         new Date(subscription.lastSeenAt).toISOString(),
         subscription.tokenSuffix,
+      ].join("\t"),
+    ),
+  ].join("\n");
+}
+
+function formatDevices(devices: readonly NotificationDevice[]): string {
+  if (devices.length === 0) return "No notification devices";
+  return [
+    "ID\tDevice\tKind\tLast seen\tReachable",
+    ...devices.map((device) =>
+      [
+        device.id,
+        device.label,
+        device.kind,
+        new Date(device.lastSeenAt).toISOString(),
+        device.reachable ? "yes" : "no",
       ].join("\t"),
     ),
   ].join("\n");
@@ -201,9 +220,14 @@ export function createPushNotificationsPlugin(
       ...(options.now === undefined ? {} : { now: options.now }),
       ...(options.createId === undefined ? {} : { createId: options.createId }),
     });
+    const clients = createAppClientStore(
+      bb,
+      options.now === undefined ? {} : { now: options.now },
+    );
     const sender = createPushSender({
       bb,
       subscriptions,
+      clients,
       getDeliverySettings: () => settings.get(),
       getExpoPushUrl: async () => (await settings.get()).expoPushUrl,
       getNotificationLevel: (thread) => preferences.effectiveLevel(thread),
@@ -239,6 +263,31 @@ export function createPushNotificationsPlugin(
       };
     }
 
+    async function listDevices(): Promise<NotificationDevice[]> {
+      const [rows, appClients] = await Promise.all([
+        subscriptions.list(),
+        clients.list(),
+      ]);
+      return [
+        ...rows.map((row) => ({
+          id: row.id,
+          kind: "mobile" as const,
+          label: row.deviceLabel,
+          lastSeenAt: row.lastSeenAt,
+          reachable: true,
+        })),
+        ...appClients
+          .filter((client) => client.kind !== "mobile" && client.canNotify)
+          .map((client) => ({
+            id: client.id,
+            kind: client.kind,
+            label: client.label,
+            lastSeenAt: client.lastSeenAt,
+            reachable: clients.isOnline(client),
+          })),
+      ];
+    }
+
     async function sendTest(channel: "web" | "desktop") {
       const config = await settings.get();
       if (!(channel === "web" ? config.webEnabled : config.desktopEnabled)) {
@@ -250,6 +299,7 @@ export function createPushNotificationsPlugin(
         body: "You’ll be notified when a thread needs your attention.",
         threadId: null,
         channels: [channel],
+        targetClientId: null,
       } satisfies ClientNotification);
       return { ok: true as const };
     }
@@ -261,6 +311,7 @@ export function createPushNotificationsPlugin(
           ok: true as const,
           channels: await sender.send(input, context.experimental_caller),
         }),
+        "notifications.devices": async () => ({ devices: await listDevices() }),
       },
       {
         experimental_discoverable: true,
@@ -270,6 +321,15 @@ export function createPushNotificationsPlugin(
     );
 
     bb.rpc.register(pushNotificationsRpcContract, {
+      "clients.register": async (input, context) => {
+        const caller = context.experimental_caller;
+        const clientId =
+          caller.kind === "client"
+            ? (caller.experimental_clientId ?? null)
+            : null;
+        if (clientId !== null) await clients.register(clientId, input);
+        return { clientId };
+      },
       "notifications.test": ({ channel }) => sendTest(channel),
       "pushSubscriptions.list": async () => ({
         subscriptions: await subscriptions.listSummaries(),
@@ -344,9 +404,25 @@ export function createPushNotificationsPlugin(
               };
             },
           }),
+          devices: cliCommand({
+            summary: "List devices a notification can target",
+            description:
+              "Registered phones and tablets, and the browsers and desktop apps that allowed notifications. Pass an id to `send --device`.",
+            options: { json: JSON_OPTION },
+            async run(input) {
+              const devices = await listDevices();
+              return {
+                exitCode: 0,
+                stdout: input.options.json
+                  ? JSON.stringify({ devices })
+                  : formatDevices(devices),
+              };
+            },
+          }),
           send: cliCommand({
-            summary: "Send a notification to every enabled channel",
-            description: `Uses the same delivery as thread notifications: connected web and desktop clients with permission, and every registered mobile device. The title is cut to ${NOTIFICATION_TITLE_MAX_LENGTH} characters and the body to ${NOTIFICATION_BODY_MAX_LENGTH}. With --thread, a click opens that thread; otherwise it opens bb.`,
+            summary:
+              "Send a notification to every enabled channel or one device",
+            description: `Without --device it reaches connected web and desktop clients with permission and every registered mobile device. With --device, only that device, by an id from \`bb push-notifications devices\`. The title is cut to ${NOTIFICATION_TITLE_MAX_LENGTH} characters and the body to ${NOTIFICATION_BODY_MAX_LENGTH}. With --thread, a click opens that thread; otherwise it opens bb.`,
             options: {
               title: {
                 type: "string",
@@ -364,6 +440,12 @@ export function createPushNotificationsPlugin(
                 placeholder: "thread-id",
                 description: "Thread to open when the notification is clicked",
               },
+              device: {
+                type: "string",
+                placeholder: "device-id",
+                description:
+                  "Send only to this device, an id from `bb push-notifications devices`",
+              },
               json: JSON_OPTION,
             },
             async run(input) {
@@ -375,6 +457,9 @@ export function createPushNotificationsPlugin(
                 ...(input.options.thread === undefined
                   ? {}
                   : { threadId: input.options.thread }),
+                ...(input.options.device === undefined
+                  ? {}
+                  : { deviceId: input.options.device }),
               });
               if (!parsed.success) {
                 throw new PluginCliError(
@@ -393,10 +478,15 @@ export function createPushNotificationsPlugin(
                   error.message,
                   error.code === "thread_not_found"
                     ? { code: error.code }
-                    : {
-                        code: error.code,
-                        hint: "Check the push-sender service in `bb plugin list`.",
-                      },
+                    : error.code === "device_not_found"
+                      ? {
+                          code: error.code,
+                          hint: "Run `bb push-notifications devices` for the ids.",
+                        }
+                      : {
+                          code: error.code,
+                          hint: "Check the push-sender service in `bb plugin list`.",
+                        },
                 );
               }
               if (channels.length === 0) {
@@ -562,6 +652,20 @@ export function createPushNotificationsPlugin(
       }),
     );
 
+    bb.events.on(
+      "thread.created",
+      async ({ thread, experimental_clientId }) => {
+        const origin =
+          experimental_clientId ??
+          (thread.parentThreadId === null
+            ? null
+            : await clients.getThreadOrigin(thread.parentThreadId));
+        if (origin !== null) await clients.setThreadOrigin(thread.id, origin);
+      },
+    );
+    bb.events.on("thread.deleted", ({ thread }) =>
+      clients.forgetThread(thread.id),
+    );
     bb.events.on("interaction.pending", (payload) => {
       sender.onInteractionPending(payload);
     });

@@ -21,6 +21,7 @@ const message = {
   body: "Ready",
   threadId: "thread-1",
   channels: ["web"],
+  targetClientId: null,
 };
 
 function stubLocks() {
@@ -248,6 +249,25 @@ describe("client system notifications", () => {
     await delivery.deliver({ ...message, channels: ["desktop"] }, true);
     expect(TestNotification.instances).toHaveLength(1);
     delivery.dispose();
+  });
+
+  it("shows a notification aimed at one client only on that client", async () => {
+    const mine = createClientDelivery(
+      vi.fn(),
+      () => null,
+      () => "laptop",
+    );
+    const other = createClientDelivery(
+      vi.fn(),
+      () => null,
+      () => "desk",
+    );
+    await other.deliver({ ...message, targetClientId: "laptop" }, true);
+    expect(TestNotification.instances).toHaveLength(0);
+    await mine.deliver({ ...message, targetClientId: "laptop" }, true);
+    expect(TestNotification.instances).toHaveLength(1);
+    mine.dispose();
+    other.dispose();
   });
 
   it("does not deliver in the mobile WebView and survives unavailable storage", async () => {
