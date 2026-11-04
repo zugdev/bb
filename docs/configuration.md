@@ -1158,6 +1158,10 @@ per-device permission; the plugin's settings page offers permission and test
 controls. See the `push-notifications` skill for levels, devices, and
 `bb push-notifications test|thread`.
 
+### Provider usage
+
+The builtin Provider usage plugin's `resetNotifications` boolean (default `true`) sends a notification through Push notifications when a usage window that reached 90% resets. It checks every 5 minutes. Turn it off with `bb plugin config bb--provider-usage set resetNotifications false`. See `plugins/provider-usage/README.md`.
+
 ### Storage & retention
 
 The bundled Storage & retention plugin is disabled by default
