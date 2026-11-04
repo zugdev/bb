@@ -117,7 +117,7 @@ const selections = [
   {
     field: "environment",
     key: "bb.promptbox.environment-project-a-1",
-    initial: "provider:project-checkout",
+    initial: "provider:personal-workspace",
     remote: "provider:git-worktree",
   },
 ] as const;
@@ -186,7 +186,7 @@ describe("tab-local composer selections", () => {
     expect(result.current.model.value).toBe("model-a");
     expect(result.current.reasoning.value).toBe("high");
     expect(result.current.serviceTier.value).toBe("fast");
-    expect(result.current.environment.value).toBe("provider:project-checkout");
+    expect(result.current.environment.value).toBe("provider:personal-workspace");
     expect(result.current.machine.value).toBe("host-a");
     act(() => result.current.provider.setValue("claude-code"));
     rerender({ projectId: "project-b" });
@@ -195,5 +195,39 @@ describe("tab-local composer selections", () => {
     expect(result.current.serviceTier.value).toBe("default");
     expect(result.current.environment.value).toBe("provider:git-worktree");
     expect(result.current.machine.value).toBe("host-b");
+  });
+});
+
+describe("project environment preference", () => {
+  function renderEnvironment(projectId: string) {
+    const store = createStore();
+    const wrapper = ({ children }: { children: ReactNode }) => (
+      <Provider store={store}>{children}</Provider>
+    );
+    return renderHook(() => usePromptBoxEnvironmentPreference(projectId), {
+      wrapper,
+    });
+  }
+
+  it("forgets a stored project checkout pick on load so the project default applies", () => {
+    window.localStorage.setItem(
+      "bb.promptbox.environment-checkout-project-1",
+      "provider:project-checkout",
+    );
+    expect(renderEnvironment("checkout-project").result.current.value).toBe("");
+  });
+
+  it("keeps other stored picks and a checkout pick made in this session", () => {
+    window.localStorage.setItem(
+      "bb.promptbox.environment-worktree-project-1",
+      "provider:git-worktree",
+    );
+    expect(renderEnvironment("worktree-project").result.current.value).toBe(
+      "provider:git-worktree",
+    );
+
+    const { result } = renderEnvironment("session-project");
+    act(() => result.current.setValue("provider:project-checkout"));
+    expect(result.current.value).toBe("provider:project-checkout");
   });
 });
