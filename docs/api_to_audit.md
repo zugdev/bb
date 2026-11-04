@@ -3835,6 +3835,20 @@ Audit pinned groups, custom sections, project/machine groups, route
 transitions, draft recovery, and third-party sidebar compatibility before
 stabilizing this option.
 
+## Opening a thread in a pane tab
+
+`BbNavigate.toThread(threadId, { experimental_tab: true })` opens the thread
+in a new pane tab after the active one, or focuses the tab and pane that
+already show it, then replaces the route with the thread's. It takes
+precedence over `split` and falls back to plain navigation on compact
+viewports. Core's Home view opens threads through the same `openThreadInTab`
+helper in `apps/app/src/lib/split-layout/tabs.ts`; the Thread List plugin
+requests it on Cmd/Ctrl-click.
+
+Audit whether tab placement needs options (background tab, position) and
+whether `split` and `experimental_tab` should merge into one `target` option,
+as `experimental_useNavigationActions` already does, before stabilizing.
+
 ## Provider discovery metadata
 
 `package.json` → `bb.experimental_providers` statically declares

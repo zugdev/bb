@@ -1,16 +1,21 @@
 import {
   createContext,
-  useCallback,
   useContext,
   useLayoutEffect,
+  useMemo,
   useRef,
   type ReactNode,
 } from "react";
 import { useBbNavigate } from "@get-bb/plugin-sdk/app";
 
-const OpenThreadInSplitContext = createContext<
-  ((threadId: string) => void) | null
->(null);
+interface ThreadRowNavigation {
+  openInSplit(threadId: string): void;
+  openInTab(threadId: string): void;
+}
+
+const ThreadRowNavigationContext = createContext<ThreadRowNavigation | null>(
+  null,
+);
 
 export function ThreadRowNavigationProvider({
   children,
@@ -22,22 +27,28 @@ export function ThreadRowNavigationProvider({
   useLayoutEffect(() => {
     latest.current = navigate;
   });
-  const openInSplit = useCallback((threadId: string) => {
-    latest.current.toThread(threadId, { split: true });
-  }, []);
+  const value = useMemo<ThreadRowNavigation>(
+    () => ({
+      openInSplit: (threadId) =>
+        latest.current.toThread(threadId, { split: true }),
+      openInTab: (threadId) =>
+        latest.current.toThread(threadId, { experimental_tab: true }),
+    }),
+    [],
+  );
   return (
-    <OpenThreadInSplitContext.Provider value={openInSplit}>
+    <ThreadRowNavigationContext.Provider value={value}>
       {children}
-    </OpenThreadInSplitContext.Provider>
+    </ThreadRowNavigationContext.Provider>
   );
 }
 
-export function useOpenThreadInSplit(): (threadId: string) => void {
-  const openInSplit = useContext(OpenThreadInSplitContext);
-  if (openInSplit === null) {
+export function useThreadRowNavigation(): ThreadRowNavigation {
+  const value = useContext(ThreadRowNavigationContext);
+  if (value === null) {
     throw new Error(
-      "useOpenThreadInSplit must be used within a <ThreadRowNavigationProvider>",
+      "useThreadRowNavigation must be used within a <ThreadRowNavigationProvider>",
     );
   }
-  return openInSplit;
+  return value;
 }

@@ -1,8 +1,9 @@
-import { atom, type Setter } from "jotai";
+import { atom, type Setter, type useStore } from "jotai";
 import { atomWithStorage } from "jotai/utils";
 import { z } from "zod";
 import { createTabScopedStorage } from "@/lib/browser-storage";
 import { rootComposeProjectIdAtom } from "@/lib/root-compose-selection";
+import { getThreadRoutePath } from "@/lib/route-paths";
 import { maximizedPaneIdAtom, splitLayoutAtom } from "./atoms";
 import {
   countPanes,
@@ -252,6 +253,15 @@ export const openThreadInTabAtom = atom(
     return next === null ? null : activateTabLayout(set, next, layout);
   },
 );
+
+export function openThreadInTab(
+  store: ReturnType<typeof useStore>,
+  navigate: (route: string, options: { replace: true }) => void,
+  thread: ThreadRef,
+): void {
+  store.set(openThreadInTabAtom, thread);
+  navigate(getThreadRoutePath(thread), { replace: true });
+}
 
 export const focusThreadInOtherTabAtom = atom(
   null,
