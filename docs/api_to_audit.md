@@ -2449,7 +2449,7 @@ Docs: `frontend-core-slots.md`.
 
 ## `app.slots.experimental_threadHeaderLeading` (`@get-bb/plugin-sdk/app`)
 
-Renders a plugin component before the thread title in every open thread's header, including each split pane's, with `threadId` and `isNarrow` props. `experimental_openThreadInPane({ id, projectId })` opens a thread in that header's pane, or focuses the split pane that already shows it; `useBbNavigate().toThread` opens a thread beside a split instead, so a plugin has no other way to replace the pane it sits in. `isNarrow` is true at compact width and in split panes narrower than 560px, the same rule that folds `placement: "header"` thread actions into the thread menu. A crash hides only that component, and a component that renders nothing leaves no gap before the title.
+Renders a plugin component before the thread title in every open thread's header, including each split pane's, with `threadId` and `isNarrow` props. A component that wants to open a thread in its own pane calls `useBbNavigate().toThread(id, { experimental_inPane: true })` (see "Opening a thread in the caller's pane"). `isNarrow` is true at compact width and in split panes narrower than 560px, the same rule that folds `placement: "header"` thread actions into the thread menu. A crash hides only that component, and a component that renders nothing leaves no gap before the title.
 
 Core caller: `ThreadDetailHeader` through `PluginThreadHeaderLeading`. First plugin: `plugins/parent-link` (fork), which draws the parent thread link and pairs it with a `placement: "header"` thread action for narrow headers.
 
@@ -2458,8 +2458,7 @@ Core caller: `ThreadDetailHeader` through `PluginThreadHeaderLeading`. First plu
 1. **Name and boundary.** Decide whether "leading" content stays limited to breadcrumbs and badges, or whether bb should own a breadcrumb primitive instead of arbitrary components.
 2. **Narrow state.** `isNarrow` mirrors one header rule. Decide whether the thread action item input should get the same flag, which would let a plugin pair a header link with a narrow menu row without its own shared state.
 3. **Width budget.** Several plugins can register; nothing caps their total width against the title.
-4. **Pane navigation.** `experimental_openThreadInPane` is the rule `ThreadDetailHeader` used for the parent link before it moved. Decide whether it belongs on `BbNavigate` as a `toThread` option for every slot rendered inside a pane, and whether focusing the other pane should also move core's focused pane (today the URL moves and the layout keeps the clicked pane focused).
-5. **Other headers.** Side chats and thread panel tab panes have no `ThreadDetailHeader`; decide whether they should render the slot.
+4. **Other headers.** Side chats and thread panel tab panes have no `ThreadDetailHeader`; decide whether they should render the slot.
 
 ## `app.slots.experimental_newThreadPanelAction` (`@get-bb/plugin-sdk/app`)
 
@@ -3892,6 +3891,18 @@ requests it on Cmd/Ctrl-click.
 Audit whether tab placement needs options (background tab, position) and
 whether `split` and `experimental_tab` should merge into one `target` option,
 as `experimental_useNavigationActions` already does, before stabilizing.
+
+## Opening a thread in the caller's pane
+
+`BbNavigate.toThread(threadId, { experimental_inPane: true })`, called from a component rendered inside a pane, replaces that pane's thread through the pane's `navigateInPane`. When another split pane already shows the thread it navigates to the thread's route instead, so that pane is reused and the thread never shows twice. Without a pane, for example from a thread action's `item` input, it navigates as without options. Plain `toThread` in a split opens the thread beside the split, so a component inside a pane has no other way to replace its own pane.
+
+Core caller: `useBbNavigate` in `apps/app/src/lib/plugin-navigation-hooks.ts`, which took the rule from the parent link `ThreadDetailHeader` used to draw. First plugin: `plugins/parent-link` (fork).
+
+**Audit before stabilizing.**
+
+1. **Focus.** When another pane shows the thread, the URL moves to it but the split layout keeps the clicked pane focused, because the click's pointerdown focuses the clicked pane first. Decide whether the option should set the focused pane itself.
+2. **Options shape.** Decide whether `split`, `experimental_tab` and `experimental_inPane` should merge into one `target` option.
+3. **Core use.** Core's own header controls don't call `useBbNavigate`; decide whether the timeline's thread links should route through this option.
 
 ## Provider discovery metadata
 

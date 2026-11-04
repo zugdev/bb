@@ -973,10 +973,10 @@ describe("ThreadDetailHeader", () => {
       );
     }
 
-    function renderHeader(navigateInPane = vi.fn()) {
+    function renderHeader() {
       render(
         <MemoryRouter>
-          <PaneContext.Provider value={{ ...PANE_CONTEXT, navigateInPane }}>
+          <PaneContext.Provider value={PANE_CONTEXT}>
             <ThreadDetailHeader
               actionsMenu={null}
               isSecondaryPanelOpen={false}
@@ -987,32 +987,7 @@ describe("ThreadDetailHeader", () => {
           </PaneContext.Provider>
         </MemoryRouter>,
       );
-      return navigateInPane;
     }
-
-    it("opens a thread in the header's pane", () => {
-      registerLeading((props) => (
-        <button
-          type="button"
-          onClick={() =>
-            props.experimental_openThreadInPane({
-              id: "thr_parent",
-              projectId: "proj_header",
-            })
-          }
-        >
-          Parent
-        </button>
-      ));
-      const navigateInPane = renderHeader();
-
-      fireEvent.click(screen.getByRole("button", { name: "Parent" }));
-
-      expect(navigateInPane).toHaveBeenCalledWith({
-        projectId: "proj_header",
-        threadId: "thr_parent",
-      });
-    });
 
     it.each([
       { isCompactViewport: false, isNarrow: "false" },

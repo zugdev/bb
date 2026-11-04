@@ -76,13 +76,11 @@ function renderLink(
   isNarrow = false,
   threadId = CHILD.id,
 ) {
-  const openThreadInPane = vi.fn();
-  const slot = renderSlot(
+  return renderSlot(
     { component: ParentThreadLink },
-    { threadId, isNarrow, experimental_openThreadInPane: openThreadInPane },
+    { threadId, isNarrow },
     { sidebarThreads: { status: "ready", threads } },
   );
-  return { slot, openThreadInPane };
 }
 
 afterEach(() => {
@@ -91,28 +89,29 @@ afterEach(() => {
 
 describe("ParentThreadLink", () => {
   it("opens the parent in the header's pane on click", () => {
-    const { slot, openThreadInPane } = renderLink([PARENT, CHILD]);
+    const slot = renderLink([PARENT, CHILD]);
 
     fireEvent.click(screen.getByRole("link", { name: /Orchestrator/ }));
 
-    expect(openThreadInPane).toHaveBeenCalledWith({
-      id: "thr_parent",
-      projectId: "proj_a",
-    });
-    expect(slot.navigateCalls).toEqual([]);
+    expect(slot.navigateCalls).toEqual([
+      {
+        method: "toThread",
+        threadId: "thr_parent",
+        options: { experimental_inPane: true },
+      },
+    ]);
   });
 
   it.each([{ metaKey: true }, { ctrlKey: true }])(
     "opens the parent in a new tab on %o click",
     (modifier) => {
-      const { slot, openThreadInPane } = renderLink([PARENT, CHILD]);
+      const slot = renderLink([PARENT, CHILD]);
 
       fireEvent.click(
         screen.getByRole("link", { name: /Orchestrator/ }),
         modifier,
       );
 
-      expect(openThreadInPane).not.toHaveBeenCalled();
       expect(slot.navigateCalls).toEqual([
         {
           method: "toThread",
@@ -148,6 +147,13 @@ describe("ParentThreadLink", () => {
 });
 
 describe("findParentLink", () => {
+  it("keeps the link on an archived child", () => {
+    expect(
+      findParentLink([PARENT, { ...CHILD, isArchived: true }], CHILD.id)
+        ?.threadId,
+    ).toBe("thr_parent");
+  });
+
   it("hides archived parents", () => {
     expect(
       findParentLink([{ ...PARENT, isArchived: true }, CHILD], CHILD.id),
@@ -211,16 +217,17 @@ describe("Go to parent header action", () => {
 
   it("opens the parent from the narrow header menu", async () => {
     const action = await headerAction();
-    const openThreadInPane = vi.fn();
-    const release = markHeaderNarrow(CHILD.id, openThreadInPane);
+    const toThread = vi.fn();
+    const release = markHeaderNarrow(CHILD.id, {
+      toThread,
+    } as unknown as BbNavigate);
     const item = action.item(itemInput(getNarrowHeaders()));
     release();
 
     expect(item?.label).toBe("Go to parent: Orchestrator");
     void item?.run({} as never);
-    expect(openThreadInPane).toHaveBeenCalledWith({
-      id: "thr_parent",
-      projectId: "proj_a",
+    expect(toThread).toHaveBeenCalledWith("thr_parent", {
+      experimental_inPane: true,
     });
   });
 });

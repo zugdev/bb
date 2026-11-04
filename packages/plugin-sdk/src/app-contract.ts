@@ -869,15 +869,6 @@ export interface ExperimentalThreadHeaderLeadingProps {
    * that menu only while this is true.
    */
   isNarrow: boolean;
-  /**
-   * Open a thread in this header's pane, or focus the split pane that
-   * already shows it. `useBbNavigate().toThread` would open it beside a
-   * split instead.
-   */
-  experimental_openThreadInPane(thread: {
-    id: string;
-    projectId: string;
-  }): void;
 }
 
 /**
@@ -5266,10 +5257,18 @@ export interface BbNavigate {
    * `experimental_tab: true` opens it in a new pane tab, or focuses the tab
    * that already shows it, and falls back to plain navigation where tabs are
    * off. It takes precedence over `split`.
+   * `experimental_inPane: true` from a component rendered inside a pane, such
+   * as an `experimental_threadHeaderLeading` component, replaces that pane's
+   * thread, or focuses the split pane that already shows the thread. Outside
+   * a pane it navigates as without options.
    */
   toThread(
     threadId: string,
-    options?: { split?: boolean; experimental_tab?: boolean },
+    options?: {
+      split?: boolean;
+      experimental_tab?: boolean;
+      experimental_inPane?: boolean;
+    },
   ): void;
   toProject(projectId: string): void;
   /**

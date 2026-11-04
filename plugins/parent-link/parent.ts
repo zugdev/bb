@@ -1,11 +1,11 @@
-import type {
-  ExperimentalThreadHeaderLeadingProps,
-  PluginSidebarThread,
-} from "@get-bb/plugin-sdk/app";
+import type { BbNavigate, PluginSidebarThread } from "@get-bb/plugin-sdk/app";
+
+export const SIDEBAR_THREAD_OPTIONS = {
+  experimental_lifecycles: ["active", "archived"],
+} as const;
 
 export interface ParentLink {
   threadId: string;
-  projectId: string;
   displayTitle: string;
   href: string;
   relationship: "parent" | "fork";
@@ -33,7 +33,6 @@ export function findParentLink(
   }
   return {
     threadId: related.id,
-    projectId: related.projectId,
     displayTitle: related.displayTitle,
     href: related.href,
     relationship,
@@ -45,24 +44,25 @@ export function parentMenuLabel(link: ParentLink): string {
   return `Go to ${target}: ${link.displayTitle}`;
 }
 
-export type OpenThreadInPane =
-  ExperimentalThreadHeaderLeadingProps["experimental_openThreadInPane"];
+export function openParentInPane(navigate: BbNavigate, link: ParentLink): void {
+  navigate.toThread(link.threadId, { experimental_inPane: true });
+}
 
-let narrowHeaders: ReadonlyMap<string, OpenThreadInPane> = new Map();
+let narrowHeaders: ReadonlyMap<string, BbNavigate> = new Map();
 const listeners = new Set<() => void>();
 
-function publish(next: ReadonlyMap<string, OpenThreadInPane>): void {
+function publish(next: ReadonlyMap<string, BbNavigate>): void {
   narrowHeaders = next;
   for (const listener of listeners) listener();
 }
 
 export function markHeaderNarrow(
   threadId: string,
-  openThreadInPane: OpenThreadInPane,
+  navigate: BbNavigate,
 ): () => void {
-  publish(new Map([...narrowHeaders, [threadId, openThreadInPane]]));
+  publish(new Map([...narrowHeaders, [threadId, navigate]]));
   return () => {
-    if (narrowHeaders.get(threadId) !== openThreadInPane) return;
+    if (narrowHeaders.get(threadId) !== navigate) return;
     const next = new Map(narrowHeaders);
     next.delete(threadId);
     publish(next);
@@ -76,6 +76,6 @@ export function subscribeNarrowHeaders(listener: () => void): () => void {
   };
 }
 
-export function getNarrowHeaders(): ReadonlyMap<string, OpenThreadInPane> {
+export function getNarrowHeaders(): ReadonlyMap<string, BbNavigate> {
   return narrowHeaders;
 }

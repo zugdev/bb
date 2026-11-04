@@ -1,58 +1,18 @@
-import { useCallback } from "react";
-import { useStore } from "jotai";
-import { useNavigate } from "react-router-dom";
 import { cn } from "@bb/shared-ui/lib/utils";
-import {
-  usePluginSlots,
-  type ExperimentalThreadHeaderLeadingSlot,
-} from "@/lib/plugin-slots";
-import { findPaneByThread } from "@/lib/split-layout";
-import { splitLayoutAtom } from "@/lib/split-layout/atoms";
-import { getThreadRoutePath } from "@/lib/route-paths";
-import { usePaneContext } from "@/views/thread-detail/PaneContext";
+import { usePluginSlots } from "@/lib/plugin-slots";
 import { PluginSlotMount } from "./PluginSlotMount";
 
-interface PluginThreadHeaderLeadingProps {
-  threadId: string;
-  isNarrow: boolean;
-  className?: string;
-}
-
-export function PluginThreadHeaderLeading(
-  props: PluginThreadHeaderLeadingProps,
-) {
-  const { threadHeaderLeadings } = usePluginSlots();
-  if (threadHeaderLeadings.length === 0) return null;
-  return <LeadingSlots {...props} slots={threadHeaderLeadings} />;
-}
-
-function LeadingSlots({
+export function PluginThreadHeaderLeading({
   threadId,
   isNarrow,
   className,
-  slots,
-}: PluginThreadHeaderLeadingProps & {
-  slots: readonly ExperimentalThreadHeaderLeadingSlot[];
+}: {
+  threadId: string;
+  isNarrow: boolean;
+  className?: string;
 }) {
-  const { navigateInPane } = usePaneContext();
-  const store = useStore();
-  const navigate = useNavigate();
-  const openThreadInPane = useCallback(
-    (thread: { id: string; projectId: string }) => {
-      const target = { projectId: thread.projectId, threadId: thread.id };
-      const layout = store.get(splitLayoutAtom);
-      if (
-        layout !== null &&
-        findPaneByThread(layout.root, target.projectId, target.threadId) !==
-          null
-      ) {
-        void navigate(getThreadRoutePath(target));
-        return;
-      }
-      navigateInPane(target);
-    },
-    [navigate, navigateInPane, store],
-  );
+  const { threadHeaderLeadings } = usePluginSlots();
+  if (threadHeaderLeadings.length === 0) return null;
   return (
     <div
       data-thread-header-leading=""
@@ -61,7 +21,7 @@ function LeadingSlots({
         className,
       )}
     >
-      {slots.map((slot) => {
+      {threadHeaderLeadings.map((slot) => {
         const Component = slot.component;
         return (
           <PluginSlotMount
@@ -72,11 +32,7 @@ function LeadingSlots({
             instanceId={threadId}
             crashFallback={null}
           >
-            <Component
-              threadId={threadId}
-              isNarrow={isNarrow}
-              experimental_openThreadInPane={openThreadInPane}
-            />
+            <Component threadId={threadId} isNarrow={isNarrow} />
           </PluginSlotMount>
         );
       })}

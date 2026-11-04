@@ -15,21 +15,22 @@ import {
   findParentLink,
   getNarrowHeaders,
   markHeaderNarrow,
+  openParentInPane,
   parentMenuLabel,
+  SIDEBAR_THREAD_OPTIONS,
   subscribeNarrowHeaders,
 } from "./parent.js";
 
 export function ParentThreadLink({
   threadId,
   isNarrow,
-  experimental_openThreadInPane: openThreadInPane,
 }: ExperimentalThreadHeaderLeadingProps) {
-  useEffect(
-    () => (isNarrow ? markHeaderNarrow(threadId, openThreadInPane) : undefined),
-    [isNarrow, openThreadInPane, threadId],
-  );
-  const { threads } = experimental_useSidebarThreads();
   const navigate = useBbNavigate();
+  useEffect(
+    () => (isNarrow ? markHeaderNarrow(threadId, navigate) : undefined),
+    [isNarrow, navigate, threadId],
+  );
+  const { threads } = experimental_useSidebarThreads(SIDEBAR_THREAD_OPTIONS);
   const link = useMemo(
     () => findParentLink(threads, threadId),
     [threads, threadId],
@@ -43,7 +44,7 @@ export function ParentThreadLink({
       navigate.toThread(link.threadId, { experimental_tab: true });
       return;
     }
-    openThreadInPane({ id: link.threadId, projectId: link.projectId });
+    openParentInPane(navigate, link);
   };
   return (
     <a
@@ -66,7 +67,7 @@ export function ParentThreadLink({
 }
 
 function useMenuData() {
-  const { threads } = experimental_useSidebarThreads();
+  const { threads } = experimental_useSidebarThreads(SIDEBAR_THREAD_OPTIONS);
   const narrowHeaders = useSyncExternalStore(
     subscribeNarrowHeaders,
     getNarrowHeaders,
@@ -87,14 +88,13 @@ export default definePluginApp((app) => {
     placement: "header",
     useData: useMenuData,
     item: ({ thread, data }) => {
-      const openThreadInPane = data.narrowHeaders.get(thread.id);
+      const headerNavigate = data.narrowHeaders.get(thread.id);
       const link = findParentLink(data.threads, thread.id);
-      if (openThreadInPane === undefined || link === null) return null;
+      if (headerNavigate === undefined || link === null) return null;
       return {
         icon: "ChevronLeft",
         label: parentMenuLabel(link),
-        run: () =>
-          openThreadInPane({ id: link.threadId, projectId: link.projectId }),
+        run: () => openParentInPane(headerNavigate, link),
       };
     },
   });
