@@ -1,7 +1,11 @@
-import type { PluginSidebarThread } from "@get-bb/plugin-sdk/app";
+import type {
+  ExperimentalThreadHeaderLeadingProps,
+  PluginSidebarThread,
+} from "@get-bb/plugin-sdk/app";
 
 export interface ParentLink {
   threadId: string;
+  projectId: string;
   displayTitle: string;
   href: string;
   relationship: "parent" | "fork";
@@ -29,6 +33,7 @@ export function findParentLink(
   }
   return {
     threadId: related.id,
+    projectId: related.projectId,
     displayTitle: related.displayTitle,
     href: related.href,
     relationship,
@@ -40,30 +45,37 @@ export function parentMenuLabel(link: ParentLink): string {
   return `Go to ${target}: ${link.displayTitle}`;
 }
 
-let narrowThreadIds: ReadonlySet<string> = new Set();
+export type OpenThreadInPane =
+  ExperimentalThreadHeaderLeadingProps["experimental_openThreadInPane"];
+
+let narrowHeaders: ReadonlyMap<string, OpenThreadInPane> = new Map();
 const listeners = new Set<() => void>();
 
-function publish(next: ReadonlySet<string>): void {
-  narrowThreadIds = next;
+function publish(next: ReadonlyMap<string, OpenThreadInPane>): void {
+  narrowHeaders = next;
   for (const listener of listeners) listener();
 }
 
-export function markHeaderNarrow(threadId: string): () => void {
-  publish(new Set([...narrowThreadIds, threadId]));
+export function markHeaderNarrow(
+  threadId: string,
+  openThreadInPane: OpenThreadInPane,
+): () => void {
+  publish(new Map([...narrowHeaders, [threadId, openThreadInPane]]));
   return () => {
-    const next = new Set(narrowThreadIds);
+    if (narrowHeaders.get(threadId) !== openThreadInPane) return;
+    const next = new Map(narrowHeaders);
     next.delete(threadId);
     publish(next);
   };
 }
 
-export function subscribeNarrowThreadIds(listener: () => void): () => void {
+export function subscribeNarrowHeaders(listener: () => void): () => void {
   listeners.add(listener);
   return () => {
     listeners.delete(listener);
   };
 }
 
-export function getNarrowThreadIds(): ReadonlySet<string> {
-  return narrowThreadIds;
+export function getNarrowHeaders(): ReadonlyMap<string, OpenThreadInPane> {
+  return narrowHeaders;
 }

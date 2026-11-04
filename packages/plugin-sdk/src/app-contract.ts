@@ -869,6 +869,15 @@ export interface ExperimentalThreadHeaderLeadingProps {
    * that menu only while this is true.
    */
   isNarrow: boolean;
+  /**
+   * Open a thread in this header's pane, or focus the split pane that
+   * already shows it. `useBbNavigate().toThread` would open it beside a
+   * split instead.
+   */
+  experimental_openThreadInPane(thread: {
+    id: string;
+    projectId: string;
+  }): void;
 }
 
 /**

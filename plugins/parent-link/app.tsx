@@ -1,4 +1,9 @@
-import { useEffect, useMemo, useSyncExternalStore, type MouseEvent } from "react";
+import {
+  useEffect,
+  useMemo,
+  useSyncExternalStore,
+  type MouseEvent,
+} from "react";
 import {
   definePluginApp,
   experimental_useSidebarThreads,
@@ -8,19 +13,20 @@ import {
 } from "@get-bb/plugin-sdk/app";
 import {
   findParentLink,
-  getNarrowThreadIds,
+  getNarrowHeaders,
   markHeaderNarrow,
   parentMenuLabel,
-  subscribeNarrowThreadIds,
+  subscribeNarrowHeaders,
 } from "./parent.js";
 
 export function ParentThreadLink({
   threadId,
   isNarrow,
+  experimental_openThreadInPane: openThreadInPane,
 }: ExperimentalThreadHeaderLeadingProps) {
   useEffect(
-    () => (isNarrow ? markHeaderNarrow(threadId) : undefined),
-    [isNarrow, threadId],
+    () => (isNarrow ? markHeaderNarrow(threadId, openThreadInPane) : undefined),
+    [isNarrow, openThreadInPane, threadId],
   );
   const { threads } = experimental_useSidebarThreads();
   const navigate = useBbNavigate();
@@ -33,10 +39,11 @@ export function ParentThreadLink({
   const handleClick = (event: MouseEvent<HTMLAnchorElement>) => {
     if (event.button !== 0 || event.shiftKey || event.altKey) return;
     event.preventDefault();
-    navigate.toThread(
-      link.threadId,
-      event.metaKey || event.ctrlKey ? { experimental_tab: true } : undefined,
-    );
+    if (event.metaKey || event.ctrlKey) {
+      navigate.toThread(link.threadId, { experimental_tab: true });
+      return;
+    }
+    openThreadInPane({ id: link.threadId, projectId: link.projectId });
   };
   return (
     <a
@@ -60,11 +67,11 @@ export function ParentThreadLink({
 
 function useMenuData() {
   const { threads } = experimental_useSidebarThreads();
-  const narrowThreadIds = useSyncExternalStore(
-    subscribeNarrowThreadIds,
-    getNarrowThreadIds,
+  const narrowHeaders = useSyncExternalStore(
+    subscribeNarrowHeaders,
+    getNarrowHeaders,
   );
-  return { threads, narrowThreadIds };
+  return { threads, narrowHeaders };
 }
 
 export default definePluginApp((app) => {
@@ -79,14 +86,15 @@ export default definePluginApp((app) => {
     group: "0_parent-link",
     placement: "header",
     useData: useMenuData,
-    item: ({ thread, data, navigate }) => {
-      if (!data.narrowThreadIds.has(thread.id)) return null;
+    item: ({ thread, data }) => {
+      const openThreadInPane = data.narrowHeaders.get(thread.id);
       const link = findParentLink(data.threads, thread.id);
-      if (link === null) return null;
+      if (openThreadInPane === undefined || link === null) return null;
       return {
         icon: "ChevronLeft",
         label: parentMenuLabel(link),
-        run: () => navigate.toThread(link.threadId),
+        run: () =>
+          openThreadInPane({ id: link.threadId, projectId: link.projectId }),
       };
     },
   });

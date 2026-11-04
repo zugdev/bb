@@ -11,7 +11,11 @@ import type {
 } from "@get-bb/plugin-sdk/app";
 import { loadPluginApp, renderSlot } from "@get-bb/plugin-sdk/testing/app";
 import { ParentThreadLink } from "./app.js";
-import { findParentLink, getNarrowThreadIds, markHeaderNarrow } from "./parent.js";
+import {
+  findParentLink,
+  getNarrowHeaders,
+  markHeaderNarrow,
+} from "./parent.js";
 
 function sidebarThread(
   overrides: Partial<PluginSidebarThread> & { id: string },
@@ -72,11 +76,13 @@ function renderLink(
   isNarrow = false,
   threadId = CHILD.id,
 ) {
-  return renderSlot(
+  const openThreadInPane = vi.fn();
+  const slot = renderSlot(
     { component: ParentThreadLink },
-    { threadId, isNarrow },
+    { threadId, isNarrow, experimental_openThreadInPane: openThreadInPane },
     { sidebarThreads: { status: "ready", threads } },
   );
+  return { slot, openThreadInPane };
 }
 
 afterEach(() => {
@@ -84,23 +90,29 @@ afterEach(() => {
 });
 
 describe("ParentThreadLink", () => {
-  it("opens the parent in place on click", () => {
-    const slot = renderLink([PARENT, CHILD]);
+  it("opens the parent in the header's pane on click", () => {
+    const { slot, openThreadInPane } = renderLink([PARENT, CHILD]);
 
     fireEvent.click(screen.getByRole("link", { name: /Orchestrator/ }));
 
-    expect(slot.navigateCalls).toEqual([
-      { method: "toThread", threadId: "thr_parent", options: undefined },
-    ]);
+    expect(openThreadInPane).toHaveBeenCalledWith({
+      id: "thr_parent",
+      projectId: "proj_a",
+    });
+    expect(slot.navigateCalls).toEqual([]);
   });
 
   it.each([{ metaKey: true }, { ctrlKey: true }])(
     "opens the parent in a new tab on %o click",
     (modifier) => {
-      const slot = renderLink([PARENT, CHILD]);
+      const { slot, openThreadInPane } = renderLink([PARENT, CHILD]);
 
-      fireEvent.click(screen.getByRole("link", { name: /Orchestrator/ }), modifier);
+      fireEvent.click(
+        screen.getByRole("link", { name: /Orchestrator/ }),
+        modifier,
+      );
 
+      expect(openThreadInPane).not.toHaveBeenCalled();
       expect(slot.navigateCalls).toEqual([
         {
           method: "toThread",
@@ -129,9 +141,9 @@ describe("ParentThreadLink", () => {
     renderLink([PARENT, CHILD], true);
 
     expect(screen.queryByRole("link")).toBeNull();
-    expect(getNarrowThreadIds().has(CHILD.id)).toBe(true);
+    expect(getNarrowHeaders().has(CHILD.id)).toBe(true);
     cleanup();
-    expect(getNarrowThreadIds().has(CHILD.id)).toBe(false);
+    expect(getNarrowHeaders().has(CHILD.id)).toBe(false);
   });
 });
 
@@ -168,8 +180,7 @@ describe("Go to parent header action", () => {
     return action;
   }
 
-  function itemInput(narrowThreadIds: ReadonlySet<string>) {
-    const toThread = vi.fn();
+  function itemInput(narrowHeaders: ReturnType<typeof getNarrowHeaders>) {
     const thread: PluginThreadActionTarget = {
       id: CHILD.id,
       projectId: "proj_a",
@@ -183,14 +194,11 @@ describe("Go to parent header action", () => {
       environment: null,
     };
     return {
-      toThread,
-      input: {
-        thread,
-        data: { threads: [PARENT, CHILD], narrowThreadIds },
-        sdk: {} as PluginBrowserBbSdk,
-        navigate: { toThread } as unknown as BbNavigate,
-        experimental_panel: {} as ExperimentalPanelController,
-      },
+      thread,
+      data: { threads: [PARENT, CHILD], narrowHeaders },
+      sdk: {} as PluginBrowserBbSdk,
+      navigate: {} as BbNavigate,
+      experimental_panel: {} as ExperimentalPanelController,
     };
   }
 
@@ -198,18 +206,21 @@ describe("Go to parent header action", () => {
     const action = await headerAction();
 
     expect(action.placement).toBe("header");
-    expect(action.item(itemInput(new Set()).input)).toBeNull();
+    expect(action.item(itemInput(new Map()))).toBeNull();
   });
 
   it("opens the parent from the narrow header menu", async () => {
     const action = await headerAction();
-    const release = markHeaderNarrow(CHILD.id);
-    const { input, toThread } = itemInput(getNarrowThreadIds());
-    const item = action.item(input);
+    const openThreadInPane = vi.fn();
+    const release = markHeaderNarrow(CHILD.id, openThreadInPane);
+    const item = action.item(itemInput(getNarrowHeaders()));
     release();
 
     expect(item?.label).toBe("Go to parent: Orchestrator");
     void item?.run({} as never);
-    expect(toThread).toHaveBeenCalledWith("thr_parent");
+    expect(openThreadInPane).toHaveBeenCalledWith({
+      id: "thr_parent",
+      projectId: "proj_a",
+    });
   });
 });

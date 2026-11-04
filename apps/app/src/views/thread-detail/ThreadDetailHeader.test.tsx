@@ -38,6 +38,7 @@ import {
 import { RenameControllerProvider } from "@/components/sidebar/SidebarInlineRename";
 import type {
   PluginThreadActionRegistration,
+  ExperimentalThreadHeaderLeadingProps,
   PluginThreadActionTarget,
 } from "@get-bb/plugin-sdk";
 
@@ -962,7 +963,7 @@ describe("ThreadDetailHeader", () => {
 
   describe("plugin leading slot", () => {
     function registerLeading(
-      component: (props: { threadId: string; isNarrow: boolean }) => ReactNode,
+      component: (props: ExperimentalThreadHeaderLeadingProps) => ReactNode,
     ) {
       setPluginSlotRegistrations(
         "leading-plugin",
@@ -972,10 +973,10 @@ describe("ThreadDetailHeader", () => {
       );
     }
 
-    function renderHeader() {
+    function renderHeader(navigateInPane = vi.fn()) {
       render(
         <MemoryRouter>
-          <PaneContext.Provider value={PANE_CONTEXT}>
+          <PaneContext.Provider value={{ ...PANE_CONTEXT, navigateInPane }}>
             <ThreadDetailHeader
               actionsMenu={null}
               isSecondaryPanelOpen={false}
@@ -986,7 +987,32 @@ describe("ThreadDetailHeader", () => {
           </PaneContext.Provider>
         </MemoryRouter>,
       );
+      return navigateInPane;
     }
+
+    it("opens a thread in the header's pane", () => {
+      registerLeading((props) => (
+        <button
+          type="button"
+          onClick={() =>
+            props.experimental_openThreadInPane({
+              id: "thr_parent",
+              projectId: "proj_header",
+            })
+          }
+        >
+          Parent
+        </button>
+      ));
+      const navigateInPane = renderHeader();
+
+      fireEvent.click(screen.getByRole("button", { name: "Parent" }));
+
+      expect(navigateInPane).toHaveBeenCalledWith({
+        projectId: "proj_header",
+        threadId: "thr_parent",
+      });
+    });
 
     it.each([
       { isCompactViewport: false, isNarrow: "false" },
