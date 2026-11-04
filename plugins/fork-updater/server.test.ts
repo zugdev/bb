@@ -21,6 +21,7 @@ function setup(changedFiles: string[], failStep: string | null = null) {
         list: async () => ({
           plugins: [
             { id: "assistant", source: `path:${CHECKOUT}/plugins/assistant`, rootDir: `${CHECKOUT}/plugins/assistant` },
+            { id: "fork-updater", source: `path:${CHECKOUT}/plugins/fork-updater`, rootDir: `${CHECKOUT}/plugins/fork-updater` },
           ],
         }),
         reload,
@@ -64,6 +65,21 @@ describe("fork updater", () => {
     expect(steps).toEqual(["fast-forward"]);
     expect(reload).toHaveBeenCalledWith({ pluginId: "assistant" });
     expect(await host.bb.storage.kv.get("built-commit")).toBe("bbbbbbb");
+  });
+
+  it("returns up to date before reloading itself", async () => {
+    vi.useFakeTimers();
+    try {
+      const { host, reload } = setup(["plugins/fork-updater/server.ts", "plugins/assistant/app.tsx"]);
+      await plugin(host.bb);
+      const result = await host.harness.runCli(["update", "--json"]);
+      expect(JSON.parse(result.stdout)).toMatchObject({ builtCommit: "bbbbbbb", kind: "up-to-date", commits: [] });
+      expect(reload.mock.calls).toEqual([[{ pluginId: "assistant" }]]);
+      await vi.runAllTimersAsync();
+      expect(reload.mock.calls).toEqual([[{ pluginId: "assistant" }], [{ pluginId: "fork-updater" }]]);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("fast forwards and reports up to date when only docs changed", async () => {
