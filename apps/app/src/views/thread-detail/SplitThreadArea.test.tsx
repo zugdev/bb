@@ -39,6 +39,7 @@ import {
   SPLIT_LAYOUT_STORAGE_KEY,
 } from "@/lib/split-layout";
 import type { LayoutNode, PaneContent, SplitLayout } from "@/lib/split-layout";
+import { splitTabsAtom } from "@/lib/split-layout/tabs";
 import {
   getPromptDraftAccessor,
   usePromptDraftStorage,
@@ -2097,34 +2098,23 @@ describe("SplitThreadArea", () => {
     ).toBe("");
   });
 
-  it("replaces the focused pane's content on external navigation without dismantling the layout", async () => {
-    renderSplitArea({
+  it("opens an external navigation in its own tab and keeps the split layout in its tab", async () => {
+    const store = renderSplitArea({
       path: threadPath("thr-b"),
       layout: twoPaneLayout("pane-2"),
       externalTo: threadPath("thr-c"),
     });
     await screen.findByTestId("pane-thr-b");
 
-    expect(
-      screen
-        .getAllByTestId(/^pane-thr-/)
-        .filter(
-          (pane) => pane.getAttribute("data-window-top-left-owner") === "true",
-        ),
-    ).toEqual([screen.getByTestId("pane-thr-a")]);
-
     fireEvent.click(screen.getByTestId("external-nav"));
 
     expect(await screen.findByTestId("pane-thr-c")).toBeTruthy();
-    expect(screen.getByTestId("pane-thr-a")).toBeTruthy();
+    expect(screen.queryByTestId("pane-thr-a")).toBeNull();
     expect(screen.queryByTestId("pane-thr-b")).toBeNull();
-    expect(
-      screen
-        .getAllByTestId(/^pane-thr-/)
-        .filter(
-          (pane) => pane.getAttribute("data-window-top-left-owner") === "true",
-        ),
-    ).toEqual([screen.getByTestId("pane-thr-a")]);
+    const tabs = store.get(splitTabsAtom).tabs;
+    expect(tabs).toHaveLength(2);
+    expect(tabs[0]?.layout).toEqual(twoPaneLayout("pane-2"));
+    expect(store.get(splitTabsAtom).activeTabId).toBe(tabs[1]?.id);
   });
 
   it("opens a created thread in the focused composer pane", async () => {
@@ -3098,9 +3088,9 @@ describe("SplitThreadArea", () => {
     },
   );
 
-  it("keeps an archived thread when navigating over an active thread in the same pane", async () => {
+  it("keeps an archived thread when external navigation opens it beside a split", async () => {
     threadStore.set("thr-c", { archivedAt: 123, deletedAt: null });
-    const store = renderSplitArea({
+    renderSplitArea({
       path: threadPath("thr-b"),
       layout: twoPaneLayout("pane-2"),
       externalTo: threadPath("thr-c"),
@@ -3110,12 +3100,9 @@ describe("SplitThreadArea", () => {
     fireEvent.click(screen.getByTestId("external-nav"));
 
     expect(await screen.findByTestId("pane-thr-c")).toBeTruthy();
-    expect(screen.getByTestId("pane-thr-a")).toBeTruthy();
-    expect(screen.queryByTestId("pane-thr-b")).toBeNull();
     expect(screen.getByTestId("location").textContent).toBe(
       threadPath("thr-c"),
     );
-    expect(store.get(splitLayoutAtom)?.focusedPaneId).toBe("pane-2");
     expect(threadStore.get("thr-c")?.archivedAt).toBe(123);
   });
 
