@@ -14,7 +14,7 @@ How work lands in this fork (zugdev/bb) when several agent threads run at once. 
 ## Getting it into the running bb
 
 1. Plugins: `bb plugin install <worktree>/plugins/<name> --yes` while working, and `bb plugin dev <path>` to reload on every save. After the merge, reinstall from a checkout of `main` so the installed path outlives the worktree.
-2. Core changes: after the merge, rebuild bb.app from `main` with `pnpm fork:update --pull` in a checkout of `main`. It quits bb, packages the desktop app and replaces `/Applications/bb.app`, which ends running sessions, so ask first.
+2. Core changes: after the merge, rebuild bb.app from `main` with `pnpm fork:update --pull` in a checkout of `main`. It packages the desktop app, then quits bb, swaps in the new `/Applications/bb.app` and waits for the server on `:38886`. Quitting ends running sessions, so ask first. Only one run installs at a time, and a run that starts while another holds `~/.bb/fork-update.lock` waits. If the new app does not answer within about a minute, the script restores the previous app from `~/.bb/bb.app.prev`. To roll back by hand from a terminal, quit bb and run `rm -rf /Applications/bb.app && mv ~/.bb/bb.app.prev /Applications/bb.app`.
 
 ## Upstream
 

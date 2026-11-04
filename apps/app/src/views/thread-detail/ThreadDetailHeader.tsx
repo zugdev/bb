@@ -82,7 +82,6 @@ interface ThreadDetailHeaderProps {
   pluginActions?: ReactNode;
   thread: PluginThreadActionTarget;
   threadTitle: string;
-  onOpenDiff?: () => void;
 }
 
 export function ThreadDetailHeader({
@@ -93,7 +92,6 @@ export function ThreadDetailHeader({
   pluginActions,
   thread,
   threadTitle,
-  onOpenDiff,
   contextCardButton,
 }: ThreadDetailHeaderProps) {
   const isCompactViewport = useIsCompactViewport();
@@ -138,8 +136,9 @@ export function ThreadDetailHeader({
     startEditing();
     return true;
   });
-  const isWindowPanelOpen =
-    useContext(SecondaryPanelHostLayoutContext)?.isOpen === true;
+  const hostLayout = useContext(SecondaryPanelHostLayoutContext);
+  const isWindowPanelOpen = hostLayout?.isOpen === true;
+  const pressedWhileUnfocusedRef = useRef(false);
   const isSplitPaneHeader = beginPaneDrag !== undefined;
   const [measuredPaneWidth, setMeasuredPaneWidth] = useState(0);
   const usesResponsiveActionOverflow =
@@ -178,14 +177,30 @@ export function ThreadDetailHeader({
     if (!isEditing) startEditingFromDoubleClick();
   };
   const rightPanelIconName = RIGHT_PANEL_TOGGLE_ICON_NAME;
-  const mountRightPanelToggle = secondaryPanelHost === null;
+  const isHostedSplitPane = secondaryPanelHost !== null;
   const pinsToggleToPage = !isSplitPane && !isCompactViewport;
-  const showRightPanelToggle =
-    mountRightPanelToggle && (!isSecondaryPanelOpen || isCompactViewport);
+  const showRightPanelToggle = isHostedSplitPane
+    ? hostLayout?.isSuppressed !== true
+    : !isSecondaryPanelOpen || isCompactViewport;
+  const isRightPanelOpen = isHostedSplitPane
+    ? isFocused && isWindowPanelOpen
+    : isSecondaryPanelOpen;
   const rightPanelLabel =
-    isSecondaryPanelOpen && showRightPanelToggle
+    isRightPanelOpen && showRightPanelToggle
       ? "Hide right panel"
       : "Show right panel";
+  const handleRightPanelTogglePointerDown = () => {
+    preloadThreadSecondaryPanel();
+    pressedWhileUnfocusedRef.current = !isFocused;
+  };
+  const handleRightPanelToggleClick = () => {
+    const focusShowsPanel =
+      isHostedSplitPane &&
+      pressedWhileUnfocusedRef.current &&
+      isWindowPanelOpen;
+    pressedWhileUnfocusedRef.current = false;
+    if (!focusShowsPanel) onToggleSecondaryPanel();
+  };
 
   const rightPanelToggle = (
     <Button
@@ -205,11 +220,11 @@ export function ThreadDetailHeader({
           : rightPanelLabel
       }
       aria-keyshortcuts={panelShortcut?.ariaKeyshortcuts}
-      aria-expanded={isSecondaryPanelOpen}
+      aria-expanded={isRightPanelOpen}
       onPointerEnter={preloadThreadSecondaryPanel}
       onFocus={preloadThreadSecondaryPanel}
-      onPointerDown={preloadThreadSecondaryPanel}
-      onClick={onToggleSecondaryPanel}
+      onPointerDown={handleRightPanelTogglePointerDown}
+      onClick={handleRightPanelToggleClick}
     >
       <Icon name={rightPanelIconName} />
       <AppCommandShortcutHint
@@ -283,26 +298,6 @@ export function ThreadDetailHeader({
         data-thread-header-workflow-actions=""
       >
         {pluginActions}
-        {!usesResponsiveActionOverflow && onOpenDiff ? (
-          <span
-            className="inline-flex opacity-0 transition-opacity group-hover/thread-header:opacity-100 focus-within:opacity-100"
-            data-thread-header-responsive-action=""
-          >
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className={cn(
-                HEADER_PANE_ACTION_ICON_BUTTON_CLASS,
-                CHROME_SUBTLE_ICON_BUTTON_FOREGROUND_CLASS,
-              )}
-              aria-label="Open diff"
-              onClick={onOpenDiff}
-            >
-              <Icon name="FileDiff" />
-            </Button>
-          </span>
-        ) : null}
         {!usesResponsiveActionOverflow && primaryAction ? (
           <span className="inline-flex" data-thread-header-responsive-action="">
             {secondaryActions.length > 0 ? (
@@ -356,22 +351,20 @@ export function ThreadDetailHeader({
           </Button>
         ) : null}
         {contextCardButton}
-        {mountRightPanelToggle
-          ? pinsToggleToPage
-            ? createPortal(
-                <div
-                  className={cn(
-                    pageToggleBoxClassName,
-                    "z-40",
-                    usesDesktopChrome && MACOS_WINDOW_NO_DRAG_CLASS,
-                  )}
-                >
-                  {rightPanelToggle}
-                </div>,
-                document.body,
-              )
-            : rightPanelToggle
-          : null}
+        {pinsToggleToPage
+          ? createPortal(
+              <div
+                className={cn(
+                  pageToggleBoxClassName,
+                  "z-40",
+                  usesDesktopChrome && MACOS_WINDOW_NO_DRAG_CLASS,
+                )}
+              >
+                {rightPanelToggle}
+              </div>,
+              document.body,
+            )
+          : rightPanelToggle}
         {reservesWindowPanelToggle && !isWindowPanelOpen ? (
           <span aria-hidden className={HEADER_ICON_BUTTON_CLASS} />
         ) : null}
@@ -386,7 +379,7 @@ export function ThreadDetailHeader({
       actions={actions}
       isWindowDragRegion={false}
       ownsWindowTopLeft={false}
-      className={cn("group/thread-header", beginPaneDrag && "z-[21]")}
+      className={cn(beginPaneDrag && "z-[21]")}
     />
   );
 }
