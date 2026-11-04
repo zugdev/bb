@@ -1138,7 +1138,9 @@ function SplitPaneLeaf(props: SplitPaneLeafProps) {
       data-focused={isFocused ? "true" : "false"}
       data-maximized={isMaximized ? "true" : undefined}
     >
-      {props.isTabActive && node.content.kind === "thread" ? (
+      {props.isTabActive &&
+      (node.content.kind === "thread" ||
+        node.content.kind === "thread-panel-tab") ? (
         <PaneStaleWatcher
           key={node.content.threadId}
           threadId={node.content.threadId}
@@ -1374,6 +1376,26 @@ const WorkspacePaneContent = memo(function WorkspacePaneContent({
       secondaryPanelHost,
     ],
   );
+  const panelTabValue = useMemo<PaneContextValue>(
+    () => ({ ...value, secondaryPanelHost: null }),
+    [value],
+  );
+
+  if (content.kind === "thread-panel-tab") {
+    return (
+      <PaneContext.Provider value={panelTabValue}>
+        <SecondaryPanelHostLayoutContext.Provider value={null}>
+          <ThreadDetailView
+            surface="pane"
+            projectId={content.projectId}
+            threadId={content.threadId}
+            timelineEnabled={false}
+            panelTabId={content.tabId}
+          />
+        </SecondaryPanelHostLayoutContext.Provider>
+      </PaneContext.Provider>
+    );
+  }
 
   if (content.kind !== "thread") {
     return (
@@ -1428,6 +1450,23 @@ function StandalonePaneContent({
         ) : (
           <RootComposeView />
         )}
+      </DefaultPaneContextProvider>
+    );
+  }
+  if (content.kind === "thread-panel-tab") {
+    return (
+      <DefaultPaneContextProvider
+        paneId={paneId}
+        onRequestClose={onRequestClose}
+        navigateInPane={navigateInPane}
+      >
+        <ThreadDetailView
+          surface="pane"
+          projectId={content.projectId}
+          threadId={content.threadId}
+          timelineEnabled={false}
+          panelTabId={content.tabId}
+        />
       </DefaultPaneContextProvider>
     );
   }
@@ -1511,7 +1550,7 @@ function NonThreadPaneContent({
   beginPaneDrag,
   isBoundedPane,
 }: {
-  content: Exclude<PaneContent, { kind: "thread" }>;
+  content: Exclude<PaneContent, { kind: "thread" | "thread-panel-tab" }>;
   onRequestClose: (() => void) | null;
   beginPaneDrag?: (event: ReactPointerEvent, label: string) => void;
   isBoundedPane: boolean;

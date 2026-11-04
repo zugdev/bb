@@ -5,6 +5,12 @@ export type PaneContent =
       threadId: string;
     }
   | {
+      kind: "thread-panel-tab";
+      projectId: string;
+      threadId: string;
+      tabId: string;
+    }
+  | {
       kind: "new-thread";
     }
   | {

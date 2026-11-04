@@ -33,6 +33,7 @@ import {
 const FIRST_PANE_ID = "pane-1";
 const SPLITTABLE_THREAD_ROUTE_PATH = "/projects/:projectId/threads/:threadId";
 const SPLITTABLE_PERSONAL_THREAD_ROUTE_PATH = "/threads/:threadId";
+export const THREAD_PANEL_TAB_SEARCH_PARAM = "panelTab";
 
 export function threadPaneContent(thread: ThreadRoutePathArgs): PaneContent {
   return {
@@ -65,6 +66,12 @@ function createSinglePaneContentLayout(content: PaneContent): SplitLayout {
 export function paneContentRoute(content: PaneContent): string {
   if (content.kind === "thread") {
     return getThreadRoutePath(content);
+  }
+  if (content.kind === "thread-panel-tab") {
+    const search = new URLSearchParams({
+      [THREAD_PANEL_TAB_SEARCH_PARAM]: content.tabId,
+    });
+    return `${getThreadRoutePath(content)}?${search.toString()}`;
   }
   if (content.kind === "new-thread") {
     return getRootComposeRoutePath();
