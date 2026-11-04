@@ -15,6 +15,7 @@ import {
   recordClosedPaneAtom,
   renameSplitTabAtom,
   reopenClosedSplitItemAtom,
+  seedSplitComposeProjectAtom,
   selectSplitTabAtom,
   splitTabsAtom,
 } from "./tabs";
@@ -91,6 +92,31 @@ describe("split tabs", () => {
     expect(store.get(rootComposeProjectIdAtom)).toBe("p2");
 
     store.set(openSplitTabAtom);
+    expect(store.get(rootComposeProjectIdAtom)).toBe(PERSONAL_PROJECT_ID);
+  });
+
+  it("starts a new tab in No project after a split took the split pane's project", () => {
+    const store = createStore();
+    store.set(splitLayoutAtom, threadLayout("a"));
+
+    store.set(seedSplitComposeProjectAtom, {
+      kind: "thread",
+      projectId: "p1",
+      threadId: "a",
+    });
+    expect(store.get(rootComposeProjectIdAtom)).toBe("p1");
+
+    store.set(seedSplitComposeProjectAtom, { kind: "new-thread" });
+    expect(store.get(rootComposeProjectIdAtom)).toBe("p1");
+
+    store.set(openSplitTabAtom);
+    expect(store.get(rootComposeProjectIdAtom)).toBe(PERSONAL_PROJECT_ID);
+
+    store.set(rootComposeProjectIdAtom, "p2");
+    store.set(seedSplitComposeProjectAtom, {
+      kind: "plugin-detail",
+      pluginId: "x",
+    });
     expect(store.get(rootComposeProjectIdAtom)).toBe(PERSONAL_PROJECT_ID);
   });
 

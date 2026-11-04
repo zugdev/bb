@@ -1419,6 +1419,7 @@ function RootComposeSurface({
     <RootComposeOverview
       sidebarNavigation={sidebarNavigation}
       projectNamesById={mobileRecentProjectNamesById}
+      isFocusedPane={isFocusedPane}
       project={{
         options: projectOptions,
         value: isProjectless ? null : projectId,

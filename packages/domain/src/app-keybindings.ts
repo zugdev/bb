@@ -106,6 +106,7 @@ export const APP_COMMAND_IDS = [
   "terminal.open",
   "terminal.find",
   "composer.focus",
+  "composer.cycleProject",
   "modelPicker.toggle",
   "modelPicker.cycleModel",
   "modelPicker.cycleModelBackward",

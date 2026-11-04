@@ -42,6 +42,7 @@ import {
   focusThreadInOtherTabAtom,
   movePaneToTabAtom,
   recordClosedPaneAtom,
+  seedSplitComposeProjectAtom,
   splitTabsAtom,
 } from "@/lib/split-layout/tabs";
 import { resolveSplitTabDropTarget } from "./SplitTabBar";
@@ -549,6 +550,10 @@ function SplitThreadAreaContent({ routeContent }: SplitThreadAreaProps) {
         kind: "new-thread",
       });
       if (next === current) return;
+      store.set(
+        seedSplitComposeProjectAtom,
+        findPane(current.root, current.focusedPaneId)?.content,
+      );
       store.set(splitLayoutAtom, next);
       if (store.get(maximizedPaneIdAtom) !== null) setMaximizedPaneId(null);
       setKeyboardFocusRequest({ paneId: next.focusedPaneId });

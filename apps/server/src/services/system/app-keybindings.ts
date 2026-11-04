@@ -383,6 +383,7 @@ export const DEFAULT_APP_KEYBINDINGS: AppDefaultKeybindings = [
     { mod: true, shift: true },
     composerWithoutModal,
   ),
+  binding("composer.cycleProject", "o", { alt: true }, composerWithoutModal),
   binding(
     "modelPicker.toggle",
     "m",
