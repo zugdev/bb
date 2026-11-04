@@ -47,7 +47,9 @@ describe("ThreadStatusGlyph", () => {
     rerender(<ThreadStatusGlyph indicator="runtime" />);
     const runtime = screen.getByLabelText("Thread working");
     expect(Array.from(runtime.classList)).toContain("animate-spin");
-    expect(Array.from(runtime.classList)).toContain("motion-reduce:animate-none");
+    expect(Array.from(runtime.classList)).toContain(
+      "motion-reduce:animate-none",
+    );
   });
 
   it("draws unread success as a dot and nothing for none", () => {
@@ -72,12 +74,29 @@ describe("ThreadStatusGlyph", () => {
     expect(screen.queryByLabelText("Thread has unsubmitted draft")).toBeNull();
   });
 
+  it.each([
+    ["draft", "default"],
+    ["draft", "compact"],
+    ["working-draft", "default"],
+    ["working-draft", "compact"],
+  ] as const)(
+    "sizes the %s pencil like a status dot at %s size",
+    (indicator, size) => {
+      const { container } = render(
+        <ThreadStatusGlyph indicator={indicator} size={size} />,
+      );
+
+      const draft = container.querySelector('[data-icon="Edit"]');
+      expect(Array.from(draft?.classList ?? [])).toContain("size-2");
+    },
+  );
+
   it("draws the archive glyph for archived threads", () => {
     render(<ThreadStatusGlyph indicator="runtime" archived />);
 
-    expect(screen.getByLabelText("Archived thread").getAttribute("data-icon")).toBe(
-      "Archive",
-    );
+    expect(
+      screen.getByLabelText("Archived thread").getAttribute("data-icon"),
+    ).toBe("Archive");
   });
 
   it.each([
