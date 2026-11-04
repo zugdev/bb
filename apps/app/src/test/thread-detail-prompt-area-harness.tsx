@@ -681,6 +681,10 @@ vi.mock("@/hooks/mutations/thread-runtime-mutations", () => ({
     isPending: false,
     mutate: promptAreaMocks.clearThreadGoalMutate,
   }),
+  useCompactThread: () => ({
+    isPending: false,
+    mutate: vi.fn(),
+  }),
   useCreateThread: () => ({
     isPending: false,
     mutateAsync: promptAreaMocks.createThreadMutateAsync,
