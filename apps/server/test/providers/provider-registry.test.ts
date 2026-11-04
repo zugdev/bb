@@ -14,6 +14,7 @@ const CURSOR_LIKE_INFO = {
     supportsNativeUserQuestion: false,
     supportsFork: false,
     supportsSessionRewind: false,
+    supportsManualCompaction: false,
     modelCatalogScope: "workspace" as const,
     permissionModes: ["full" as const],
   },
@@ -25,7 +26,6 @@ const CURSOR_LIKE_INFO = {
 };
 
 const MINIMAL_SERVER_CAPABILITIES = {
-  supportsManualCompaction: false,
   reasoningLevels: ["medium" as const],
   fork: "none" as const,
 };
@@ -59,6 +59,7 @@ describe("provider registry policy accessors", () => {
             ...CURSOR_LIKE_INFO.capabilities,
             supportsFork: true,
             supportsSessionRewind: true,
+            supportsManualCompaction: false,
             modelCatalogScope: "workspace",
             permissionModes: ["accept-edits", "full"],
           },
@@ -90,11 +91,15 @@ describe("provider registry policy accessors", () => {
     const handle = registry.register(
       minimalProviderRegistration({
         pluginId: "provider-codex",
-        info: { ...CURSOR_LIKE_INFO, id: "codex" },
-        serverCapabilities: {
-          ...MINIMAL_SERVER_CAPABILITIES,
-          supportsManualCompaction: true,
+        info: {
+          ...CURSOR_LIKE_INFO,
+          id: "codex",
+          capabilities: {
+            ...CURSOR_LIKE_INFO.capabilities,
+            supportsManualCompaction: true,
+          },
         },
+        serverCapabilities: MINIMAL_SERVER_CAPABILITIES,
       }),
     );
     expect(registry.supportsManualCompaction("codex")).toBe(true);

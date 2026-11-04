@@ -186,6 +186,7 @@ export function buildPluginProviderRegistration(args: {
       permissionModes: [...permissionModes],
       supportsFork: capabilities.fork !== "none",
       supportsSessionRewind: capabilities.fork === "checkpoint",
+      supportsManualCompaction: capabilities.supportsManualCompaction,
       modelCatalogScope: declaration.models.scope,
     },
     composerActions,
@@ -216,7 +217,6 @@ export function buildPluginProviderRegistration(args: {
   const serverCapabilities: ProviderServerCapabilities = {
     reasoningLevels: [...capabilities.reasoningLevels],
     fork: capabilities.fork,
-    supportsManualCompaction: capabilities.supportsManualCompaction,
   };
 
   return {

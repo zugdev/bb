@@ -23,7 +23,6 @@ export interface ProviderHealthCacheKey {
 export interface ProviderServerCapabilities {
   reasoningLevels: readonly ReasoningLevel[];
   fork: ProviderFork;
-  supportsManualCompaction: boolean;
 }
 
 export interface ProviderInstallRank {
@@ -315,7 +314,7 @@ export function createProviderRegistryService(
 
     supportsManualCompaction(providerId) {
       return (
-        getRegistration(providerId)?.serverCapabilities
+        getRegistration(providerId)?.info.capabilities
           .supportsManualCompaction ?? false
       );
     },

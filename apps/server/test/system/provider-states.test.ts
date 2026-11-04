@@ -206,6 +206,7 @@ describe("getProviderStates", () => {
               supportsNativeUserQuestion: false,
               supportsFork: false,
               supportsSessionRewind: false,
+              supportsManualCompaction: false,
               modelCatalogScope: "workspace",
               permissionModes: ["full"],
             },
@@ -215,7 +216,6 @@ describe("getProviderStates", () => {
           serverCapabilities: {
             reasoningLevels: ["medium"],
             fork: "none",
-            supportsManualCompaction: false,
           },
         }),
       );

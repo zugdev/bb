@@ -1,3 +1,5 @@
+import { canCompactBeforeSend } from "@bb/client-core";
+import type { ThreadRuntimeDisplayStatus } from "@bb/domain";
 import type { ThreadContextWindowUsage } from "@bb/server-contract";
 
 const TOKEN_COMPACT_FORMATTER = new Intl.NumberFormat("en-US", {
@@ -33,4 +35,19 @@ export function formatUsageCost(cost: {
   } catch {
     return `${cost.amount} ${cost.currency}`;
   }
+}
+
+export function getContextCompactionDisabledReason(args: {
+  supportsManualCompaction: boolean;
+  displayStatus: ThreadRuntimeDisplayStatus;
+  isRequesting: boolean;
+}): string | null {
+  if (!args.supportsManualCompaction) {
+    return "This agent can't compact its context";
+  }
+  if (args.isRequesting) return "Compacting";
+  if (!canCompactBeforeSend(args.displayStatus)) {
+    return "Available when the turn finishes";
+  }
+  return null;
 }

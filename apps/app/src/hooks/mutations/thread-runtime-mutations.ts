@@ -468,6 +468,15 @@ export function useStopThread() {
   });
 }
 
+export function useCompactThread() {
+  return useMutation({
+    meta: { errorMessage: "Failed to compact context." },
+    mutationFn: async (threadId: string) => {
+      await sdk.threads.compact({ threadId });
+    },
+  });
+}
+
 export function cancelThreadPlanMutationOptions(queryClient: QueryClient) {
   return mutationOptions({
     meta: { errorMessage: "Failed to exit Plan mode." },
