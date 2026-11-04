@@ -83,6 +83,7 @@ export function AppPageHeader({
           ownsWindowTopLeft,
           reserveMacosTrafficLights,
           sidebarKeepsCollapsedRail,
+          usesDesktopChrome,
         });
   return (
     <header

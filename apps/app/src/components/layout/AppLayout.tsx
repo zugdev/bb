@@ -140,6 +140,7 @@ import { PERSONAL_PROJECT_ID } from "@bb/domain";
 import { useSetRootComposeProjectId } from "@/lib/root-compose-selection";
 import { BackToAppCommandHandler } from "./BackToAppCommandHandler";
 import { HistoryCommandHandlers } from "./HistoryCommandHandlers";
+import { usesSwipeChrome } from "./useUsesSwipeChrome";
 
 const SIDEBAR_WIDTH_KEY = "bb.sidebar.width";
 const SIDEBAR_OPEN_KEY = "bb.sidebar.open";
@@ -268,6 +269,9 @@ function SidebarTriggerOverlay({
       : "Toggle sidebar",
     "aria-keyshortcuts": shortcut?.ariaKeyshortcuts,
   };
+  if (usesSwipeChrome({ isCompactViewport, usesDesktopChrome })) {
+    return null;
+  }
   if (isFramed) {
     return (
       <div
@@ -325,11 +329,7 @@ function SidebarTriggerOverlay({
     <div
       data-testid="app-sidebar-trigger-overlay"
       data-panel-shelf={panelShelfState}
-      style={{
-        zIndex: isCompactViewport
-          ? APP_OVERLAY_LAYER.compactSidebarTrigger
-          : APP_OVERLAY_LAYER.sidebarTrigger,
-      }}
+      style={{ zIndex: APP_OVERLAY_LAYER.sidebarTrigger }}
       className={cn(
         "fixed top-[env(safe-area-inset-top)] left-[env(safe-area-inset-left)]",
         COMPACT_SHELF_HIDDEN_FIXED_CHROME_CLASS,
