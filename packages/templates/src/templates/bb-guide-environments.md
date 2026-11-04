@@ -12,9 +12,12 @@ Environments determine where threads run. Multiple threads can share an environm
 The first-party choices are Project checkout (the project's existing directory),
 Worktree (a fresh Git worktree), and Personal workspace (a projectless workspace).
 
-New Worktree branches start at the selected base without an upstream, regardless
-of Git's branch.autoSetupMerge setting. Publish with `git push -u origin HEAD`
-to track the task's remote branch. Existing branches keep their upstream.
+A new Worktree starts on a detached HEAD at the selected base (`--base-branch`,
+or the default branch). The agent picks the branch from the task: `git switch
+<branch>` to continue existing work, or `git switch -c <name>` for new work.
+Publish with `git push -u origin HEAD`. Restoring an archived Worktree checks
+out the branch the environment last recorded, or the base detached when it
+recorded none.
 
 Making your repo work with bb:
 

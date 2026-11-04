@@ -146,7 +146,7 @@ describe("worktree resource operations", () => {
       hostId: HOST_ID,
       input: {
         operationId: `create#${THREAD_ID}#1`,
-        branchName: "bb/test",
+        branchName: null,
         pathKey: THREAD_ID,
         baseBranch: { kind: "default" },
         branchMode: "reset",
@@ -169,15 +169,23 @@ describe("worktree resource operations", () => {
     });
   });
 
-  it("refuses to restore a worktree that had no branch checked out", async () => {
+  it("restores a worktree that had no branch checked out detached at its base", async () => {
+    const fixture = await setup();
+    await fixture.restore(restoreContext(fixture.context, null));
+    expect(fixture.harness.experimental_hostRpcCalls[0]?.input).toMatchObject({
+      branchName: null,
+      baseBranch: { kind: "default" },
+    });
+  });
+
+  it("tells agents to pick their branch before committing", async () => {
     const fixture = await setup();
     expect(
-      await fixture.restore(restoreContext(fixture.context, null)),
-    ).toMatchObject({
-      status: "failed",
-      message: expect.stringContaining("no branch"),
-    });
-    expect(fixture.harness.experimental_hostRpcCalls).toHaveLength(0);
+      fixture.harness.registrations.instructionProvider?.({
+        threadId: THREAD_ID,
+        projectId: "project-1",
+      }),
+    ).toContain("git switch -c");
   });
 
   it("forwards host progress while create is running", async () => {

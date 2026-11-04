@@ -53,7 +53,7 @@ export const worktreeHostContract = defineRpcContract({
         operationId: z.string().min(1),
         sourcePath: z.string().min(1),
         pathKey: z.string().min(1),
-        branchName: z.string().min(1),
+        branchName: z.string().min(1).nullable(),
         baseBranch: worktreeBaseBranchSchema,
         branchMode: z.enum(["reset", "reuse-existing"]),
       })

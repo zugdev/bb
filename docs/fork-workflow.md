@@ -4,7 +4,7 @@ How work lands in this fork (zugdev/bb) when several agent threads run at once. 
 
 ## Rules
 
-1. Every thread is its own tree. New bb threads get a fresh Git worktree branched from `origin/main` automatically, so parallel threads never share files. Only pick Project checkout for a single thread that has to change the checkout itself.
+1. Every thread is its own tree. New bb threads get a fresh Git worktree detached at `origin/main` automatically, and the agent creates or checks out the branch the task needs before committing, so parallel threads never share files. Only pick Project checkout for a single thread that has to change the checkout itself.
 2. Check what bb already does before writing code. Run `bb settings ui list`, `bb thread-list prefs list` and the plugin settings pages, since many requests are one setting away.
 3. Build features as plugins under `plugins/<name>` and touch core only when the Plugin SDK can't do it. A plugin installs into the running bb without a rebuild and stays out of upstream's files.
 4. Ship through PRs. When the work has evidence it's done (typecheck and tests pass for the changed packages, and it was seen working in the running bb), push the thread's branch and open one or more PRs against `main` on zugdev/bb with `gh pr create --repo zugdev/bb --base main`, using the repo's PR template. Then merge them with `gh pr merge --merge`. Always pass `--repo zugdev/bb` so nothing goes to upstream get-bb/bb.
