@@ -33,19 +33,16 @@ const WAITING_ICONS = {
 function ThreadDraftIndicator({
   hideIdleLabel = false,
   isWorking,
-  size,
 }: {
   hideIdleLabel?: boolean;
   isWorking: boolean;
-  size: "default" | "compact";
 }) {
   const label = threadIndicatorLabel(isWorking ? "working-draft" : "draft");
   return (
     <Icon
       name="Edit"
       className={cn(
-        "pointer-events-none shrink-0",
-        size === "compact" ? "size-3.5" : SIDEBAR_STATUS_ICON_CLASS,
+        "pointer-events-none size-2 shrink-0",
         isWorking
           ? ["animate-shine-icon", SIDEBAR_WORKING_STATUS_COLOR_CLASS]
           : "text-muted-foreground",
@@ -149,7 +146,7 @@ export function ThreadStatusGlyph({
         />
       );
     case "working-draft":
-      return <ThreadDraftIndicator isWorking size={size} />;
+      return <ThreadDraftIndicator isWorking />;
     case "workflow":
     case "background-agent":
     case "background-command":
@@ -183,7 +180,6 @@ export function ThreadStatusGlyph({
         <ThreadDraftIndicator
           hideIdleLabel={hideIdleDraftLabel}
           isWorking={false}
-          size={size}
         />
       );
     case "unread-success":
