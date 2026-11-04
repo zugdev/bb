@@ -246,7 +246,7 @@ describe("ThreadDetailHeader", () => {
     expect(onToggleSecondaryPanel).toHaveBeenCalledOnce();
   });
 
-  it("retains the compact trigger while the open shelf hides page actions", () => {
+  it("hides the right panel toggle on compact viewports", () => {
     viewportState.isCompactViewport = true;
 
     render(
@@ -262,15 +262,14 @@ describe("ThreadDetailHeader", () => {
     );
 
     const trigger = screen.getByRole("button", {
-      name: "Hide right panel",
+      name: "Show right panel",
+      hidden: true,
     });
-    expect(trigger.closest("[data-thread-header-pane-actions]")).not.toBeNull();
+    expect(trigger.classList.contains("hidden")).toBe(true);
+    expect(trigger.hasAttribute("inert")).toBe(true);
   });
 
-  it.each([
-    { expectedIcon: "PanelRight", isCompactViewport: true },
-    { expectedIcon: "PanelRight", isCompactViewport: false },
-  ])(
+  it.each([{ expectedIcon: "PanelRight", isCompactViewport: false }])(
     "shows the $expectedIcon glyph on the right-panel trigger",
     ({ expectedIcon, isCompactViewport }) => {
       viewportState.isCompactViewport = isCompactViewport;
