@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { makeThreadListEntry } from "@bb/test-helpers/domain-fixtures";
 import {
   ROOT_COMPOSE_NEEDS_YOU_LIMIT,
+  ROOT_COMPOSE_RECENT_PROJECT_LIMIT,
   RootComposeOverview,
 } from "./RootComposeOverview";
 
@@ -37,6 +38,8 @@ describe("RootComposeOverview", () => {
           personalProject: { threads: [asking("ask-1", 1)] },
           projects: [
             {
+              id: "proj_web",
+              name: "Web",
               threads: [
                 asking("ask-2", 2),
                 asking("ask-3", 3),
@@ -49,6 +52,7 @@ describe("RootComposeOverview", () => {
         projectNamesById={new Map([["proj_web", "Web"]])}
         project={PROJECT}
         onOpenThread={onOpenThread}
+        isFocusedPane
       />,
     );
     expect(
@@ -72,8 +76,54 @@ describe("RootComposeOverview", () => {
         projectNamesById={new Map()}
         project={PROJECT}
         onOpenThread={() => undefined}
+        isFocusedPane
       />,
     );
     expect(screen.queryByText("Needs you")).toBeNull();
+  });
+
+  it("offers the most recently messaged projects as chips that pick the project", () => {
+    const onChange = vi.fn();
+    const project = (id: string, lastUserMessageAt: number | null) => ({
+      id,
+      name: id,
+      threads: [makeThreadListEntry({ id: `thr-${id}`, lastUserMessageAt })],
+    });
+    render(
+      <RootComposeOverview
+        sidebarNavigation={{
+          personalProject: { threads: [] },
+          projects: [
+            project("old", 1),
+            project("never", null),
+            project("newest", 60),
+            project("mid", 30),
+            project("recent", 50),
+            project("older", 20),
+          ],
+        }}
+        projectNamesById={new Map()}
+        project={{ ...PROJECT, value: "mid", onChange }}
+        onOpenThread={() => undefined}
+        isFocusedPane
+      />,
+    );
+    const chips = screen
+      .getAllByRole("button")
+      .filter((button) => button.hasAttribute("aria-pressed"));
+    expect(chips.map((chip) => chip.textContent)).toEqual(
+      ["newest", "recent", "mid", "older"].slice(
+        0,
+        ROOT_COMPOSE_RECENT_PROJECT_LIMIT,
+      ),
+    );
+    expect(chips.map((chip) => chip.getAttribute("aria-pressed"))).toEqual([
+      "false",
+      "false",
+      "true",
+      "false",
+    ]);
+    fireEvent.click(chips[1]!);
+    expect(onChange).toHaveBeenCalledWith("recent");
   });
 });

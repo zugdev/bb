@@ -14,6 +14,7 @@ import { splitLayoutAtom } from "@/lib/split-layout/atoms";
 import { openPaneContentInSplit } from "@/lib/split-layout/openPaneContentInSplit";
 import {
   countPanes,
+  findPane,
   findPaneByContent,
   listPanes,
   MAX_PANES,
@@ -30,6 +31,7 @@ import {
   type SplitDragFallbackTarget,
 } from "@/lib/split-drag";
 import { paneContentRoute } from "@/views/thread-detail/splitThreadNavigation";
+import { seedSplitComposeProjectAtom } from "@/lib/split-layout/tabs";
 
 const SIDEBAR_SELECTOR = '[data-sidebar="sidebar"]';
 const MAIN_CONTENT_SELECTOR = "main";
@@ -191,6 +193,16 @@ export function beginSidebarPaneContentSplitDrag({
           : target.zone === "center"
             ? replacePaneContent(layout, target.paneId, content)
             : splitPane(layout, target.paneId, target.zone, content);
+      if (
+        existing === null &&
+        target.zone !== "center" &&
+        content.kind === "new-thread"
+      ) {
+        store.set(
+          seedSplitComposeProjectAtom,
+          findPane(layout.root, target.paneId)?.content,
+        );
+      }
       if (next !== layout) store.set(splitLayoutAtom, next);
       onNavigate?.();
       void navigate(

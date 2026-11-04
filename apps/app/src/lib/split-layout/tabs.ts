@@ -211,6 +211,19 @@ export const openSplitTabAtom = atom(
   },
 );
 
+export const seedSplitComposeProjectAtom = atom(
+  null,
+  (_get, set, splitSource: PaneContent | undefined) => {
+    if (splitSource?.kind === "new-thread") return;
+    set(
+      rootComposeProjectIdAtom,
+      splitSource?.kind === "thread"
+        ? splitSource.projectId
+        : PERSONAL_PROJECT_ID,
+    );
+  },
+);
+
 interface ThreadRef {
   projectId: string;
   threadId: string;
