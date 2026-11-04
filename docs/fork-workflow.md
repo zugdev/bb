@@ -1,21 +1,21 @@
 # Fork workflow
 
-How work lands in this fork (zugdev/bb) when several agent threads run at once. The goals are in [fork-roadmap.md](fork-roadmap.md).
+How work lands in this fork (zugdev/bb) when several agent threads run at once. It is trunk based: `main` on zugdev/bb is the trunk and holds every fork feature. The goals are in [fork-roadmap.md](fork-roadmap.md).
 
 ## Rules
 
-1. Build features as plugins under `plugins/<name>` and touch core only when the Plugin SDK can't do it. A plugin installs into the running bb without a rebuild and never conflicts with upstream, so `scripts/fork-update.sh` keeps rebasing cleanly. When core has to change, keep the patch small enough to send upstream as a PR.
-2. Give every thread its own worktree and branch. Start code threads with the Git worktree environment (`bb thread spawn --new-environment worktree`, or pick Git worktree in the composer). Two threads in the project checkout overwrite each other's files and end up in each other's commits, which happened on 2026-11-04.
-3. Commit each verified change on the thread's branch and never commit to `main`, since `main` mirrors upstream. Commit messages and branch names can't contain "claude" or "anthropic" because the global hooks in `~/.git-hooks` reject them.
-4. Push when the work is done, without waiting to be asked. Done means evidence: typecheck and tests pass for the changed packages, and the feature was seen working in the running bb, through the CLI or the UI. Then push the branch with `git push origin <branch>`. `scripts/fork-autopush.sh` pushes every local branch whose tip differs from both `main` and its `origin` copy, with `--dry-run` to list them first. A branch rebased or amended after a push needs `git push --force-with-lease`.
+1. Every thread is its own tree. New bb threads get a fresh Git worktree branched from `origin/main` automatically, so parallel threads never share files. Only pick Project checkout for a single thread that has to change the checkout itself.
+2. Check what bb already does before writing code. Run `bb settings ui list`, `bb thread-list prefs list` and the plugin settings pages, since many requests are one setting away.
+3. Build features as plugins under `plugins/<name>` and touch core only when the Plugin SDK can't do it. A plugin installs into the running bb without a rebuild and stays out of upstream's files.
+4. Ship through PRs. When the work has evidence it's done (typecheck and tests pass for the changed packages, and it was seen working in the running bb), push the thread's branch and open one or more PRs against `main` on zugdev/bb with `gh pr create --repo zugdev/bb --base main`, using the repo's PR template. Then merge them with `gh pr merge --merge`. Always pass `--repo zugdev/bb` so nothing goes to upstream get-bb/bb.
+5. Resolve conflicts in the thread. If parallel work merged first, merge `origin/main` into the branch, fix the conflicts, rerun the checks, push and merge.
+6. Commit messages and branch names can't contain "claude" or "anthropic", because the global hooks in `~/.git-hooks` reject them.
 
-## Plugin loop
+## Getting it into the running bb
 
-1. Install from the thread's worktree: `bb plugin install <worktree>/plugins/<name> --yes`.
-2. Run `bb plugin dev <worktree>/plugins/<name>` while working. It rebuilds the plugin and reloads it on every save.
-3. Typecheck and test with `pnpm exec turbo run typecheck test --filter=<package name>`.
-4. After the branch merges, reinstall from the main checkout so the installed path outlives the worktree.
+1. Plugins: `bb plugin install <worktree>/plugins/<name> --yes` while working, and `bb plugin dev <path>` to reload on every save. After the merge, reinstall from a checkout of `main` so the installed path outlives the worktree.
+2. Core changes: after the merge, rebuild bb.app from `main` with `pnpm fork:update --pull` in a checkout of `main`. It quits bb, packages the desktop app and replaces `/Applications/bb.app`, which ends running sessions, so ask first.
 
-## Core changes
+## Upstream
 
-Rebuild and reinstall bb.app with `pnpm fork:update`, which quits bb, packages the desktop app from this checkout and replaces `/Applications/bb.app`. Run it only from a checkout that has every branch you want merged in.
+Bring upstream in by merging `upstream/main` into a branch off `main` and opening a PR like any other change. Fixes that upstream would want go to get-bb/bb as separate PRs, and only when the user asks.

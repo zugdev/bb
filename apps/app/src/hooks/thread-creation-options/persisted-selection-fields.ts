@@ -214,11 +214,24 @@ const environmentSelectionAtom = atomWithStorage<string>(
   stringSelectionStorage,
   { getOnInit: true },
 );
+const PROJECT_CHECKOUT_ENVIRONMENT_VALUE = "provider:project-checkout";
+
+const projectEnvironmentSelectionStorage = createTabScopedStorage<string>(
+  {
+    parse: (value, initialValue) =>
+      value === null || value === PROJECT_CHECKOUT_ENVIRONMENT_VALUE
+        ? initialValue
+        : value,
+    serialize: (value) => value,
+  },
+  { persistInitialValue: true },
+);
+
 const projectEnvironmentSelectionAtomFamily = atomFamily((projectId: string) =>
   atomWithStorage<string>(
     getProjectScopedStorageKey(ENVIRONMENT_STORAGE_KEY, projectId),
     "",
-    stringSelectionStorage,
+    projectEnvironmentSelectionStorage,
     { getOnInit: true },
   ),
 );
