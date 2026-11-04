@@ -13,7 +13,6 @@ import {
   type PointerEvent as ReactPointerEvent,
   type ReactNode,
 } from "react";
-import { createPortal } from "react-dom";
 import { Button } from "@bb/shared-ui/button";
 import { useAtomValue } from "jotai";
 import type {
@@ -56,7 +55,6 @@ import {
   CONTEXT_INACTIVE_TEXT_CLASS,
   CONTEXT_SELECTION_SURFACE_CLASS,
 } from "@bb/shared-ui/context-selection";
-import { useRootComposePinnedPanelToggleBoxClassName } from "@/views/RootComposeSecondaryContent";
 import { usePaneContext } from "./PaneContext";
 import { PaneMaximizeButton } from "./PaneMaximizeButton";
 import { PaneDragHandle } from "./PaneDragHandle";
@@ -133,11 +131,9 @@ export function ThreadDetailHeader({
   const {
     beginPaneDrag,
     isFocused,
-    isSplitPane,
     reservesWindowPanelToggle,
     secondaryPanelHost,
   } = usePaneContext();
-  const pageToggleBoxClassName = useRootComposePinnedPanelToggleBoxClassName();
   useAppCommandHandler("thread.rename", () => {
     if (!isFocused) return false;
     startEditing();
@@ -185,10 +181,9 @@ export function ThreadDetailHeader({
   };
   const rightPanelIconName = RIGHT_PANEL_TOGGLE_ICON_NAME;
   const isHostedSplitPane = secondaryPanelHost !== null;
-  const pinsToggleToPage = !isSplitPane && !isCompactViewport;
   const showRightPanelToggle = isHostedSplitPane
     ? hostLayout?.isSuppressed !== true
-    : !isSecondaryPanelOpen || isCompactViewport;
+    : true;
   const isRightPanelOpen = isHostedSplitPane
     ? isFocused && isWindowPanelOpen
     : isSecondaryPanelOpen;
@@ -364,20 +359,7 @@ export function ThreadDetailHeader({
           </Button>
         ) : null}
         {contextCardButton}
-        {pinsToggleToPage
-          ? createPortal(
-              <div
-                className={cn(
-                  pageToggleBoxClassName,
-                  "z-40",
-                  usesDesktopChrome && MACOS_WINDOW_NO_DRAG_CLASS,
-                )}
-              >
-                {rightPanelToggle}
-              </div>,
-              document.body,
-            )
-          : rightPanelToggle}
+        {rightPanelToggle}
         {reservesWindowPanelToggle && !isWindowPanelOpen ? (
           <span aria-hidden className={HEADER_ICON_BUTTON_CLASS} />
         ) : null}

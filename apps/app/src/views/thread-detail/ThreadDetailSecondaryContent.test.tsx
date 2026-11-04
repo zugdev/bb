@@ -364,7 +364,7 @@ describe("ThreadDetailSecondaryContent", () => {
     });
   });
 
-  it("keeps the panel's own hide control for the inline thread panel", async () => {
+  it("leaves the single pane hide control to the thread header", async () => {
     secondaryPanelMockState.renderActualPanel = true;
     const { wrapper: QueryWrapper } = createQueryClientTestHarness();
     render(
@@ -385,13 +385,14 @@ describe("ThreadDetailSecondaryContent", () => {
       </QueryWrapper>,
     );
 
+    await screen.findByRole(
+      "button",
+      { name: "Open new tab" },
+      { timeout: 5_000 },
+    );
     expect(
-      await screen.findByRole(
-        "button",
-        { name: "Hide right panel" },
-        { timeout: 5_000 },
-      ),
-    ).not.toBeNull();
+      screen.queryByRole("button", { name: /Hide right panel/ }),
+    ).toBeNull();
   });
 
   it("keeps the thread header inside the timeline column beside the panel", async () => {
