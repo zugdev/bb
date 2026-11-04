@@ -154,7 +154,7 @@ function createInput(args: {
   operationId: string;
   sourcePath: string;
   pathKey: string;
-  branchName: string;
+  branchName: string | null;
 }) {
   return {
     ...args,
@@ -836,6 +836,48 @@ describe.concurrent("worktree host entry", () => {
     const resumed = await restartedHarness.experimental_call("create", {
       ...input,
       operationId: "resumed",
+    });
+    expect(resumed).toEqual(first);
+    expect(existsSync(join(first.path, "survives.txt"))).toBe(true);
+    await restartedHarness.experimental_dispose();
+  });
+
+  it("creates a detached worktree at origin/main without making a branch", async ({
+    onTestFinished,
+  }) => {
+    const { sourcePath, dataDir } = await createSourceRepository(
+      onTestFinished,
+      "Detached Repo",
+    );
+    await git(sourcePath, "remote", "add", "origin", sourcePath);
+    await git(sourcePath, "fetch", "origin");
+    const branchesBefore = await git(sourcePath, "branch", "--list");
+    const input = {
+      ...createInput({
+        operationId: "detached",
+        sourcePath,
+        pathKey: "detached",
+        branchName: null,
+      }),
+      baseBranch: { kind: "named" as const, name: "origin/main" },
+    };
+    const firstHarness = createHarness(dataDir);
+    const first = await firstHarness.experimental_call("create", input);
+    if (first.status !== "created") throw new Error(first.message);
+    expect(
+      (await git(first.path, "rev-parse", "--abbrev-ref", "HEAD")).trim(),
+    ).toBe("HEAD");
+    expect(await git(first.path, "rev-parse", "HEAD")).toBe(
+      await git(sourcePath, "rev-parse", "origin/main"),
+    );
+    expect(await git(sourcePath, "branch", "--list")).toBe(branchesBefore);
+    await writeFile(join(first.path, "survives.txt"), "kept\n");
+    await firstHarness.experimental_dispose();
+
+    const restartedHarness = createHarness(dataDir);
+    const resumed = await restartedHarness.experimental_call("create", {
+      ...input,
+      operationId: "detached-resumed",
     });
     expect(resumed).toEqual(first);
     expect(existsSync(join(first.path, "survives.txt"))).toBe(true);
