@@ -72,6 +72,13 @@ export function isSamePaneContent(
       candidate.threadId === content.threadId
     );
   }
+  if (content.kind === "thread-panel-tab") {
+    return (
+      candidate.kind === "thread-panel-tab" &&
+      candidate.threadId === content.threadId &&
+      candidate.tabId === content.tabId
+    );
+  }
   if (content.kind === "plugin-detail") {
     return (
       candidate.kind === "plugin-detail" &&

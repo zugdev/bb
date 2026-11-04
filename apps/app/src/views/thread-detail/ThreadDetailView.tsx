@@ -31,7 +31,10 @@ import {
   useSystemConfig,
 } from "@/hooks/queries/system-queries";
 import { useImmediateRouteNavigate } from "@/components/ui/app-route-anchor";
-import { useAtom } from "jotai";
+import { useAtom, useAtomValue } from "jotai";
+import { threadPanelTabPanesAtom } from "@/lib/split-layout/atoms";
+import { usePaneContentSplitActions } from "@/components/sidebar/usePaneContentSplitDrag";
+import { PaneMaximizeButton } from "./PaneMaximizeButton";
 import { useDesktopBrowserReveal } from "@/lib/use-desktop-browser-reveal";
 import {
   type ThreadTimelineForkMessageHandler,
@@ -62,7 +65,11 @@ import { isTransientReadError } from "@/hooks/queries/query-helpers";
 import { PageShell } from "@/components/ui/page-shell.js";
 import { RouteLoadingSkeleton } from "@/components/ui/route-loading-skeleton";
 import { ThreadTimelineLoadingSkeleton } from "@/components/thread/timeline/ThreadTimelineLoadingSkeleton";
-import { HEADER_ICON_BUTTON_CLASS } from "@/components/layout/AppPageHeader";
+import {
+  HEADER_ICON_BUTTON_CLASS,
+  HEADER_PANE_ACTION_ICON_BUTTON_CLASS,
+} from "@/components/layout/AppPageHeader";
+import { CHROME_SUBTLE_ICON_BUTTON_FOREGROUND_CLASS } from "@bb/shared-ui/chrome-style-tokens";
 import type {
   JsonValue,
   PluginThreadActionsInlineItem,
@@ -105,6 +112,10 @@ import {
 } from "@/lib/route-paths";
 import { THREAD_INFO_FIXED_TAB_REFERENCE } from "@/components/secondary-panel/thread-info-fixed-tab-navigation";
 import { ThreadDetailHeader } from "./ThreadDetailHeader";
+import {
+  useOpenParentThread,
+  useParentThreadSection,
+} from "./useParentThreadSection";
 import {
   CORE_THREAD_CONTEXT_CARD_ROWS,
   CORE_THREAD_CONTEXT_CARD_SECTIONS,
@@ -227,6 +238,7 @@ interface ThreadDetailViewPageProps {
 interface ThreadDetailViewPaneProps extends ThreadRoutePathArgs {
   surface: "pane";
   timelineEnabled: boolean;
+  panelTabId?: string;
 }
 
 type ThreadDetailViewProps =
@@ -273,9 +285,13 @@ export function ThreadDetailView(props: ThreadDetailViewProps) {
 }
 
 function ThreadDetailViewInternal(
-  props: ThreadRoutePathArgs & { timelineEnabled: boolean },
+  props: ThreadRoutePathArgs & {
+    timelineEnabled: boolean;
+    panelTabId?: string;
+  },
 ) {
-  const { projectId, threadId, timelineEnabled } = props;
+  const { projectId, threadId, timelineEnabled, panelTabId } = props;
+  const isPanelTabPane = panelTabId !== undefined;
   const {
     isFocused,
     isMaximized: isPaneMaximized,
@@ -363,7 +379,7 @@ function ThreadDetailViewInternal(
   const isWorkspacePanelOpen = renderSecondaryPanelAsDrawer
     ? secondaryPanelDrawerVisibility.isDrawerVisible
     : isPersistedSecondaryPanelOpen;
-  const isSecondaryPanelOpen = isWorkspacePanelOpen;
+  const isSecondaryPanelOpen = isPanelTabPane || isWorkspacePanelOpen;
   const touchFixedPanelTabsState = useTouchFixedPanelTabsState(
     threadId,
     threadId,
@@ -450,6 +466,35 @@ function ThreadDetailViewInternal(
     environmentId: thread?.environmentId,
     openTab,
   });
+  const threadPanelTabPanes = useAtomValue(threadPanelTabPanesAtom);
+  const tabIdsInPanes = useMemo(
+    () =>
+      new Set(
+        threadPanelTabPanes
+          .filter((content) => content.threadId === threadId)
+          .map((content) => content.tabId),
+      ),
+    [threadId, threadPanelTabPanes],
+  );
+  const showsPanelTab = useCallback(
+    (tabId: string) =>
+      isPanelTabPane ? tabId === panelTabId : !tabIdsInPanes.has(tabId),
+    [isPanelTabPane, panelTabId, tabIdsInPanes],
+  );
+  const deckBrowserTabs = useMemo(
+    () => browserTabs.filter((tab) => showsPanelTab(tab.id)),
+    [browserTabs, showsPanelTab],
+  );
+  const { openInSplit } = usePaneContentSplitActions();
+  const openTabInPane = useCallback(
+    (tabId: string) =>
+      openInSplit({
+        content: { kind: "thread-panel-tab", projectId, threadId, tabId },
+        enabled: true,
+        label: "Panel tab",
+      }),
+    [openInSplit, projectId, threadId],
+  );
   const browserDeckThreadId = thread?.id ?? null;
   const browserDeckEnvironmentId = thread?.environmentId ?? null;
   const renderBrowserDeck = useCallback(
@@ -469,7 +514,7 @@ function ThreadDetailViewInternal(
       }
       return (
         <LazyBrowserTabDeck
-          browserTabs={browserTabs}
+          browserTabs={deckBrowserTabs}
           activeBrowserTabId={activeBrowserTabId}
           addressFocusRequest={panelBrowser.addressFocusRequest}
           onAddressFocusRequestConsumed={
@@ -488,7 +533,7 @@ function ThreadDetailViewInternal(
     [
       activeBrowserTab?.id,
       panelBrowser.addressFocusRequest,
-      browserTabs,
+      deckBrowserTabs,
       browserDeckEnvironmentId,
       browserDeckThreadId,
       panelBrowser.handleAddressFocusRequestConsumed,
@@ -826,7 +871,7 @@ function ThreadDetailViewInternal(
   const [storedConversationCollapsed, setStoredConversationCollapsed] = useAtom(
     getThreadConversationCollapsedAtom(threadId),
   );
-  const isConversationCollapsed = storedConversationCollapsed;
+  const isConversationCollapsed = isPanelTabPane || storedConversationCollapsed;
   const toggleConversationCollapse = useCallback(() => {
     setStoredConversationCollapsed((collapsed) => !collapsed);
   }, [setStoredConversationCollapsed]);
@@ -1007,13 +1052,14 @@ function ThreadDetailViewInternal(
     terminals,
   ]);
   useAppCommandHandler("panel.toggle", () => {
-    if (!isFocused) return false;
+    if (!isFocused || isPanelTabPane) return false;
     toggleSecondaryPanel();
     return true;
   });
   useAppCommandHandler("panel.fullScreen.toggle", () => {
     if (
       !isFocused ||
+      isPanelTabPane ||
       !isSecondaryPanelOpen ||
       renderSecondaryPanelAsDrawer ||
       isPaneMaximized
@@ -1346,6 +1392,9 @@ function ThreadDetailViewInternal(
     [openLiveFilePreview, thread?.environmentId],
   );
 
+  const parentThreadLink = useParentThreadSection(thread, true);
+  const openParentThread = useOpenParentThread();
+
   if (threadQueryState.status === "loading") {
     return (
       <RouteLoadingSkeleton isBoundedPane={isBoundedPane}>
@@ -1475,6 +1524,20 @@ function ThreadDetailViewInternal(
           inline={
             includeResponsiveActions
               ? [
+                  ...(parentThreadLink?.isLoaded
+                    ? [
+                        {
+                          key: "parent-thread",
+                          group: THREAD_HEADER_ACTIONS_GROUP,
+                          action: {
+                            icon: "ChevronLeft",
+                            label: `Go to ${parentThreadLink.relationship === "fork" ? "fork source" : "parent"}: ${parentThreadLink.parentThreadTitle}`,
+                            run: () =>
+                              openParentThread(parentThreadLink, false),
+                          },
+                        } satisfies PluginThreadActionsInlineItem,
+                      ]
+                    : []),
                   ...responsiveWorkspaceActions,
                   ...headerActions.map(
                     ({ key, action }): PluginThreadActionsInlineItem => ({
@@ -1493,6 +1556,7 @@ function ThreadDetailViewInternal(
       isSecondaryPanelOpen={isSecondaryPanelOpen}
       onClosePane={onRequestClose ?? undefined}
       onToggleSecondaryPanel={toggleSecondaryPanel}
+      parentThread={parentThreadLink}
       pluginActions={
         <PluginThreadHeaderActions
           threadId={thread.id}
@@ -1668,16 +1732,45 @@ function ThreadDetailViewInternal(
         ...presentPanelTab(tab),
         tab,
         renderContent: () => renderSecondaryTabContent(tab),
-        onSelect:
-          tab.kind === "terminal"
+        onSelect: isPanelTabPane
+          ? () => undefined
+          : tab.kind === "terminal"
             ? () => terminals.select(tab.terminalId)
             : () => handleActivateFileTab(tab.id),
-        onClose:
-          tab.kind === "terminal"
-            ? () => terminals.close(tab.terminalId)
-            : () => closeTab(tab.id),
+        onClose: () => {
+          if (tab.kind === "terminal") terminals.close(tab.terminalId);
+          else closeTab(tab.id);
+          if (isPanelTabPane) onRequestClose?.();
+        },
       }),
     );
+  const shownPanelTabs = panelTabs.filter((tab) => showsPanelTab(tab.tab.id));
+  const shownFixedTabs = secondaryPanelFixedTabs.filter((tab) =>
+    showsPanelTab(tab.tab.id),
+  );
+  const panelTabPaneActions = isPanelTabPane ? (
+    <>
+      <span className="max-w-48 min-w-0 truncate text-sm text-muted-foreground">
+        {threadTitle}
+      </span>
+      <PaneMaximizeButton />
+      {onRequestClose ? (
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className={cn(
+            HEADER_PANE_ACTION_ICON_BUTTON_CLASS,
+            CHROME_SUBTLE_ICON_BUTTON_FOREGROUND_CLASS,
+          )}
+          aria-label="Close pane"
+          onClick={onRequestClose}
+        >
+          <Icon name="ClosePluginPane" />
+        </Button>
+      ) : null}
+    </>
+  ) : undefined;
   const threadDetailContent = (
     <MarkdownLocalFileContextMenuContext.Provider
       value={getLocalFileContextMenuItems}
@@ -1752,13 +1845,18 @@ function ThreadDetailViewInternal(
               }}
               secondaryPanel={{
                 canNavigateTabs: isFocused,
-                activeTab: activeFixedSecondaryTab,
+                activeTab: isPanelTabPane ? null : activeFixedSecondaryTab,
                 areFixedTabsReady: threadFixedTabs.isReady,
                 environmentId: thread.environmentId ?? undefined,
                 workspaceRootPath: environment?.path,
-                tabs: panelTabs,
-                fixedTabs: secondaryPanelFixedTabs,
-                splitPanelStateId: thread.id,
+                tabs: shownPanelTabs,
+                fixedTabs: shownFixedTabs,
+                splitPanelStateId: isPanelTabPane ? undefined : thread.id,
+                showConversationCollapseControl: !isPanelTabPane,
+                showNewTabButton: !isPanelTabPane,
+                inlinePanelToggle: isPanelTabPane ? "hidden" : "button",
+                chromeActions: panelTabPaneActions,
+                onOpenTabInPane: isPanelTabPane ? undefined : openTabInPane,
                 renderBrowserDeck,
                 isOpen: isSecondaryPanelOpen,
                 showFullScreenShortcut: true,

@@ -117,3 +117,12 @@ export const closePanesForThreadsAtom = atom(
     return { removedAny: true, focusedRoute: survivorRoute };
   },
 );
+
+export const threadPanelTabPanesAtom = atom((get) => {
+  const layout = get(splitLayoutAtom);
+  return layout === null
+    ? []
+    : listPanes(layout.root).flatMap((pane) =>
+        pane.content.kind === "thread-panel-tab" ? [pane.content] : [],
+      );
+});
