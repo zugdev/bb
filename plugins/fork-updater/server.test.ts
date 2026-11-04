@@ -66,6 +66,15 @@ describe("fork updater", () => {
     expect(await host.bb.storage.kv.get("built-commit")).toBe("bbbbbbb");
   });
 
+  it("fast forwards and reports up to date when only docs changed", async () => {
+    const { host, steps, reload } = setup(["docs/fork-roadmap.md", "README.md", ".github/workflows/ci.yml"]);
+    await plugin(host.bb);
+    const result = await host.harness.runCli(["status", "--json"]);
+    expect(JSON.parse(result.stdout)).toMatchObject({ builtCommit: "bbbbbbb", kind: "up-to-date", commits: [] });
+    expect(steps).toEqual(["fast-forward"]);
+    expect(reload).not.toHaveBeenCalled();
+  });
+
   it("rebuilds and swaps without recording the commit until the swap reports it installed", async () => {
     const { host, steps, reload, report } = setup(["pnpm-lock.yaml"]);
     await plugin(host.bb);

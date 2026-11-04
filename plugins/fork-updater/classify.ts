@@ -3,12 +3,23 @@ export interface LocalPlugin {
   rootDir: string;
 }
 
+function neverShips(file: string): boolean {
+  if (file.startsWith("docs/") || file.startsWith(".github/")) return true;
+  return file.endsWith(".md") && !/^(apps|packages|plugins)\//u.test(file);
+}
+
 export function classifyChanges(
   checkoutPath: string,
   changedFiles: readonly string[],
   localPlugins: readonly LocalPlugin[],
-): { kind: "up-to-date" } | { kind: "plugins"; pluginIds: string[] } | { kind: "rebuild" } {
+):
+  | { kind: "up-to-date" }
+  | { kind: "docs" }
+  | { kind: "plugins"; pluginIds: string[] }
+  | { kind: "rebuild" } {
   if (changedFiles.length === 0) return { kind: "up-to-date" };
+  const shippedFiles = changedFiles.filter((file) => !neverShips(file));
+  if (shippedFiles.length === 0) return { kind: "docs" };
   const pluginsRoot = `${checkoutPath.replace(/\/+$/u, "")}/plugins/`;
   const idByDir = new Map(
     localPlugins
@@ -16,7 +27,7 @@ export function classifyChanges(
       .map((plugin) => [plugin.rootDir.slice(pluginsRoot.length).replace(/\/+$/u, ""), plugin.id]),
   );
   const pluginIds = new Set<string>();
-  for (const file of changedFiles) {
+  for (const file of shippedFiles) {
     const match = /^plugins\/([^/]+)\//u.exec(file);
     const id = match === null ? undefined : idByDir.get(match[1]!);
     if (id === undefined) return { kind: "rebuild" };
