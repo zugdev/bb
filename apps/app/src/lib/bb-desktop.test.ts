@@ -85,7 +85,7 @@ describe("desktop chrome geometry", () => {
     expect(
       decodeURIComponent(properties.get("--bb-window-card-mask") ?? ""),
     ).toContain(
-      `<rect y='56' width='100%' height='100%' rx='${WINDOW_CARD_RADIUS_PX}'/>`,
+      `<rect y='56' width='100%' height='100%' rx='${WINDOW_CARD_RADIUS_PX}'/><rect x='${WINDOW_CARD_RADIUS_PX}' y='56' width='100%' height='100%'/><rect y='${56 + WINDOW_CARD_RADIUS_PX}' width='100%' height='100%'/>`,
     );
   });
 

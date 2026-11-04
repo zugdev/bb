@@ -425,9 +425,6 @@ describe("framed desktop sidebar", () => {
     expect(
       inset.classList.contains("before:rounded-tl-(--bb-frame-card-radius)"),
     ).toBe(false);
-    expect(
-      inset.classList.contains("before:rounded-bl-(--bb-frame-card-radius)"),
-    ).toBe(false);
 
     fireEvent.click(screen.getByRole("button", { name: "Toggle Sidebar" }));
 
@@ -436,10 +433,10 @@ describe("framed desktop sidebar", () => {
     ).toBe(true);
     expect(
       inset.classList.contains("before:rounded-bl-(--bb-frame-card-radius)"),
-    ).toBe(true);
+    ).toBe(false);
   });
 
-  it("keeps a lip of window frame on both sides of and below the card", () => {
+  it("runs the card to the window's trailing and bottom edges and keeps the sidebar lip", () => {
     render(
       <CompactViewportOverrideProvider isCompactViewport={false}>
         <SidebarProvider framed data-testid="wrapper">
@@ -451,8 +448,12 @@ describe("framed desktop sidebar", () => {
 
     const wrapper = screen.getByTestId("wrapper");
     const inset = screen.getByTestId("inset");
-    expect(wrapper.classList.contains("pr-(--bb-window-frame-lip)")).toBe(true);
-    expect(wrapper.classList.contains("pb-(--bb-window-frame-lip)")).toBe(true);
+    expect(wrapper.classList.contains("pr-(--bb-window-frame-lip)")).toBe(
+      false,
+    );
+    expect(wrapper.classList.contains("pb-(--bb-window-frame-lip)")).toBe(
+      false,
+    );
     expect(
       wrapper.classList.contains("pl-(--bb-window-frame-leading-lip)"),
     ).toBe(true);
@@ -465,23 +466,26 @@ describe("framed desktop sidebar", () => {
     expect(screen.getByTestId("panel").className).toContain(
       "var(--bb-shell-height)_-_var(--bb-window-frame-top)_-_var(--bb-window-frame-lip)",
     );
+    expect(inset.classList.contains("pl-px")).toBe(true);
     for (const edge of [
       "before:rounded-tr-(--bb-frame-card-radius)",
       "before:rounded-br-(--bb-frame-card-radius)",
       "px-px",
       "pb-px",
     ]) {
-      expect(inset.classList.contains(edge)).toBe(true);
+      expect(inset.classList.contains(edge)).toBe(false);
     }
     const insetEdge = inset.lastElementChild;
     expect(insetEdge?.getAttribute("data-sidebar")).toBe("inset-edge");
+    for (const edge of ["z-50", "border-t", "border-l"]) {
+      expect(insetEdge?.classList.contains(edge)).toBe(true);
+    }
     for (const edge of [
-      "z-50",
       "border",
       "rounded-tr-(--bb-frame-card-radius)",
       "rounded-br-(--bb-frame-card-radius)",
     ]) {
-      expect(insetEdge?.classList.contains(edge)).toBe(true);
+      expect(insetEdge?.classList.contains(edge)).toBe(false);
     }
     expect(inset.classList.contains("-mt-(--bb-window-title-bar-height)")).toBe(
       true,
