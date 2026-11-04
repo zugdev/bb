@@ -124,6 +124,7 @@ import { UrlOpenRoutingProvider } from "@/lib/url-open-routing";
 import { AppNavigationHostProvider } from "@/lib/app-navigation-host";
 import { useAppPanelController } from "@/lib/app-fixed-tab-navigation";
 import { useRootComposeProjectId } from "@/lib/root-compose-selection";
+import { RootComposeOverview } from "./RootComposeOverview";
 import {
   RootComposeSecondaryContent,
   useRootComposePinnedPanelToggleBoxClassName,
@@ -500,6 +501,8 @@ function RootComposeSurface({
     projectId,
     isProjectless,
     projects,
+    projectOptions,
+    changeProject,
     sidebarNavigation,
     sidebarNavigationError,
     currentProject,
@@ -1407,6 +1410,31 @@ function RootComposeSurface({
     />
   );
 
+  const createProject = {
+    onCreate: quickCreateProject.openCreateDialog,
+    disabled: !quickCreateProject.isAvailable || quickCreateProject.isCreating,
+    isCreating: quickCreateProject.isCreating,
+  };
+  const overview = (
+    <RootComposeOverview
+      sidebarNavigation={sidebarNavigation}
+      projectNamesById={mobileRecentProjectNamesById}
+      project={{
+        options: projectOptions,
+        value: isProjectless ? null : projectId,
+        onChange: (nextProjectId) => void changeProject(nextProjectId),
+        createProject,
+        disabled: isSubmitting,
+      }}
+      onOpenThread={(thread) =>
+        paneContext?.navigateInPane({
+          projectId: thread.projectId,
+          threadId: thread.id,
+        })
+      }
+    />
+  );
+
   const promptBox = renderPromptBox({
     id: "root-compose-prompt",
     autoFocus: !isProviderCliBlocked,
@@ -1425,12 +1453,7 @@ function RootComposeSurface({
     pluginComposerHost,
     textEffects: promptTextEffects,
     allowNoProject: true,
-    createProject: {
-      onCreate: quickCreateProject.openCreateDialog,
-      disabled:
-        !quickCreateProject.isAvailable || quickCreateProject.isCreating,
-      isCreating: quickCreateProject.isCreating,
-    },
+    createProject,
     onRequestMachineSetup: handleRequestMachineSetup,
   });
 
@@ -1461,6 +1484,7 @@ function RootComposeSurface({
                   ROOT_COMPOSE_SIDEBAR_ACTION_ALIGNED_TOP_PADDING_CLASS
                 }
                 isCompactHomeLayout={isCompactViewport}
+                overview={overview}
                 compactScrollContent={
                   <RootComposeMobileRecents
                     highlightedThreadId={lastCreatedThreadId}

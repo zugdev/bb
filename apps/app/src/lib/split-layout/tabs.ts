@@ -2,6 +2,7 @@ import { atom, type Setter, type useStore } from "jotai";
 import { atomWithStorage } from "jotai/utils";
 import { z } from "zod";
 import { createTabScopedStorage } from "@/lib/browser-storage";
+import { PERSONAL_PROJECT_ID } from "@bb/domain";
 import { rootComposeProjectIdAtom } from "@/lib/root-compose-selection";
 import { getThreadRoutePath } from "@/lib/route-paths";
 import { maximizedPaneIdAtom, splitLayoutAtom } from "./atoms";
@@ -204,9 +205,9 @@ export const openSplitTabAtom = atom(
       NEW_THREAD_LAYOUT,
       projectId,
     );
-    return next === null
-      ? null
-      : activateTabLayout(set, next, NEW_THREAD_LAYOUT);
+    if (next === null) return null;
+    set(rootComposeProjectIdAtom, projectId ?? PERSONAL_PROJECT_ID);
+    return activateTabLayout(set, next, NEW_THREAD_LAYOUT);
   },
 );
 

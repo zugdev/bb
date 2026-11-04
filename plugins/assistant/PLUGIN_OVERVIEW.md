@@ -6,6 +6,7 @@ A personal assistant that lives at the top of your sidebar. It reads your Slack 
 - Every 10 minutes bb sends new Slack mentions, DMs and unread email into that thread for triage.
 - The agent notifies your phone, desktop and browser through Push notifications when an item needs you soon.
 - Draft replies in the thread. The assistant never sends Slack messages or email.
+- An **Assistant** section on Home and the New thread screen with the assistant's upcoming reminders (automations that target its thread) and its 5 latest notifications.
 
 ## Setup
 

@@ -5,6 +5,8 @@ import {
   moveHomeSection,
   overviewProjectThreads,
   repoWebUrl,
+  homeAttention,
+  pluginSectionId,
   resolveHomeSections,
   setHomeSectionHidden,
   sortAndFilterHomeThreads,
@@ -155,5 +157,56 @@ describe("home layout", () => {
       "https://github.com/zugdev/bb",
     );
     expect(repoWebUrl(null)).toBeNull();
+  });
+});
+
+describe("homeAttention", () => {
+  it("merges needs you and unread replies across projects, newest attention first", () => {
+    const attention = homeAttention([
+      {
+        threads: [
+          makeThreadListEntry({
+            id: "old-ask",
+            hasPendingInteraction: true,
+            latestAttentionAt: 10,
+          }),
+        ],
+      },
+      {
+        threads: [
+          makeThreadListEntry({
+            id: "new-ask",
+            hasPendingInteraction: true,
+            latestAttentionAt: 30,
+          }),
+          makeThreadListEntry({ id: "quiet", latestAttentionAt: 40 }),
+        ],
+      },
+    ]);
+    expect(attention.needsYou.map((thread) => thread.id)).toEqual([
+      "new-ask",
+      "old-ask",
+    ]);
+    expect(attention.replies).toEqual([]);
+  });
+});
+
+describe("resolveHomeSections with plugin sections", () => {
+  it("places new plugin sections after the fixed ones and keeps a saved order", () => {
+    const assistant = pluginSectionId("assistant", "assistant");
+    expect(
+      resolveHomeSections({ order: [], hidden: [] }, ["a"], [assistant])
+        .visible,
+    ).toEqual(["attention", assistant, "project:a"]);
+    expect(
+      resolveHomeSections(
+        { order: ["project:a", assistant, "attention"], hidden: [] },
+        ["a"],
+        [assistant],
+      ).visible,
+    ).toEqual(["project:a", assistant, "attention"]);
+    expect(
+      resolveHomeSections({ order: [], hidden: [assistant] }, ["a"], []).hidden,
+    ).toEqual([]);
   });
 });
