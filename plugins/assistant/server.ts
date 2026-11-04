@@ -21,6 +21,15 @@ import {
 
 const PERSONAL_PROJECT_ID = "proj_personal";
 const THREAD_KEY = "threadId";
+const UNSEEN_KEY = "unseen";
+const PANEL_KEY = "assistant/assistant";
+const BUILT_IN_NAVIGATION_KEYS = [
+  "__bb__/new-thread",
+  "__bb__/search-threads",
+  "__bb__/extensions",
+  "__bb__/skills",
+  "__bb__/automations",
+];
 const EMAIL_UID_KEY = "email:lastUid";
 const slackSinceKey = (team: string) => `slack:${team}:since`;
 
@@ -30,15 +39,14 @@ const notificationOutputSchema = z.object({
 });
 
 function assistantInstructions(threadId: string): string {
-  return `You are the user's personal assistant, a single long running thread in bb (thread id ${threadId}).
-Your job is to triage the user's Slack pings and email, run their calendar, keep track of what they owe people, and tell them what needs them.
-1. bb posts new Slack mentions, DMs and unread emails into this thread as they arrive. For each batch, sort items into: needs the user now, needs a reply later, and FYI. Keep FYI to one line each.
-2. Call assistant_notify only when something needs the user soon: a direct question, a deadline today, a meeting about to start, or someone blocked on them. Never notify for newsletters, automated mail or FYI.
-3. Use slack_search, slack_thread, email_search and email_read to get context before you judge an item.
-4. For the calendar, use the Google Calendar connector tools when they are available. Add events the user asks for directly. If no calendar tools are loaded, tell the user to connect Google Calendar under claude.ai Settings, Connectors.
-5. When the user asks for something recurring or later ("check my email every day at 9am", "remind me Friday"), schedule it into this thread with the bb CLI: \`bb automation create --project proj_personal --target-thread ${threadId} --name <name> --cron "<5 field cron>" --timezone <IANA zone> --prompt "<what to do>" --provider <your provider id> --model <your model>\`, or \`--at <ISO time>\` / \`--in <duration>\` for one shot reminders. Run \`bb automation list --project proj_personal\` to show or change schedules. Ask for the timezone once and remember it.
-6. You never send Slack messages or email. When a reply is due, write a draft in your message for the user to copy.
-7. Use the bb memory CLI to remember people, projects, the user's timezone and preferences.`;
+  return `You are the user's personal assistant: their secretary and the orchestrator of their other bb agents. You live in one special thread (id ${threadId}) that the user opens from the Assistant entry at the top of the bb sidebar.
+1. Triage. bb posts new Slack mentions, DMs and unread emails here as they arrive. Sort each batch into needs the user now, needs a reply later, and FYI, one line per FYI item. Use slack_search, slack_thread, email_search and email_read for context first.
+2. Notify. Call assistant_notify when something needs the user soon: a direct question, a deadline today, a meeting about to start, someone blocked on them, or a work thread you started that finished or failed. Each call also bumps the count on the Assistant sidebar entry. Never notify for newsletters, automated mail or FYI.
+3. Calendar. Use the Google Calendar connector tools when they are loaded and add events the user asks for directly. If they are missing, tell the user to connect Google Calendar under claude.ai Settings, Connectors.
+4. Schedule. For anything recurring or later ("check my email every day at 9am", "remind me Friday"), run \`bb automation create --project proj_personal --target-thread ${threadId} --name <name> --cron "<cron>" --timezone <IANA zone> --prompt "<task>" --provider <your provider id> --model <your model>\`, or \`--at <ISO time>\` or \`--in <duration>\` for one off reminders. \`bb automation list --project proj_personal\` shows them.
+5. Orchestrate. You may start work in any project when the user asks: \`bb project list --json\` for ids, then \`bb thread spawn --project <id> --new-environment worktree --prompt-file -\` for code work, \`bb thread wait <id>\` and \`bb thread output <id>\` to follow it, \`bb thread tell <id>\` to steer it. Keep a short ledger in your replies of threads you started and their state, and notify when one needs the user.
+6. Memory. You own the user's long term memory. Search it with \`bb memory search <words> --scope all\` before answering questions about people, projects or preferences, and save durable facts with \`bb memory add --scope global\`: people and how the user works with them, their timezone, routines and preferences.
+7. You never send Slack messages or email. When a reply is due, write a draft for the user to copy.`;
 }
 
 export default async function plugin(bb: BbPluginApi) {
@@ -103,7 +111,8 @@ export default async function plugin(bb: BbPluginApi) {
     if (threadId !== undefined) {
       try {
         const thread = await bb.sdk.threads.get({ threadId });
-        if (thread.archivedAt === null) return threadId;
+        if (thread.archivedAt === null && thread.visibility === "hidden") return threadId;
+        if (thread.archivedAt === null) await bb.sdk.threads.archive({ threadId });
       } catch (error) {
         bb.log.info(`assistant thread ${threadId} is gone, starting a new one: ${String(error)}`);
       }
@@ -112,12 +121,42 @@ export default async function plugin(bb: BbPluginApi) {
       projectId: PERSONAL_PROJECT_ID,
       environment: { type: "project-default" },
       title: "Assistant",
+      visibility: "hidden",
       prompt:
         "Say hello in one line, then tell me which of Slack and email are connected and what I should set up next.",
     });
     threadId = thread.id;
     await bb.storage.kv.set(THREAD_KEY, thread.id);
     return thread.id;
+  }
+
+  async function bumpUnseen(by: number): Promise<void> {
+    const unseen = (await bb.storage.kv.get<number>(UNSEEN_KEY)) ?? 0;
+    await bb.storage.kv.set(UNSEEN_KEY, unseen + by);
+    bb.rpc.experimental_invalidate(["badge"]);
+  }
+
+  async function placeAtTopOfSidebar(): Promise<void> {
+    const preferences = await bb.sdk.system.uiPreferences.list();
+    const order = preferences.preferences["sidebar.pluginPanelOrder"];
+    const current = order.value;
+    if (current[0] !== PANEL_KEY) {
+      const rest = current.filter((key) => key !== PANEL_KEY);
+      const missingBuiltIns = BUILT_IN_NAVIGATION_KEYS.filter((key) => !rest.includes(key));
+      await bb.sdk.system.uiPreferences.set({
+        key: "sidebar.pluginPanelOrder",
+        expectedRevision: order.revision,
+        value: [PANEL_KEY, ...missingBuiltIns, ...rest],
+      });
+    }
+    const provider = preferences.preferences["sidebar.navigationProvider"];
+    if (provider.value !== "navigation/top-list") {
+      await bb.sdk.system.uiPreferences.set({
+        key: "sidebar.navigationProvider",
+        expectedRevision: provider.revision,
+        value: "navigation/top-list",
+      });
+    }
   }
 
   async function workspaceFor(team: string): Promise<SlackWorkspace> {
@@ -210,6 +249,7 @@ export default async function plugin(bb: BbPluginApi) {
         input: { title, body, threadId: ctx.threadId },
         outputSchema: notificationOutputSchema,
       });
+      await bumpUnseen(1);
       return result.channels.length === 0
         ? "No notification channel is enabled, so nothing was delivered."
         : `Delivered to ${result.channels.join(", ")}.`;
@@ -285,6 +325,18 @@ export default async function plugin(bb: BbPluginApi) {
     async "assistant.check"() {
       return checkSources();
     },
+    async "assistant.badge"() {
+      return { unseen: (await bb.storage.kv.get<number>(UNSEEN_KEY)) ?? 0 };
+    },
+    async "assistant.seen"() {
+      await bb.storage.kv.set(UNSEEN_KEY, 0);
+      bb.rpc.experimental_invalidate(["badge"]);
+      return { unseen: 0 };
+    },
+  });
+
+  await placeAtTopOfSidebar().catch((error: unknown) => {
+    bb.log.warn(`could not place Assistant at the top of the sidebar: ${String(error)}`);
   });
 
   bb.background.schedule("check-sources", "*/10 * * * *", async () => {
