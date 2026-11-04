@@ -81,9 +81,11 @@ export function useSidebarNavigationCustomize(
     onOpenRef.current = onOpen;
   });
   const open = useCallback(() => {
-    focusReturnRef.current = resolveCustomizeFocusReturnTarget(
-      containerRef.current,
-    );
+    focusReturnRef.current =
+      resolveCustomizeFocusReturnTarget(containerRef.current) ??
+      resolveCustomizeFocusReturnTarget(
+        document.querySelector<HTMLElement>("[data-sidebar-header-slot]"),
+      );
     onOpenRef.current?.();
     cancelPendingRef.current?.();
     cancelPendingRef.current = afterOpenMenusClose(() => setCustomizing(true));

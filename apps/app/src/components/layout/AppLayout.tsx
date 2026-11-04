@@ -118,6 +118,10 @@ import { NAV_RAIL_COLLAPSED_SIDEBAR_WIDTH } from "@/components/sidebar/navRailWi
 import { useSidebarNavigationPlacement } from "@/components/sidebar/sidebarNavigationProvider";
 import { SidebarHistoryNavigationControls } from "@/components/sidebar/SidebarHistoryNavigationControls";
 import {
+  SidebarTitleBarSlotProvider,
+  SidebarTitleBarSlotTarget,
+} from "@/components/sidebar/SidebarChrome";
+import {
   useAppCommandHandler,
   useAppCommandShortcut,
 } from "@/components/commands/AppCommandProvider";
@@ -230,7 +234,7 @@ function SidebarStateBridge({
       open={open}
       onOpenChange={handleOpenChange}
     >
-      {children}
+      <SidebarTitleBarSlotProvider>{children}</SidebarTitleBarSlotProvider>
     </SidebarProvider>
   );
 }
@@ -291,6 +295,7 @@ function SidebarTriggerOverlay({
         >
           <SidebarHistoryNavigationControls className="gap-0" />
           <SidebarTrigger {...triggerProps} />
+          <SidebarTitleBarSlotTarget />
         </div>
       </div>
     );

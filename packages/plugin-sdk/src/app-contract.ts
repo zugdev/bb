@@ -2629,8 +2629,11 @@ export interface ExperimentalSidebarNavigationRegistration {
   component: ComponentType<ExperimentalSidebarNavigationProps>;
   /**
    * Rendered in the sidebar's header row while this navigation is active,
-   * between the sidebar toggle and bb's back and forward buttons. Content is
-   * clipped to the row, so it cannot move the thread list or bb's controls.
+   * between the sidebar toggle and bb's back and forward buttons. With the
+   * `list` placement on wide macOS windows it renders in the window title
+   * bar after the sidebar toggle, and hides while the sidebar is collapsed.
+   * Content is clipped to the row, so it cannot move the thread list or bb's
+   * controls.
    * On macOS the empty space keeps dragging the window; buttons, links, and
    * inputs do not. A crashing header is replaced by the header of the
    * bundled Navigation plugin's provider for the same placement.

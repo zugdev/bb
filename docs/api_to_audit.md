@@ -1782,9 +1782,10 @@ Navigation plugin's provider for the same placement, or nothing when that
 plugin is disabled.
 
 The optional `headerComponent` renders in the sidebar header row while the
-navigation is active. On wide macOS desktop windows, this row sits below the
-window title bar; elsewhere it sits between the sidebar toggle and bb's back
-and forward buttons. It receives `width`, `controlSize`,
+navigation is active. On wide macOS desktop windows, a rail header's row sits
+below the window title bar, and a list header renders in the title bar after
+the sidebar toggle while the sidebar is open; elsewhere it sits between the
+sidebar toggle and bb's back and forward buttons. It receives `width`, `controlSize`,
 and `isCompactViewport`. The host clips it to the row, keeps the macOS drag
 region for non-interactive space, aligns it with the macOS window controls,
 and on a crash draws the header of the Navigation plugin's provider for the
@@ -1807,7 +1808,8 @@ default-enabled Navigation plugin (`plugins/navigation`), which is on the
 forkable list. It registers both through this slot with no host-only API:
 the host owns only the placement layout, Settings, the customize editor, and
 the navigation model. Rail's header is its New thread button, registered as
-`headerComponent`; it does not read the size props.
+`headerComponent`; it does not read the size props. Top list's header is its
+More button.
 
 **Audit before stabilizing.**
 
