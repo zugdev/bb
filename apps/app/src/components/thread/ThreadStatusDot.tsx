@@ -1,8 +1,14 @@
-import { useMemo } from "react";
 import type { ThreadListEntry } from "@bb/domain";
 import { cn } from "@bb/shared-ui/lib/utils";
 import { useSidebarNavigation } from "@/hooks/queries/sidebar-navigation-query";
-import { homeThreadDot, type HomeThreadDot } from "@/views/home-overview";
+import { threadEntryMapFor } from "@/lib/sidebar-thread-entries";
+import {
+  homeThreadDot,
+  liveThreadDescendants,
+  NO_THREAD_DESCENDANTS,
+  type HomeThreadDot,
+  type ThreadDescendants,
+} from "@/views/home-overview";
 
 const STATUS_DOTS: Record<HomeThreadDot, { className: string; label: string }> =
   {
@@ -53,20 +59,35 @@ export function ThreadStatusDot({
   );
 }
 
+const descendantsByEntries = new WeakMap<
+  ReadonlyMap<string, ThreadListEntry>,
+  ThreadDescendants
+>();
+
+export function threadDescendantsFor(
+  entries: ReadonlyMap<string, ThreadListEntry>,
+): ThreadDescendants {
+  if (entries.size === 0) return NO_THREAD_DESCENDANTS;
+  let descendants = descendantsByEntries.get(entries);
+  if (descendants === undefined) {
+    descendants = liveThreadDescendants(entries.values());
+    descendantsByEntries.set(entries, descendants);
+  }
+  return descendants;
+}
+
 export function useThreadEntriesById(): ReadonlyMap<string, ThreadListEntry> {
-  const { data } = useSidebarNavigation();
-  return useMemo(() => {
-    const byId = new Map<string, ThreadListEntry>();
-    if (data === undefined) return byId;
-    for (const project of [data.personalProject, ...data.projects]) {
-      for (const thread of project.threads) byId.set(thread.id, thread);
-    }
-    return byId;
-  }, [data]);
+  return threadEntryMapFor(useSidebarNavigation().data);
+}
+
+export function useThreadDescendants(): ThreadDescendants {
+  return threadDescendantsFor(useThreadEntriesById());
 }
 
 export function useThreadDot(threadId: string | null): HomeThreadDot | null {
   const entries = useThreadEntriesById();
   const entry = threadId === null ? undefined : entries.get(threadId);
-  return entry === undefined ? null : homeThreadDot(entry);
+  return entry === undefined
+    ? null
+    : homeThreadDot(entry, threadDescendantsFor(entries));
 }

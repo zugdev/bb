@@ -4,6 +4,7 @@ import { cn } from "@bb/shared-ui/lib/utils";
 import { CHROME_SECTION_LABEL_CLASS } from "@bb/shared-ui/chrome-style-tokens";
 import {
   ThreadStatusDot,
+  useThreadDescendants,
   useThreadEntriesById,
 } from "@/components/thread/ThreadStatusDot";
 import { listPanes } from "@/lib/split-layout";
@@ -22,6 +23,7 @@ export function ActiveTabThreadsSection({
   const layout = useAtomValue(splitLayoutAtom);
   const { tabs, activeTabId } = useAtomValue(splitTabsAtom);
   const entries = useThreadEntriesById();
+  const descendants = useThreadDescendants();
   const navigate = useNavigate();
   const requestRename = useDefaultRequestRename();
   const isHome = useLocation().pathname === HOME_ROUTE_PATH;
@@ -62,7 +64,7 @@ export function ActiveTabThreadsSection({
               onDoubleClick={() => requestRename(content.threadId)}
             >
               <span className="flex size-3 shrink-0 items-center justify-center">
-                <ThreadStatusDot dot={homeThreadDot(entry)} />
+                <ThreadStatusDot dot={homeThreadDot(entry, descendants)} />
               </span>
               <span className="min-w-0 flex-1 truncate">
                 {getThreadDisplayTitle(entry)}

@@ -13,9 +13,15 @@ import {
 import {
   homeAttention,
   homeThreadTime,
+  liveThreadDescendants,
+  NO_THREAD_DESCENDANTS,
   sortAndFilterHomeThreads,
 } from "./home-overview";
-import { ThreadRow, type OpenThread } from "./HomeThreadRow";
+import {
+  HomeThreadDescendantsContext,
+  ThreadRow,
+  type OpenThread,
+} from "./HomeThreadRow";
 
 export const ROOT_COMPOSE_NEEDS_YOU_LIMIT = 3;
 export const ROOT_COMPOSE_RECENT_PROJECT_LIMIT = 4;
@@ -67,7 +73,28 @@ interface RootComposeOverviewProps {
   isFocusedPane: boolean;
 }
 
-export function RootComposeOverview({
+export function RootComposeOverview(props: RootComposeOverviewProps) {
+  const { sidebarNavigation } = props;
+  const descendants = useMemo(
+    () =>
+      sidebarNavigation === undefined
+        ? NO_THREAD_DESCENDANTS
+        : liveThreadDescendants(
+            [
+              sidebarNavigation.personalProject,
+              ...sidebarNavigation.projects,
+            ].flatMap((candidate) => candidate.threads),
+          ),
+    [sidebarNavigation],
+  );
+  return (
+    <HomeThreadDescendantsContext value={descendants}>
+      <RootComposeOverviewSections {...props} />
+    </HomeThreadDescendantsContext>
+  );
+}
+
+function RootComposeOverviewSections({
   sidebarNavigation,
   projectNamesById,
   project,

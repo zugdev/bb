@@ -450,10 +450,17 @@ function ThreadRowComponent({
     hasHiddenChildren && parentOptions
       ? parentOptions.hiddenThreads
       : NO_HIDDEN_THREADS;
+  const liveDescendants = useMemo(
+    () =>
+      parentOptions?.hiddenThreads.filter(
+        (descendant) => !descendant.isArchived,
+      ) ?? NO_HIDDEN_THREADS,
+    [parentOptions?.hiddenThreads],
+  );
   const hiddenChildrenHaveDraft = useThreadsHaveDraft(hiddenThreads);
   const trailingStatus = experimental_resolveThreadStatus({
     thread,
-    hiddenThreads,
+    hiddenThreads: liveDescendants,
     hasUnsubmittedDraft: hasComposerDraft || hiddenChildrenHaveDraft,
     rowStatus: pluginThreadRowStatus,
   });

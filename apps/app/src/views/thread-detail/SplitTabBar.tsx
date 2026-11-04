@@ -47,6 +47,7 @@ import { countPanes, findPane, listPanes } from "@/lib/split-layout";
 import {
   mostUrgentThreadDot,
   ThreadStatusDot,
+  useThreadDescendants,
   useThreadEntriesById,
 } from "@/components/thread/ThreadStatusDot";
 import { homeThreadDot } from "@/views/home-overview";
@@ -83,6 +84,7 @@ function SplitTabTitle({
         : "Extension");
   const extraPanes = layout === null ? 0 : countPanes(layout.root) - 1;
   const entries = useThreadEntriesById();
+  const descendants = useThreadDescendants();
   const dot = mostUrgentThreadDot(
     layout === null
       ? []
@@ -91,7 +93,7 @@ function SplitTabTitle({
             pane.content.kind === "thread"
               ? entries.get(pane.content.threadId)
               : undefined;
-          return entry === undefined ? null : homeThreadDot(entry);
+          return entry === undefined ? null : homeThreadDot(entry, descendants);
         }),
   );
   return (
