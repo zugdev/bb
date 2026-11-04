@@ -14,6 +14,7 @@ import {
   experimental_usePluginId,
   type ExperimentalSidebarFooterDisclosureProps,
   useBbContext,
+  useSettings,
 } from "@get-bb/plugin-sdk/app";
 import { Icon } from "@/components/ui/icon";
 import { Button } from "@/components/ui/button";
@@ -52,6 +53,11 @@ import {
 } from "./usage-feedback.js";
 
 import { UsageSettings } from "./settings.js";
+import {
+  READOUT_PROVIDER_IDS,
+  UsageReadout,
+  weeklyReadings,
+} from "./usage-readout.js";
 
 export interface UsageStoreSnapshot {
   data: UsageSnapshot | null;
@@ -914,6 +920,54 @@ export function ProviderUsageStatusContent({
   );
 }
 
+function useThreadMachineId(): string | null {
+  const { threadId } = useBbContext();
+  const sidebarThreads = experimental_useSidebarThreads();
+  return useMemo(
+    () =>
+      sidebarThreads.threads.find((thread) => thread.id === threadId)?.host
+        ?.id ?? null,
+    [sidebarThreads.threads, threadId],
+  );
+}
+
+function machineSelectionStorageKey(pluginId: string): string {
+  return `bb.${pluginId}.selected-machine.v1`;
+}
+
+function ProviderUsageButtonContent() {
+  const pluginId = experimental_usePluginId();
+  const snapshot = useSyncExternalStore(
+    subscribeStore,
+    getStoreSnapshot,
+    getStoreSnapshot,
+  );
+  const threadMachineId = useThreadMachineId();
+  const enabled = useSettings().values?.sidebarWeeklyUsage === true;
+  useEffect(() => {
+    if (!enabled) return;
+    const refresh = () => {
+      if (document.visibilityState === "hidden") return;
+      void refreshUsage({
+        pluginId,
+        force: false,
+        machineIds: null,
+        providerIds: READOUT_PROVIDER_IDS,
+        maxAgeMs: FOCUS_MAX_AGE_MS,
+      });
+    };
+    refresh();
+    const timer = window.setInterval(refresh, FOCUS_MAX_AGE_MS);
+    return () => window.clearInterval(timer);
+  }, [enabled, pluginId]);
+  const machine = selectUsageMachine(
+    snapshot.data?.machines ?? [],
+    readSelectedMachine(machineSelectionStorageKey(pluginId)),
+    threadMachineId,
+  );
+  return <UsageReadout readings={enabled ? weeklyReadings(machine) : []} />;
+}
+
 function ProviderUsageStatus(props: ExperimentalSidebarFooterDisclosureProps) {
   const pluginId = experimental_usePluginId();
   const snapshot = useSyncExternalStore(
@@ -921,21 +975,14 @@ function ProviderUsageStatus(props: ExperimentalSidebarFooterDisclosureProps) {
     getStoreSnapshot,
     getStoreSnapshot,
   );
-  const { threadId } = useBbContext();
-  const sidebarThreads = experimental_useSidebarThreads();
-  const threadMachineId = useMemo(
-    () =>
-      sidebarThreads.threads.find((thread) => thread.id === threadId)?.host
-        ?.id ?? null,
-    [sidebarThreads.threads, threadId],
-  );
+  const threadMachineId = useThreadMachineId();
   return (
     <ProviderUsageStatusContent
       {...props}
       pluginId={pluginId}
       snapshot={snapshot}
       threadMachineId={threadMachineId}
-      machineSelectionStorageKey={`bb.${pluginId}.selected-machine.v1`}
+      machineSelectionStorageKey={machineSelectionStorageKey(pluginId)}
     />
   );
 }
@@ -948,6 +995,7 @@ export default definePluginApp((app) => {
     label: "Provider usage",
     icon: "ChartColumn",
     component: ProviderUsageStatus,
+    experimental_buttonContent: ProviderUsageButtonContent,
   });
   app.contentScripts.register({
     id: "refresh-usage",

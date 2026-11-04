@@ -8,9 +8,9 @@ import {
   DEFAULT_THREAD_CREATION_PLACEMENT,
 } from "@/lib/thread-creation-placement";
 import { useRootComposePlacement } from "@/lib/root-compose-selection";
-import { useAtomValue } from "jotai";
+import { useAtomValue, useStore } from "jotai";
 import { splitLayoutAtom } from "@/lib/split-layout/atoms";
-import { splitTabsAtom } from "@/lib/split-layout/tabs";
+import { openThreadInTab, splitTabsAtom } from "@/lib/split-layout/tabs";
 import { findPaneByContent } from "@/lib/split-layout";
 import type { PromptDraftScope } from "@/hooks/usePromptDraftStorage";
 import { useInitialPromptDraft } from "@/components/promptbox/mentions/initial-prompt-draft";
@@ -494,6 +494,7 @@ function RootComposeSurface({
   const isFocusedPane = paneContext?.isFocused ?? true;
   const location = useLocation();
   const navigate = useNavigate();
+  const store = useStore();
   const [, setPlacement] = useRootComposePlacement();
   const isPointerCoarse = usePointerCoarse();
   const quickCreateProject = useQuickCreateProjectController();
@@ -1427,12 +1428,14 @@ function RootComposeSurface({
         createProject,
         disabled: isSubmitting,
       }}
-      onOpenThread={(thread) =>
-        paneContext?.navigateInPane({
-          projectId: thread.projectId,
-          threadId: thread.id,
-        })
-      }
+      onOpenThread={(thread, { newTab }) => {
+        const ref = { projectId: thread.projectId, threadId: thread.id };
+        if (newTab && !isCompactViewport) {
+          openThreadInTab(store, navigate, ref);
+          return;
+        }
+        paneContext?.navigateInPane(ref);
+      }}
     />
   );
 

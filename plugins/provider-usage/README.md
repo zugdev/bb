@@ -26,6 +26,8 @@ to inspect their published contracts. RPC calls accept JSON through
 
 Every 5 minutes the plugin reads usage for all usage providers on connected machines and shared sources, reusing measurements under 4 minutes old. When a window that was at 90% or more rolls over to a later reset time, it sends one notification through the Push notifications plugin, such as "Claude Code: Five-hour limit reset" with the account email as the body. The first reading of a window only records it. The `resetNotifications` setting (default `true`, labelled "Notify when a usage limit resets" on the plugin page) turns this off: `bb plugin config bb--provider-usage set resetNotifications false`. With Push notifications disabled, sends fail and are logged to `bb plugin logs bb--provider-usage`.
 
+The `sidebarWeeklyUsage` setting (default `false`, labelled "Show 7 day usage in the sidebar footer") replaces the footer icon with the Claude and Codex 7 day limits, each as the provider icon and the percent used, such as 42% and 17%. A provider that isn't signed in or has no weekly window is left out, and with neither the icon returns. It reads the same machine as the card and refreshes those two providers every 5 minutes. Open the card for reset times. Turn it on with `bb plugin config bb--provider-usage set sidebarWeeklyUsage true`.
+
 `bb settings usage --json` and `bb.sdk.system.usageLimits()` remain the
 host-local provider-maintenance view; they do not aggregate shared pool accounts.
 

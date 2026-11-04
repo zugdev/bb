@@ -215,6 +215,9 @@ onChange }` — the control the New Thread environment picker renders beside
   controller that requests `open`, `close`, or `toggle`; an action registration
   returns nothing. BB keeps only one disclosure open across all plugins.
   The component owns everything inside, including tabs and navigation.
+  A disclosure may also pass `experimental_buttonContent`, a component bb
+  renders inside the footer button in place of the icon for a live readout;
+  the button grows to fit and More and Customize still show `icon`.
   Experimental: see `docs/api_to_audit.md`.
 - `sidebarFooterAction` → compatibility API for a host-rendered footer action.
   Registration remains `{ id, title, icon, run }`, and `run` still receives

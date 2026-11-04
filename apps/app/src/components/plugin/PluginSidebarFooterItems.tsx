@@ -214,13 +214,17 @@ export function PluginSidebarFooterItems({
   const footerShownAfterClose = useRef<boolean | null>(null);
   const menuRef = useRef<HTMLUListElement>(null);
   const moreRef = useRef<HTMLButtonElement>(null);
-  useMeasureSidebarFooterCapacity(menuRef, moreRef);
   const isAvailable = (item: FooterItem) =>
     item.kind === "plugin" ||
     builtInActions.some((action) => action.id === item.id);
   const items = preferences.items.filter(isAvailable);
   const visible = preferences.footer.filter(isAvailable);
   const hidden = items.filter((item) => !visible.includes(item));
+  useMeasureSidebarFooterCapacity(
+    menuRef,
+    moreRef,
+    visible.map((item) => item.key).join("\n"),
+  );
   const footerHidden = preferences.items.every((item) =>
     preferences.hidden.includes(item.key),
   );
@@ -322,6 +326,7 @@ export function PluginSidebarFooterItems({
                       tooltip={{ children: label, hidden: false, side: "top" }}
                       className={cn(
                         SIDEBAR_FOOTER_ACTION_CLASS,
+                        hasButtonContent(item) && "w-auto! px-1.5!",
                         active &&
                           "bg-sidebar-accent text-sidebar-accent-foreground [&>[data-icon-root]]:opacity-100",
                       )}
@@ -352,7 +357,7 @@ export function PluginSidebarFooterItems({
                         </Link>
                       ) : (
                         <>
-                          <FooterItemIcon item={item} />
+                          <FooterItemButtonContent item={item} />
                           <span className="sr-only">{item.label}</span>
                         </>
                       )}
@@ -450,6 +455,36 @@ function FooterCommandObserver({
     item.runtime.acknowledgeCommand(command.sequence);
   }, [command, item, onDisclosureCommand]);
   return null;
+}
+
+function hasButtonContent(item: FooterItem): boolean {
+  return (
+    item.kind === "plugin" &&
+    item.slot.kind === "disclosure" &&
+    item.slot.experimental_buttonContent !== undefined
+  );
+}
+
+function FooterItemButtonContent({ item }: { item: FooterItem }) {
+  if (
+    item.kind !== "plugin" ||
+    item.slot.kind !== "disclosure" ||
+    item.slot.experimental_buttonContent === undefined
+  ) {
+    return <FooterItemIcon item={item} />;
+  }
+  const Content = item.slot.experimental_buttonContent;
+  return (
+    <PluginSlotMount
+      pluginId={item.slot.pluginId}
+      slotKind="experimental_sidebarFooter"
+      slotId={item.slot.id}
+      crashFallback={<FooterItemIcon item={item} />}
+      instanceId="button"
+    >
+      <Content />
+    </PluginSlotMount>
+  );
 }
 
 export function FooterItemIcon({ item }: { item: FooterItem }) {
