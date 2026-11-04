@@ -73,13 +73,17 @@ function SplitTabTitle({
   const focused =
     layout === null ? null : findPane(layout.root, layout.focusedPaneId);
   const threadId =
-    focused?.content.kind === "thread" ? focused.content.threadId : "";
+    focused?.content.kind === "thread" ||
+    focused?.content.kind === "thread-panel-tab"
+      ? focused.content.threadId
+      : "";
   const thread = useThread(threadId);
   const title =
     name ??
     (focused === null || focused.content.kind === "new-thread"
       ? "New thread"
-      : focused.content.kind === "thread"
+      : focused.content.kind === "thread" ||
+          focused.content.kind === "thread-panel-tab"
         ? (thread.data?.title ?? "Thread")
         : "Extension");
   const extraPanes = layout === null ? 0 : countPanes(layout.root) - 1;

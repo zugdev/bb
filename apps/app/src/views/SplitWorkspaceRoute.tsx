@@ -16,7 +16,10 @@ import { useRouteState } from "@/hooks/useRouteState";
 import { LegacyProjectComposeRedirect } from "./LegacyProjectComposeRedirect";
 import { SplitThreadArea } from "./thread-detail/SplitThreadArea";
 import { SplitTabBar } from "./thread-detail/SplitTabBar";
-import { paneContentForPathname } from "./thread-detail/splitThreadNavigation";
+import {
+  paneContentForPathname,
+  THREAD_PANEL_TAB_SEARCH_PARAM,
+} from "./thread-detail/splitThreadNavigation";
 import { LazyPluginsView } from "./ToolsViewSplits";
 
 disableGlobalCursorStyles();
@@ -38,14 +41,19 @@ export default function SplitWorkspaceRoute() {
       return ROOT_COMPOSE_CONTENT;
     }
     if (isThreadView && projectId && threadId) {
-      return { kind: "thread", projectId, threadId };
+      const tabId = new URLSearchParams(location.search).get(
+        THREAD_PANEL_TAB_SEARCH_PARAM,
+      );
+      return tabId
+        ? { kind: "thread-panel-tab", projectId, threadId, tabId }
+        : { kind: "thread", projectId, threadId };
     }
     const content = paneContentForPathname(location.pathname);
     if (content?.kind === "plugin-detail" || content?.kind === "plugin-panel") {
       return content;
     }
     return null;
-  }, [isThreadView, location.pathname, projectId, threadId]);
+  }, [isThreadView, location.pathname, location.search, projectId, threadId]);
 
   const layout = useAtomValue(splitLayoutAtom);
 

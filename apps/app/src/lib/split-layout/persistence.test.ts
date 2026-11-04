@@ -56,6 +56,26 @@ const layout: SplitLayout = {
 };
 
 describe("split layout persistence", () => {
+  it("round-trips a thread panel tab pane", () => {
+    const withPanelTab: SplitLayout = {
+      root: {
+        type: "pane",
+        paneId: "pane-1",
+        content: {
+          kind: "thread-panel-tab",
+          projectId: "project-1",
+          threadId: "thread-1",
+          tabId: "terminal:abc",
+        },
+      },
+      focusedPaneId: "pane-1",
+    };
+
+    expect(deserializeSplitLayout(serializeSplitLayout(withPanelTab))).toEqual(
+      withPanelTab,
+    );
+  });
+
   it("round-trips a versioned split layout", () => {
     const serialized = serializeSplitLayout(layout);
 
