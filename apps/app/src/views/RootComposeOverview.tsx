@@ -10,11 +10,16 @@ import {
   type ProjectSelectorCreateProjectConfig,
   type ProjectSelectorOption,
 } from "@/components/pickers/ProjectSelector";
-import { homeAttention } from "./home-overview";
+import {
+  homeAttention,
+  homeThreadTime,
+  sortAndFilterHomeThreads,
+} from "./home-overview";
 import { ThreadRow, type OpenThread } from "./HomeThreadRow";
 
 export const ROOT_COMPOSE_NEEDS_YOU_LIMIT = 3;
 export const ROOT_COMPOSE_RECENT_PROJECT_LIMIT = 4;
+export const ROOT_COMPOSE_PROJECT_THREAD_LIMIT = 4;
 
 interface ProjectThreads {
   threads: readonly ThreadListEntry[];
@@ -46,7 +51,7 @@ export function recentProjects(
 interface RootComposeOverviewProps {
   sidebarNavigation:
     | {
-        personalProject: ProjectThreads;
+        personalProject: ProjectThreads & { id: string };
         projects: readonly NamedProjectThreads[];
       }
     | undefined;
@@ -91,16 +96,38 @@ export function RootComposeOverview({
     0,
     isFocusedPane && !project.disabled,
   );
+  const selectedProject = useMemo(
+    () =>
+      project.value === null || sidebarNavigation === undefined
+        ? null
+        : ([
+            sidebarNavigation.personalProject,
+            ...sidebarNavigation.projects,
+          ].find((candidate) => candidate.id === project.value) ?? null),
+    [project.value, sidebarNavigation],
+  );
   const needsYou = useMemo(
     () =>
       sidebarNavigation === undefined
         ? []
-        : homeAttention([
-            sidebarNavigation.personalProject,
-            ...sidebarNavigation.projects,
-          ]).needsYou,
-    [sidebarNavigation],
+        : homeAttention(
+            selectedProject === null
+              ? [
+                  sidebarNavigation.personalProject,
+                  ...sidebarNavigation.projects,
+                ]
+              : [selectedProject],
+          ).needsYou,
+    [selectedProject, sidebarNavigation],
   );
+  const latest = useMemo(() => {
+    if (selectedProject === null) return [];
+    const waiting = new Set(needsYou.map((thread) => thread.id));
+    return sortAndFilterHomeThreads(selectedProject.threads, "message", "")
+      .filter((thread) => !waiting.has(thread.id))
+      .slice(0, ROOT_COMPOSE_PROJECT_THREAD_LIMIT);
+  }, [needsYou, selectedProject]);
+  const showsProjectName = selectedProject === null;
   return (
     <div
       ref={rootRef}
@@ -144,20 +171,46 @@ export function RootComposeOverview({
           </span>
         )}
       </div>
-      {needsYou.length === 0 ? null : (
+      {needsYou.length === 0 && selectedProject === null ? null : (
         <section className="flex flex-col">
           <h2 className="flex items-baseline gap-2 pb-1.5 text-sm font-medium">
             Needs you
-            <span className="text-xs font-normal text-muted-foreground tabular-nums">
-              {needsYou.length}
-            </span>
+            {needsYou.length === 0 ? null : (
+              <span className="text-xs font-normal text-muted-foreground tabular-nums">
+                {needsYou.length}
+              </span>
+            )}
           </h2>
-          {needsYou.slice(0, ROOT_COMPOSE_NEEDS_YOU_LIMIT).map((thread) => (
+          {needsYou.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Nothing waiting</p>
+          ) : (
+            needsYou
+              .slice(0, ROOT_COMPOSE_NEEDS_YOU_LIMIT)
+              .map((thread) => (
+                <ThreadRow
+                  key={thread.id}
+                  thread={thread}
+                  projectName={
+                    showsProjectName
+                      ? (projectNamesById.get(thread.projectId) ?? null)
+                      : null
+                  }
+                  time={thread.latestAttentionAt}
+                  onOpen={onOpenThread}
+                />
+              ))
+          )}
+        </section>
+      )}
+      {latest.length === 0 ? null : (
+        <section className="flex flex-col">
+          <h2 className="pb-1.5 text-sm font-medium">Latest threads</h2>
+          {latest.map((thread) => (
             <ThreadRow
               key={thread.id}
               thread={thread}
-              projectName={projectNamesById.get(thread.projectId) ?? null}
-              time={thread.latestAttentionAt}
+              projectName={null}
+              time={homeThreadTime(thread, "message")}
               onOpen={onOpenThread}
             />
           ))}
