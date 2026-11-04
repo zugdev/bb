@@ -210,6 +210,7 @@ export const SURFACE_GROUPS: SurfaceGroup[] = [
         bullets: [
           "Run an action, or open a small panel above the footer",
           "Show quick status, such as usage limits, without leaving the thread",
+          "Replace the icon with a live readout, such as a percentage, through experimental_buttonContent",
           "Follow the user's order and visibility choices in Appearance",
           "Switch this device to another of its bb servers, in bb Desktop and the mobile app",
         ],

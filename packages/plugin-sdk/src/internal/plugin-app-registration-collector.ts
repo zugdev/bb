@@ -82,7 +82,17 @@ const SIDEBAR_FOOTER_DISCLOSURE_KEYS: ReadonlySet<string> = new Set([
   "icon",
   "kind",
   "component",
+  "experimental_buttonContent",
 ]);
+
+function requireButtonContent(kind: string, value: unknown): ComponentType {
+  if (typeof value !== "function") {
+    throw new Error(
+      `${kind}: "experimental_buttonContent" must be a React component function`,
+    );
+  }
+  return value as ComponentType;
+}
 
 class SidebarFooterCollector implements ExperimentalSidebarFooter {
   constructor(
@@ -136,6 +146,14 @@ class SidebarFooterCollector implements ExperimentalSidebarFooter {
         icon,
         kind: "disclosure",
         component: requireComponent(kind, registration.component),
+        ...(registration.experimental_buttonContent === undefined
+          ? {}
+          : {
+              experimental_buttonContent: requireButtonContent(
+                kind,
+                registration.experimental_buttonContent,
+              ),
+            }),
         source: "experimental_sidebarFooter",
         runtime,
       };

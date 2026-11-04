@@ -169,6 +169,13 @@ export default function providerUsagePlugin(bb: BbPluginApi): void {
         "Send a notification through Push notifications when a usage window that reached 90% resets.",
       default: true,
     },
+    sidebarWeeklyUsage: {
+      type: "boolean",
+      label: "Show 7 day usage in the sidebar footer",
+      description:
+        "Replace the usage icon with the Claude and Codex 7 day limits, such as 42%. Providers that aren't signed in are left out.",
+      default: false,
+    },
   });
   const inventories = new Map<string, SourceResult>();
   const measurements = new Map<

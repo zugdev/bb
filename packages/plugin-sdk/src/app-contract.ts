@@ -1224,6 +1224,14 @@ export interface ExperimentalSidebarFooterActionRegistration extends Experimenta
 export interface ExperimentalSidebarFooterDisclosureRegistration extends ExperimentalSidebarFooterItemBase {
   kind: "disclosure";
   component: ComponentType<ExperimentalSidebarFooterDisclosureProps>;
+  /**
+   * Renders inside the footer button in place of `icon`, for a live readout
+   * such as usage percentages. The button grows to fit and the footer counts
+   * its width when deciding which items overflow into More. Render the icon
+   * yourself when there is nothing to show. More and Customize still use
+   * `icon`. Experimental: see docs/api_to_audit.md.
+   */
+  experimental_buttonContent?: ComponentType;
 }
 
 /** One host-rendered item in the app sidebar footer. */
