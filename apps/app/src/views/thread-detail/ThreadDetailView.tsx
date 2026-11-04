@@ -73,7 +73,6 @@ import { Button } from "@bb/shared-ui/button";
 import { COARSE_POINTER_ICON_SIZE_CLASS } from "@bb/shared-ui/coarse-pointer-sizing";
 import { cn } from "@bb/shared-ui/lib/utils";
 import { PluginThreadHeaderActions } from "@/components/plugin/PluginThreadHeaderActions";
-import { ThreadWorkspaceOpenButton } from "@/components/thread/ThreadWorkspaceOpenButton";
 import {
   formatEnvironmentDisplay,
   type EnvironmentDisplayHostContext,
@@ -1439,27 +1438,10 @@ function ThreadDetailViewInternal(
       ? { id: thread.environmentId, path: environment.path }
       : null,
   );
-  const workspaceOpenButton =
-    workspaceOpenPath && preferredDirectoryTarget ? (
-      <ThreadWorkspaceOpenButton
-        preferredTarget={preferredDirectoryTarget}
-        targets={directoryOpenTargets}
-        onOpenPreferredTarget={async () => {
-          await openPathInPreferredDirectoryTarget({
-            lineNumber: null,
-            path: workspaceOpenPath,
-          });
-        }}
-        onOpenTarget={async (targetId) => {
-          await openPathInDirectoryTarget({
-            lineNumber: null,
-            path: workspaceOpenPath,
-            rememberTarget: true,
-            targetId,
-          });
-        }}
-      />
-    ) : undefined;
+  const openDiff = workspaceOpenPath
+    ? () =>
+        panel.openTab({ tab: GIT_DIFF_TAB_REFERENCE, availability: "fixed" })
+    : undefined;
   const timelineHeader = (
     <ThreadDetailHeader
       actionsMenu={({
@@ -1524,7 +1506,7 @@ function ThreadDetailViewInternal(
       thread={threadActionTarget}
       threadTitle={threadTitle}
       contextCardButton={<ThreadContextCardHeaderButton />}
-      workspaceOpenButton={workspaceOpenButton}
+      onOpenDiff={openDiff}
     />
   );
   const threadScreen = (

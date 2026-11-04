@@ -82,7 +82,7 @@ interface ThreadDetailHeaderProps {
   pluginActions?: ReactNode;
   thread: PluginThreadActionTarget;
   threadTitle: string;
-  workspaceOpenButton?: ReactNode;
+  onOpenDiff?: () => void;
 }
 
 export function ThreadDetailHeader({
@@ -93,7 +93,7 @@ export function ThreadDetailHeader({
   pluginActions,
   thread,
   threadTitle,
-  workspaceOpenButton,
+  onOpenDiff,
   contextCardButton,
 }: ThreadDetailHeaderProps) {
   const isCompactViewport = useIsCompactViewport();
@@ -283,9 +283,24 @@ export function ThreadDetailHeader({
         data-thread-header-workflow-actions=""
       >
         {pluginActions}
-        {!usesResponsiveActionOverflow && workspaceOpenButton ? (
-          <span className="inline-flex" data-thread-header-responsive-action="">
-            {workspaceOpenButton}
+        {!usesResponsiveActionOverflow && onOpenDiff ? (
+          <span
+            className="inline-flex opacity-0 transition-opacity group-hover/thread-header:opacity-100 focus-within:opacity-100"
+            data-thread-header-responsive-action=""
+          >
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className={cn(
+                HEADER_PANE_ACTION_ICON_BUTTON_CLASS,
+                CHROME_SUBTLE_ICON_BUTTON_FOREGROUND_CLASS,
+              )}
+              aria-label="Open diff"
+              onClick={onOpenDiff}
+            >
+              <Icon name="FileDiff" />
+            </Button>
           </span>
         ) : null}
         {!usesResponsiveActionOverflow && primaryAction ? (
@@ -371,7 +386,7 @@ export function ThreadDetailHeader({
       actions={actions}
       isWindowDragRegion={false}
       ownsWindowTopLeft={false}
-      className={beginPaneDrag ? "z-[21]" : undefined}
+      className={cn("group/thread-header", beginPaneDrag && "z-[21]")}
     />
   );
 }
