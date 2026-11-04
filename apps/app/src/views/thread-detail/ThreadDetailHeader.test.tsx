@@ -10,6 +10,7 @@ import {
 import type { ReactElement, ReactNode, Ref } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ThreadDetailHeader } from "./ThreadDetailHeader";
+import { SecondaryPanelHostLayoutContext } from "@/components/secondary-panel/SecondaryPanelHostLayoutContext";
 import { PaneContext, type PaneContextValue } from "./PaneContext";
 import { ThreadTitleMentionResourcesProvider } from "@/components/thread/ThreadTitleMentions";
 import { makeThreadListEntry } from "@bb/test-helpers/domain-fixtures";
@@ -188,6 +189,12 @@ const PANE_CONTEXT: PaneContextValue = {
   navigateInPane: vi.fn(),
 };
 
+const HOSTED_SPLIT_PANE_CONTEXT: PaneContextValue = {
+  ...PANE_CONTEXT,
+  isSplitPane: true,
+  secondaryPanelHost: { clear: vi.fn(), publish: vi.fn() },
+};
+
 afterEach(() => {
   cleanup();
   resetThreadActionRegistryForTest();
@@ -298,33 +305,107 @@ describe("ThreadDetailHeader", () => {
     },
   );
 
-  it("keeps thread Full Screen in a split header while its panel is open", () => {
+  it.each([
+    { isFocused: true, isOpen: true, label: "Hide right panel" },
+    { isFocused: true, isOpen: false, label: "Show right panel" },
+    { isFocused: false, isOpen: true, label: "Show right panel" },
+  ])(
+    "shows the right-panel toggle in a hosted split header (focused $isFocused, window panel open $isOpen)",
+    ({ isFocused, isOpen, label }) => {
+      render(
+        <SecondaryPanelHostLayoutContext.Provider
+          value={{ isOpen, isSuppressed: false, pinsCornerToggle: false }}
+        >
+          <PaneContext.Provider
+            value={{
+              ...HOSTED_SPLIT_PANE_CONTEXT,
+              isFocused,
+              onToggleMaximize: vi.fn(),
+            }}
+          >
+            <ThreadDetailHeader
+              actionsMenu={null}
+              isSecondaryPanelOpen={isOpen}
+              onToggleSecondaryPanel={vi.fn()}
+              thread={THREAD_TARGET}
+              threadTitle="Split panel state"
+            />
+          </PaneContext.Provider>
+        </SecondaryPanelHostLayoutContext.Provider>,
+      );
+
+      expect(
+        screen.getByRole("button", { name: /Maximize pane/ }),
+      ).not.toBeNull();
+      const toggle = screen.getByRole("button", { name: label });
+      expect(
+        toggle.closest("[data-thread-header-pane-actions]"),
+      ).not.toBeNull();
+      expect(toggle.classList.contains("hidden")).toBe(false);
+      expect(toggle.getAttribute("aria-expanded")).toBe(
+        String(isFocused && isOpen),
+      );
+    },
+  );
+
+  it("hides the hosted split toggle while a maximized pane suppresses the panel", () => {
     render(
-      <PaneContext.Provider
-        value={{
-          ...PANE_CONTEXT,
-          isSplitPane: true,
-          secondaryPanelHost: { clear: vi.fn(), publish: vi.fn() },
-          onToggleMaximize: vi.fn(),
-        }}
+      <SecondaryPanelHostLayoutContext.Provider
+        value={{ isOpen: true, isSuppressed: true, pinsCornerToggle: false }}
       >
-        <ThreadDetailHeader
-          actionsMenu={null}
-          isSecondaryPanelOpen
-          onToggleSecondaryPanel={vi.fn()}
-          thread={THREAD_TARGET}
-          threadTitle="Split panel state"
-        />
-      </PaneContext.Provider>,
+        <PaneContext.Provider value={HOSTED_SPLIT_PANE_CONTEXT}>
+          <ThreadDetailHeader
+            actionsMenu={null}
+            isSecondaryPanelOpen
+            onToggleSecondaryPanel={vi.fn()}
+            thread={THREAD_TARGET}
+            threadTitle="Maximized split"
+          />
+        </PaneContext.Provider>
+      </SecondaryPanelHostLayoutContext.Provider>,
     );
 
-    expect(
-      screen.getByRole("button", { name: /Maximize pane/ }),
-    ).not.toBeNull();
-    expect(
-      screen.queryByRole("button", { name: "Hide right panel" }),
-    ).toBeNull();
+    const toggle = screen.getByRole("button", {
+      name: /right panel/,
+      hidden: true,
+    });
+    expect(toggle.classList.contains("hidden")).toBe(true);
+    expect(toggle.hasAttribute("inert")).toBe(true);
   });
+
+  it.each([
+    { isFocused: true, isOpen: true, toggles: true },
+    { isFocused: false, isOpen: false, toggles: true },
+    { isFocused: false, isOpen: true, toggles: false },
+  ])(
+    "toggles the panel from a split header only when focusing the pane would not show it (focused $isFocused, open $isOpen)",
+    ({ isFocused, isOpen, toggles }) => {
+      const onToggleSecondaryPanel = vi.fn();
+      render(
+        <SecondaryPanelHostLayoutContext.Provider
+          value={{ isOpen, isSuppressed: false, pinsCornerToggle: false }}
+        >
+          <PaneContext.Provider
+            value={{ ...HOSTED_SPLIT_PANE_CONTEXT, isFocused }}
+          >
+            <ThreadDetailHeader
+              actionsMenu={null}
+              isSecondaryPanelOpen={isOpen}
+              onToggleSecondaryPanel={onToggleSecondaryPanel}
+              thread={THREAD_TARGET}
+              threadTitle="Split toggle"
+            />
+          </PaneContext.Provider>
+        </SecondaryPanelHostLayoutContext.Provider>,
+      );
+
+      const toggle = screen.getByRole("button", { name: /right panel/ });
+      fireEvent.pointerDown(toggle, { button: 0 });
+      fireEvent.click(toggle);
+
+      expect(onToggleSecondaryPanel).toHaveBeenCalledTimes(toggles ? 1 : 0);
+    },
+  );
 
   it("moves secondary controls into overflow for narrow split panes", () => {
     vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockReturnValue({
@@ -368,13 +449,11 @@ describe("ThreadDetailHeader", () => {
             onToggleSecondaryPanel={vi.fn()}
             thread={THREAD_TARGET}
             threadTitle="Narrow split"
-            onOpenDiff={() => {}}
           />
         </PaneContext.Provider>
       </>,
     );
 
-    expect(screen.queryByRole("button", { name: "Open diff" })).toBeNull();
     expect(screen.queryByText("Commit")).toBeNull();
     expect(screen.getByText("Thread menu")).not.toBeNull();
     expect(screen.getByText("Responsive menu actions")).not.toBeNull();
@@ -431,13 +510,11 @@ describe("ThreadDetailHeader", () => {
             onToggleSecondaryPanel={vi.fn()}
             thread={THREAD_TARGET}
             threadTitle="Wide split"
-            onOpenDiff={() => {}}
           />
         </PaneContext.Provider>
       </>,
     );
 
-    expect(screen.getByRole("button", { name: "Open diff" })).not.toBeNull();
     expect(screen.getByText("Commit")).not.toBeNull();
     expect(screen.getByText("Thread menu")).not.toBeNull();
     expect(screen.queryByText("Responsive menu actions")).toBeNull();

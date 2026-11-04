@@ -1116,12 +1116,8 @@ describe("SplitThreadArea", () => {
       store.set(selectSplitTabAtom, "tab-2");
     });
     await screen.findByTestId("draft-thr-c");
-    expect(
-      document.querySelectorAll("[data-split-pane-id]"),
-    ).toHaveLength(2);
-    expect(
-      screen.getByTestId("draft-thr-b").closest("[inert]"),
-    ).not.toBeNull();
+    expect(document.querySelectorAll("[data-split-pane-id]")).toHaveLength(2);
+    expect(screen.getByTestId("draft-thr-b").closest("[inert]")).not.toBeNull();
     expect(screen.getByTestId("draft-thr-c").closest("[inert]")).toBeNull();
 
     act(() => {
@@ -1867,7 +1863,7 @@ describe("SplitThreadArea", () => {
         .querySelector("button")
         ?.getAttribute("aria-expanded"),
     ).toBe("false");
-    expect(toggle.classList).not.toContain("hidden");
+    expect(toggle.classList).toContain("hidden");
 
     fireEvent.pointerDown(screen.getByTestId("pane-thr-a"));
     await screen.findByTestId("hosted-panel-thr-a");
@@ -2961,7 +2957,7 @@ describe("SplitThreadArea", () => {
     ).toContain("fixed");
   });
 
-  it("shows the page toggle without a pane reserve once the panel closes", async () => {
+  it("leaves the closed panel toggle to a focused thread pane's header without a pane reserve", async () => {
     const layout = pluginSplitLayout();
     layout.focusedPaneId = "pane-1";
     renderSplitArea({
@@ -2976,11 +2972,13 @@ describe("SplitThreadArea", () => {
     expect(pluginClose.nextElementSibling).toBeNull();
 
     fireEvent.click(screen.getByRole("button", { name: "Hide right panel" }));
+    const cornerToggle = screen.getByTestId("split-workspace-panel-toggle");
     await waitFor(() =>
       expect(
-        screen.getByTestId("split-workspace-panel-toggle").classList,
-      ).not.toContain("hidden"),
+        cornerToggle.querySelector("button")?.getAttribute("aria-expanded"),
+      ).toBe("false"),
     );
+    expect(cornerToggle.classList).toContain("hidden");
     expect(
       screen.getByRole("button", { name: "Close pane" }).nextElementSibling,
     ).toBeNull();
