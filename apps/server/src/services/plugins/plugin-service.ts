@@ -167,6 +167,7 @@ import {
 } from "./plugin-hook-registry.js";
 import type { PluginEnvironmentProviderBridge } from "./plugin-environment-provider-registry.js";
 import { createPluginRegistration } from "./plugin-registration.js";
+import { getRequestClientId } from "../../request-context.js";
 import {
   createPluginRuntime,
   forgetMutableRoot,
@@ -1405,8 +1406,10 @@ export function createPluginService(deps: PluginServiceDeps): PluginService {
         }));
       },
       emitThreadCreated(thread) {
+        const clientId = getRequestClientId();
         emitThreadEvent("thread.created", () => ({
           thread: buildThreadDto(thread),
+          ...(clientId === null ? {} : { experimental_clientId: clientId }),
         }));
       },
       emitThreadActive(thread) {

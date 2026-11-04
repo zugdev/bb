@@ -6,6 +6,7 @@ import {
   type BbSdk,
 } from "@bb/sdk";
 import type { ExperimentalPluginRpcCaller } from "@get-bb/plugin-sdk";
+import { getRequestClientId } from "../../request-context.js";
 
 export const PLUGIN_RPC_CALLER_HEADER = "x-bb-plugin-caller";
 
@@ -42,7 +43,16 @@ export function createPluginRpcCallerRegistry(): PluginRpcCallerRegistry {
       };
     },
     resolve(token) {
-      if (token === undefined) return { ok: true, caller: { kind: "client" } };
+      if (token === undefined) {
+        const clientId = getRequestClientId();
+        return {
+          ok: true,
+          caller:
+            clientId === null
+              ? { kind: "client" }
+              : { kind: "client", experimental_clientId: clientId },
+        };
+      }
       const pluginId = callers.get(tokenKey(token));
       return pluginId === undefined
         ? { ok: false }

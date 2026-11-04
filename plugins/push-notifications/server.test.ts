@@ -255,6 +255,44 @@ async function setup(options: SetupOptions = {}) {
     });
   }
 
+  async function registerClient(
+    clientId: string,
+    input: {
+      kind: "web" | "desktop" | "mobile";
+      label?: string;
+      canNotify?: boolean;
+      pushSubscriptionId?: string | null;
+    },
+  ) {
+    return fake.harness.behavior.callRpc(
+      "clients.register",
+      {
+        label: `${input.kind} client`,
+        canNotify: true,
+        pushSubscriptionId: null,
+        ...input,
+      },
+      {
+        experimental_caller: {
+          kind: "client",
+          experimental_clientId: clientId,
+        },
+      },
+    );
+  }
+
+  async function createThread(
+    overrides: Partial<ThreadResponse>,
+    clientId?: string,
+  ) {
+    const thread = setThread(overrides);
+    await fake.harness.behavior.emitThreadEvent("thread.created", {
+      thread,
+      ...(clientId === undefined ? {} : { experimental_clientId: clientId }),
+    });
+    return thread;
+  }
+
   function signals(channel: string) {
     return fake.harness.realtimeSignals.filter(
       (signal) => signal.channel === channel,
@@ -265,6 +303,8 @@ async function setup(options: SetupOptions = {}) {
     ...fake,
     addSubscription,
     cleanup,
+    createThread,
+    registerClient,
     clientSignals: () => signals(CLIENT_NOTIFICATION_CHANNEL),
     expo,
     getLevel,
@@ -868,6 +908,231 @@ describe("web and desktop delivery", () => {
   });
 });
 
+describe("device routing", () => {
+  async function idle(
+    host: Awaited<ReturnType<typeof setup>>,
+    thread: ThreadResponse,
+  ) {
+    await host.harness.behavior.emitThreadEvent("thread.idle", {
+      thread,
+      lastAssistantText: "Done",
+    });
+    await waitForCoalesce();
+  }
+
+  it("sends a thread's notifications only to the browser that started it", async () => {
+    const host = await setup();
+    try {
+      await host.addSubscription();
+      await expect(
+        host.registerClient("laptop-browser", { kind: "web" }),
+      ).resolves.toEqual({ clientId: "laptop-browser" });
+      const thread = await host.createThread({}, "laptop-browser");
+
+      await idle(host, thread);
+
+      expect(host.clientSignals()).toEqual([
+        {
+          channel: "notification",
+          payload: expect.objectContaining({
+            threadId: thread.id,
+            channels: ["web"],
+            targetClientId: "laptop-browser",
+          }),
+        },
+      ]);
+      expect(host.expo.requests).toHaveLength(0);
+    } finally {
+      await host.cleanup();
+    }
+  });
+
+  it("pushes to the phone that started a thread and its child threads", async () => {
+    const host = await setup();
+    try {
+      await host.addSubscription();
+      await host.addSubscription("ExponentPushToken[tablet]", "Tablet");
+      await host.registerClient("phone-webview", {
+        kind: "mobile",
+        canNotify: false,
+        pushSubscriptionId: "subscription-2",
+      });
+      const parent = await host.createThread({}, "phone-webview");
+      const child = await host.createThread({ parentThreadId: parent.id });
+      await host.setLevel(child.id, "all");
+
+      await idle(host, child);
+
+      expect(host.clientSignals()).toHaveLength(0);
+      expect(host.expo.requests).toHaveLength(1);
+      expect(host.expo.requests[0]?.map((message) => message.to)).toEqual([
+        "ExponentPushToken[tablet]",
+      ]);
+    } finally {
+      await host.cleanup();
+    }
+  });
+
+  it("falls back to every device when the origin has no channel", async () => {
+    let now = 1_000;
+    const host = await setup({ now: () => now });
+    try {
+      await host.addSubscription();
+      await host.registerClient("no-permission", {
+        kind: "web",
+        canNotify: false,
+      });
+      await host.registerClient("old-shell", {
+        kind: "mobile",
+        canNotify: false,
+      });
+      await host.registerClient("closed-tab", { kind: "desktop" });
+      const cases = [
+        await host.createThread({}, "no-permission"),
+        await host.createThread({}, "old-shell"),
+        await host.createThread({}, "unregistered-client"),
+        await host.createThread({}),
+      ];
+      now += 6 * 60 * 1_000;
+      cases.push(await host.createThread({}, "closed-tab"));
+
+      for (const thread of cases) await idle(host, thread);
+
+      expect(host.clientSignals().map((signal) => signal.payload)).toEqual(
+        cases.map(() =>
+          expect.objectContaining({
+            channels: ["web", "desktop"],
+            targetClientId: null,
+          }),
+        ),
+      );
+      expect(host.expo.requests).toHaveLength(cases.length);
+    } finally {
+      await host.cleanup();
+    }
+  });
+
+  it("lists devices and sends to one by id from the RPC and CLI", async () => {
+    const host = await setup();
+    try {
+      await host.addSubscription();
+      await host.addSubscription("ExponentPushToken[tablet]", "Tablet");
+      await host.registerClient("desk-app", {
+        kind: "desktop",
+        label: "bb desktop on macOS",
+      });
+      await host.registerClient("blocked-browser", {
+        kind: "web",
+        canNotify: false,
+      });
+      await host.registerClient("phone-webview", {
+        kind: "mobile",
+        pushSubscriptionId: "subscription-1",
+      });
+
+      const { devices } = (await host.harness.behavior.callRpc(
+        "notifications.devices",
+        {},
+      )) as { devices: { id: string; kind: string; reachable: boolean }[] };
+      expect(
+        devices.map(({ id, kind, reachable }) => ({ id, kind, reachable })),
+      ).toEqual([
+        { id: "subscription-1", kind: "mobile", reachable: true },
+        { id: "subscription-2", kind: "mobile", reachable: true },
+        { id: "desk-app", kind: "desktop", reachable: true },
+      ]);
+
+      await expect(
+        host.harness.behavior.callRpc("notifications.send", {
+          title: "Look at your phone",
+          deviceId: "subscription-1",
+        }),
+      ).resolves.toEqual({ ok: true, channels: ["mobile"] });
+      expect(host.expo.requests.at(-1)?.map((message) => message.to)).toEqual([
+        "ExponentPushToken[phone]",
+      ]);
+      expect(host.clientSignals()).toHaveLength(0);
+
+      const cli = await host.harness.behavior.runCli([
+        "send",
+        "--title",
+        "Back at the desk",
+        "--device",
+        "desk-app",
+        "--json",
+      ]);
+      expect(JSON.parse(cli.stdout)).toEqual({
+        ok: true,
+        channels: ["desktop"],
+      });
+      expect(host.clientSignals().at(-1)?.payload).toMatchObject({
+        channels: ["desktop"],
+        targetClientId: "desk-app",
+      });
+      expect(host.expo.requests).toHaveLength(1);
+
+      const missing = await host.harness.behavior.runCli([
+        "send",
+        "--title",
+        "Nowhere",
+        "--device",
+        "phone-webview",
+        "--json",
+      ]);
+      expect(missing.exitCode).toBe(1);
+      expect(JSON.parse(missing.stdout).error.code).toBe("device_not_found");
+
+      const listed = await host.harness.behavior.runCli(["devices"]);
+      expect(listed.stdout).toContain("desk-app\tbb desktop on macOS\tdesktop");
+    } finally {
+      await host.cleanup();
+    }
+  });
+
+  it("sends explicit notifications to every device even for a thread with an origin", async () => {
+    const host = await setup();
+    try {
+      await host.addSubscription();
+      await host.registerClient("laptop-browser", { kind: "web" });
+      const thread = await host.createThread({}, "laptop-browser");
+
+      await expect(
+        host.harness.behavior.callRpc(
+          "notifications.send",
+          { title: "Daily summary", threadId: thread.id },
+          { experimental_caller: { kind: "plugin", pluginId: "assistant" } },
+        ),
+      ).resolves.toEqual({ ok: true, channels: ["web", "desktop", "mobile"] });
+      expect(host.clientSignals().at(-1)?.payload).toMatchObject({
+        targetClientId: null,
+      });
+    } finally {
+      await host.cleanup();
+    }
+  });
+
+  it("does not register callers without a client id", async () => {
+    const host = await setup();
+    try {
+      await expect(
+        host.harness.behavior.callRpc("clients.register", {
+          kind: "web",
+          label: "CLI",
+          canNotify: true,
+          pushSubscriptionId: null,
+        }),
+      ).resolves.toEqual({ clientId: null });
+      const { devices } = (await host.harness.behavior.callRpc(
+        "notifications.devices",
+        {},
+      )) as { devices: unknown[] };
+      expect(devices).toEqual([]);
+    } finally {
+      await host.cleanup();
+    }
+  });
+});
+
 describe("sending notifications", () => {
   it("publishes only notifications.send for other plugins to discover", async () => {
     const host = await setup();
@@ -876,6 +1141,7 @@ describe("sending notifications", () => {
         host.harness.registrations.experimental_publishedRpcMethods;
       expect(published.map((entry) => entry.method)).toEqual([
         "notifications.send",
+        "notifications.devices",
       ]);
       expect(published[0]?.inputSchema).toMatchObject({
         required: ["title"],

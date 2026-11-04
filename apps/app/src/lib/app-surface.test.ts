@@ -1,4 +1,7 @@
-import { APP_SURFACE_HEADER_NAME } from "@bb/config/app-surface";
+import {
+  APP_SURFACE_HEADER_NAME,
+  CLIENT_ID_HEADER_NAME,
+} from "@bb/config/app-surface";
 import {
   buildBridgeInjectionScript,
   type NativeShellHandshake,
@@ -6,7 +9,11 @@ import {
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createBbDesktopApi } from "@/test/bb-desktop-test-utils";
 import { resetNativeShellForTests } from "@/lib/native-shell";
-import { appSurfaceRequestInit, getAppSurface } from "./app-surface";
+import {
+  appSurfaceRequestInit,
+  getAppSurface,
+  getClientId,
+} from "./app-surface";
 
 const mobileHandshake: NativeShellHandshake = {
   bridgeVersion: 1,
@@ -43,6 +50,24 @@ describe("app surface request metadata", () => {
     expect(getAppSurface()).toBe("web");
     expect(headers.get(APP_SURFACE_HEADER_NAME)).toBe("web");
     expect(headers.get("x-existing")).toBe("kept");
+  });
+
+  it("sends the same client id on every request from this browser", () => {
+    const stored = new Map<string, string>();
+    vi.stubGlobal("localStorage", {
+      getItem: (key: string) => stored.get(key) ?? null,
+      setItem: (key: string, value: string) => stored.set(key, value),
+    });
+    const first = new Headers(appSurfaceRequestInit().headers).get(
+      CLIENT_ID_HEADER_NAME,
+    );
+    const second = new Headers(appSurfaceRequestInit().headers).get(
+      CLIENT_ID_HEADER_NAME,
+    );
+    expect(first).toMatch(/^[0-9a-f-]{36}$/u);
+    expect(second).toBe(first);
+    expect(getClientId()).toBe(first);
+    expect(stored.get("bb.client-id")).toBe(first);
   });
 
   it("keeps API requests out of the browser HTTP cache unless the caller chooses a mode", () => {

@@ -48,8 +48,38 @@ export const clientNotificationSchema = z
     body: z.string(),
     threadId: z.string().nullable(),
     channels: z.array(clientChannelSchema),
+    targetClientId: z.string().nullable(),
   })
   .strict();
+
+export const clientKindSchema = z.enum(["web", "desktop", "mobile"]);
+export const appClientSchema = z
+  .object({
+    id: z.string().min(1),
+    kind: clientKindSchema,
+    label: z.string().min(1).max(DEVICE_LABEL_MAX_LENGTH),
+    canNotify: z.boolean(),
+    pushSubscriptionId: z.string().min(1).nullable(),
+    lastSeenAt: z.number().int().nonnegative(),
+  })
+  .strict();
+export type AppClient = z.infer<typeof appClientSchema>;
+export const registerClientInputSchema = appClientSchema
+  .omit({ id: true, lastSeenAt: true })
+  .extend({ label: z.string().trim().min(1).max(DEVICE_LABEL_MAX_LENGTH) })
+  .strict();
+export type RegisterClientInput = z.infer<typeof registerClientInputSchema>;
+
+export const notificationDeviceSchema = z
+  .object({
+    id: z.string().min(1),
+    kind: clientKindSchema,
+    label: z.string().min(1),
+    lastSeenAt: z.number().int().nonnegative(),
+    reachable: z.boolean(),
+  })
+  .strict();
+export type NotificationDevice = z.infer<typeof notificationDeviceSchema>;
 export type ClientNotification = z.infer<typeof clientNotificationSchema>;
 
 export const NOTIFICATION_TITLE_MAX_LENGTH = 80;
@@ -62,6 +92,7 @@ export const sendNotificationInputSchema = z
     title: z.string().trim().min(1).max(SEND_TEXT_MAX_LENGTH),
     body: z.string().trim().max(SEND_TEXT_MAX_LENGTH).default(""),
     threadId: z.string().trim().min(1).optional(),
+    deviceId: z.string().trim().min(1).optional(),
   })
   .strict();
 export const sendNotificationOutputSchema = z
@@ -78,9 +109,15 @@ export type SendNotificationOutput = z.infer<
 export const sendNotificationRpcContract = defineRpcContract({
   "notifications.send": {
     experimental_description:
-      "Send a notification to every enabled channel: connected web and desktop clients and registered mobile devices. Title and body are cut to 80 and 180 characters. With threadId, a click opens that thread. Returns the channels it reached; an empty list means nothing was delivered.",
+      "Send a notification to every enabled channel: connected web and desktop clients and registered mobile devices. With deviceId (an id from notifications.devices), only that device gets it. Title and body are cut to 80 and 180 characters. With threadId, a click opens that thread. Returns the channels it reached; an empty list means nothing was delivered.",
     input: sendNotificationInputSchema,
     output: sendNotificationOutputSchema,
+  },
+  "notifications.devices": {
+    experimental_description:
+      "List the devices notifications.send can target with deviceId: registered phones and tablets (kind mobile) and the browsers and desktop apps that allowed notifications (kind web or desktop). reachable is true for every mobile device, since pushes arrive while the app is closed, and for a web or desktop client that checked in within the last 5 minutes.",
+    input: z.object({}).strict(),
+    output: z.object({ devices: z.array(notificationDeviceSchema) }).strict(),
   },
 });
 
@@ -92,6 +129,10 @@ export const listPushSubscriptionsOutputSchema = z
   .strict();
 
 export const pushNotificationsRpcContract = defineRpcContract({
+  "clients.register": {
+    input: registerClientInputSchema,
+    output: z.object({ clientId: z.string().min(1).nullable() }).strict(),
+  },
   "notifications.test": {
     input: z.object({ channel: clientChannelSchema }).strict(),
     output: z.object({ ok: z.literal(true) }).strict(),

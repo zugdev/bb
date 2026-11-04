@@ -38,3 +38,15 @@ export function parseRequestAppSurface(
 export function formatAppSurfaceValues(): string {
   return APP_SURFACE_VALUES.join(", ");
 }
+
+export const CLIENT_ID_HEADER_NAME = "x-bb-client-id";
+const CLIENT_ID_PATTERN = /^[A-Za-z0-9_-]{8,64}$/u;
+
+export function parseClientId(
+  value: string | null | undefined,
+): string | undefined {
+  const trimmedValue = value?.trim();
+  return trimmedValue !== undefined && CLIENT_ID_PATTERN.test(trimmedValue)
+    ? trimmedValue
+    : undefined;
+}

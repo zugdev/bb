@@ -54,25 +54,87 @@ describe("notification delivery", () => {
         body: "Ready",
         threadId: "thr_open",
         channels: ["web"],
+        targetClientId: null,
       });
       await waitFor(() => expect(shown).toHaveLength(expected));
       await new Promise((resolve) => setTimeout(resolve, 0));
       expect(shown).toHaveLength(expected);
     },
   );
+
+  it("registers this client and shows only notifications aimed at it", async () => {
+    const shown: string[] = [];
+    vi.stubGlobal(
+      "Notification",
+      class {
+        static permission = "granted";
+        close = vi.fn();
+        constructor(title: string) {
+          shown.push(title);
+        }
+      },
+    );
+    vi.stubGlobal("isSecureContext", true);
+    const view = renderSlot(
+      app.appOverlays[0]!,
+      {},
+      {
+        settings: { webEnabled: true },
+        rpc: { "clients.register": () => ({ clientId: "browser-1" }) },
+      },
+    );
+    await waitFor(() =>
+      expect(view.inspection.rpcCalls).toContainEqual({
+        method: "clients.register",
+        input: {
+          kind: "web",
+          label: expect.stringMatching(/ on /u),
+          canNotify: true,
+          pushSubscriptionId: null,
+        },
+      }),
+    );
+    const notification = {
+      body: "Ready",
+      threadId: "thr_1",
+      channels: ["web"],
+    };
+    await view.emitRealtime("notification", {
+      ...notification,
+      id: "event-other",
+      title: "For another device",
+      targetClientId: "desktop-1",
+    });
+    await view.emitRealtime("notification", {
+      ...notification,
+      id: "event-mine",
+      title: "For this browser",
+      targetClientId: "browser-1",
+    });
+    await waitFor(() => expect(shown).toEqual(["For this browser"]));
+  });
 });
 
 describe("device notification settings", () => {
   it("requests permission only on a click and uses the server test route", async () => {
-    const requestPermission = vi.fn(async () => "granted");
-    vi.stubGlobal("Notification", { permission: "default", requestPermission });
+    const stub = { permission: "default", requestPermission: vi.fn() };
+    const requestPermission = stub.requestPermission.mockImplementation(
+      async () => {
+        stub.permission = "granted";
+        return "granted";
+      },
+    );
+    vi.stubGlobal("Notification", stub);
     vi.stubGlobal("isSecureContext", true);
     const view = renderSlot(
       app.settingsSections[0]!,
       {},
       {
         settings: { webEnabled: true },
-        rpc: { "notifications.test": () => ({ ok: true }) },
+        rpc: {
+          "notifications.test": () => ({ ok: true }),
+          "clients.register": () => ({ clientId: "browser-1" }),
+        },
       },
     );
     expect(requestPermission).not.toHaveBeenCalled();
@@ -84,6 +146,10 @@ describe("device notification settings", () => {
     );
     await waitFor(() =>
       expect(view.inspection.rpcCalls).toEqual([
+        {
+          method: "clients.register",
+          input: expect.objectContaining({ kind: "web", canNotify: true }),
+        },
         { method: "notifications.test", input: { channel: "web" } },
       ]),
     );

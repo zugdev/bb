@@ -1,9 +1,84 @@
+import { z } from "zod";
 import {
   clientNotificationSchema,
   type ClientNotification,
+  type RegisterClientInput,
 } from "./contract.js";
 
 export type ClientChannel = "web" | "desktop";
+
+const nativeShellSchema = z.object({
+  request: z.custom<(kind: string, payload: unknown) => Promise<unknown>>(
+    (value) => typeof value === "function",
+  ),
+});
+const pushSubscriptionReplySchema = z.object({
+  subscriptionId: z.string().min(1).nullable(),
+});
+
+function nativeShell(): z.infer<typeof nativeShellSchema> | null {
+  if (!("bb" in window) || typeof window.bb !== "object" || window.bb === null)
+    return null;
+  if (!("native" in window.bb)) return null;
+  const parsed = nativeShellSchema.safeParse(window.bb.native);
+  return parsed.success ? parsed.data : null;
+}
+
+function platformName(userAgent: string): string {
+  if (/iPhone|iPad/u.test(userAgent)) return "iOS";
+  if (/Android/u.test(userAgent)) return "Android";
+  if (/Mac OS X|Macintosh/u.test(userAgent)) return "macOS";
+  if (/Windows/u.test(userAgent)) return "Windows";
+  if (/Linux|CrOS/u.test(userAgent)) return "Linux";
+  return "an unknown system";
+}
+
+function browserName(userAgent: string): string {
+  if (/Edg\//u.test(userAgent)) return "Edge";
+  if (/Firefox\//u.test(userAgent)) return "Firefox";
+  if (/Chrome\//u.test(userAgent)) return "Chrome";
+  if (/Safari\//u.test(userAgent)) return "Safari";
+  return "Browser";
+}
+
+export function describeClient(userAgent = navigator.userAgent): string {
+  const platform = platformName(userAgent);
+  if ("bbDesktop" in window) return `bb desktop on ${platform}`;
+  if (nativeShell() !== null) return `bb mobile on ${platform}`;
+  return `${browserName(userAgent)} on ${platform}`;
+}
+
+async function nativePushSubscriptionId(
+  shell: z.infer<typeof nativeShellSchema>,
+): Promise<string | null> {
+  try {
+    const reply = pushSubscriptionReplySchema.safeParse(
+      await shell.request("push-subscription", {}),
+    );
+    return reply.success ? reply.data.subscriptionId : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function describeRegistration(): Promise<RegisterClientInput> {
+  const label = describeClient();
+  const shell = nativeShell();
+  if (shell !== null) {
+    return {
+      kind: "mobile",
+      label,
+      canNotify: false,
+      pushSubscriptionId: await nativePushSubscriptionId(shell),
+    };
+  }
+  return {
+    kind: "bbDesktop" in window ? "desktop" : "web",
+    label,
+    canNotify: notificationPermission() === "granted",
+    pushSubscriptionId: null,
+  };
+}
 
 export function clientChannel(): ClientChannel | null {
   if ("bbDesktop" in window) return "desktop";
@@ -38,6 +113,7 @@ function seenLockName(id: string): string {
 export function createClientDelivery(
   navigate: (threadId: string) => void,
   currentThreadId: () => string | null = () => null,
+  ownClientId: () => string | null = () => null,
 ) {
   const active = new Set<Notification>();
   let disposed = false;
@@ -123,6 +199,8 @@ export function createClientDelivery(
       channel === null ||
       !parsed.success ||
       !parsed.data.channels.includes(channel) ||
+      (parsed.data.targetClientId !== null &&
+        parsed.data.targetClientId !== ownClientId()) ||
       notificationPermission() !== "granted"
     )
       return;

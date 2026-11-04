@@ -23,6 +23,7 @@ import {
   type PushNotificationKind,
 } from "./preferences.js";
 import type { PushSubscriptionStore } from "./subscriptions.js";
+import type { AppClientStore } from "./clients.js";
 
 type ThreadResponse = PluginThreadEventPayloads["thread.idle"]["thread"];
 type PendingInteraction =
@@ -94,7 +95,7 @@ interface PushNotificationData {
 }
 
 export class SendNotificationError extends Error {
-  readonly code: "thread_not_found" | "sender_stopped";
+  readonly code: "thread_not_found" | "sender_stopped" | "device_not_found";
 
   constructor(code: SendNotificationError["code"], message: string) {
     super(message);
@@ -103,11 +104,17 @@ export class SendNotificationError extends Error {
   }
 }
 
+type DeliveryTarget =
+  | { kind: "all" }
+  | { kind: "client"; clientId: string; channel: "web" | "desktop" }
+  | { kind: "subscription"; subscriptionId: string };
+
 interface OutgoingNotification {
   title: string;
   body: string;
   kind: PushNotificationData["kind"];
   thread: { id: string; projectId: string } | null;
+  target: DeliveryTarget;
 }
 
 export interface ExpoPushMessage {
@@ -166,6 +173,7 @@ export interface PushSender {
 export interface CreatePushSenderArgs {
   bb: BbPluginApi;
   subscriptions: PushSubscriptionStore;
+  clients: AppClientStore;
   getExpoPushUrl(): Promise<string>;
   getNotificationLevel(thread: {
     id: string;
@@ -245,6 +253,7 @@ export function createPushSender(args: CreatePushSenderArgs): PushSender {
   const {
     bb,
     subscriptions,
+    clients,
     coalesceMs = DEFAULT_COALESCE_MS,
     now = Date.now,
   } = args;
@@ -349,6 +358,44 @@ export function createPushSender(args: CreatePushSenderArgs): PushSender {
     }
   }
 
+  async function originTarget(threadId: string): Promise<DeliveryTarget> {
+    const clientId = await clients.getThreadOrigin(threadId);
+    if (clientId === null) return { kind: "all" };
+    const client = await clients.get(clientId);
+    if (client === null) return { kind: "all" };
+    const config = await args.getDeliverySettings();
+    if (client.kind === "mobile") {
+      const subscriptionId = client.pushSubscriptionId;
+      if (!config.mobileEnabled || subscriptionId === null) {
+        return { kind: "all" };
+      }
+      const rows = await subscriptions.list();
+      return rows.some((row) => row.id === subscriptionId)
+        ? { kind: "subscription", subscriptionId }
+        : { kind: "all" };
+    }
+    const enabled =
+      client.kind === "web" ? config.webEnabled : config.desktopEnabled;
+    return enabled && client.canNotify && clients.isOnline(client)
+      ? { kind: "client", clientId, channel: client.kind }
+      : { kind: "all" };
+  }
+
+  async function deviceTarget(deviceId: string): Promise<DeliveryTarget> {
+    const rows = await subscriptions.list();
+    if (rows.some((row) => row.id === deviceId)) {
+      return { kind: "subscription", subscriptionId: deviceId };
+    }
+    const client = await clients.get(deviceId);
+    if (client === null || client.kind === "mobile") {
+      throw new SendNotificationError(
+        "device_not_found",
+        `Device not found: ${deviceId}`,
+      );
+    }
+    return { kind: "client", clientId: client.id, channel: client.kind };
+  }
+
   async function flushThread(
     threadId: string,
     entry: PendingThreadPush,
@@ -386,6 +433,7 @@ export function createPushSender(args: CreatePushSenderArgs): PushSender {
       body: preview || FALLBACK_BODIES[resolved.kind],
       kind: resolved.kind,
       thread,
+      target: await originTarget(thread.id),
     });
   }
 
@@ -395,9 +443,18 @@ export function createPushSender(args: CreatePushSenderArgs): PushSender {
     const title = truncate(notification.title, NOTIFICATION_TITLE_MAX_LENGTH);
     const body = truncate(notification.body, NOTIFICATION_BODY_MAX_LENGTH);
     const config = await args.getDeliverySettings();
+    const { target } = notification;
     const channels: ClientNotification["channels"] = [];
-    if (config.webEnabled) channels.push("web");
-    if (config.desktopEnabled) channels.push("desktop");
+    if (target.kind === "client") {
+      if (
+        target.channel === "web" ? config.webEnabled : config.desktopEnabled
+      ) {
+        channels.push(target.channel);
+      }
+    } else if (target.kind === "all") {
+      if (config.webEnabled) channels.push("web");
+      if (config.desktopEnabled) channels.push("desktop");
+    }
     if (channels.length > 0) {
       bb.realtime.publish(CLIENT_NOTIFICATION_CHANNEL, {
         id: randomUUID(),
@@ -405,10 +462,13 @@ export function createPushSender(args: CreatePushSenderArgs): PushSender {
         body,
         threadId: notification.thread?.id ?? null,
         channels,
+        targetClientId: target.kind === "client" ? target.clientId : null,
       } satisfies ClientNotification);
     }
-    if (!config.mobileEnabled) return channels;
-    const rows = await subscriptions.list();
+    if (!config.mobileEnabled || target.kind === "client") return channels;
+    const rows = (await subscriptions.list()).filter(
+      (row) => target.kind === "all" || row.id === target.subscriptionId,
+    );
     if (rows.length === 0) return channels;
     const serverUrl = bb.server.experimental_appUrl;
     const data = {
@@ -470,11 +530,16 @@ export function createPushSender(args: CreatePushSenderArgs): PushSender {
       }
       thread = { id: found.id, projectId: found.projectId };
     }
+    const target: DeliveryTarget =
+      input.deviceId === undefined
+        ? { kind: "all" }
+        : await deviceTarget(input.deviceId);
     const delivery = deliver({
       title: input.title,
       body: input.body,
       kind: SENT_NOTIFICATION_KIND,
       thread,
+      target,
     });
     const tracked = delivery.then(
       () => undefined,

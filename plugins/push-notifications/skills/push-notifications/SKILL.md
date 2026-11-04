@@ -6,7 +6,9 @@ description: "Register mobile devices, toggle mobile, web, and desktop notificat
 # Push notifications
 
 The plugin notifies when a thread asks a question, finishes a turn, or stops on
-an error, and anyone can send their own through the same channels. Mobile devices receive Expo push messages even when the app is
+an error, and anyone can send their own through the same channels. A thread's
+notifications go only to the device that started it; see "Which device gets a
+thread notification" below. Mobile devices receive Expo push messages even when the app is
 closed. Web and desktop clients receive system notifications only while a bb
 tab or app window stays open, and each browser grants permission separately in
 the plugin settings.
@@ -14,10 +16,11 @@ the plugin settings.
 ```sh
 bb push-notifications status [--json]
 bb push-notifications list [--json]
+bb push-notifications devices [--json]
 bb push-notifications add --token <expo-push-token> --platform <ios|android> --label <device-name> [--json]
 bb push-notifications remove <id> [--json]
 bb push-notifications test <web|desktop> [--json]
-bb push-notifications send --title <text> [--body <text>] [--thread <thread>] [--json]
+bb push-notifications send --title <text> [--body <text>] [--thread <thread>] [--device <device-id>] [--json]
 bb push-notifications thread <thread> [--level inherit|all|input-only|muted]
 bb plugin config push-notifications set <mobileEnabled|webEnabled|desktopEnabled> <true|false>
 bb plugin config push-notifications set defaultLevel <all|input-only|muted>
@@ -41,6 +44,16 @@ bb plugin config push-notifications set expoPushUrl <url>
   without it, a click opens bb. It fails with `not_delivered` when no channel
   received it and `thread_not_found` for an unknown or deleted thread. Thread
   notification levels don't apply.
+- `devices` lists what `send --device` can target: every registered phone and
+  tablet (`mobile`, id = the subscription id from `list`) and every browser or
+  desktop app that allowed notifications (`web` or `desktop`). `reachable` is
+  `no` for a web or desktop client that has not checked in for 5 minutes,
+  usually a closed tab or app; mobile devices are always reachable.
+- `send --device <id>` delivers only to that device and prints the one channel
+  it reached. It fails with `device_not_found` for an id `devices` does not
+  list, and with `not_delivered` when that device's channel is off. To answer
+  "send this to my phone", run `devices`, pick the `mobile` row whose label
+  matches (ask when several do), and pass its id.
 - `thread` prints a thread's resolved notification level and its source;
   `--level` sets the thread's own level. A thread uses its own level, else
   `childLevel` if it has a parent (default `input-only`; `inherit` follows
@@ -48,6 +61,21 @@ bb plugin config push-notifications set expoPushUrl <url>
   level also caps its child threads. `all` notifies on finished turns too,
   `input-only` keeps questions, approvals, and errors only, and `muted` sends
   nothing.
+
+## Which device gets a thread notification
+
+The bb app sends a client id with every request, one per browser profile,
+desktop app, or mobile app. A thread records the client that created it, and a
+child thread created by an agent inherits its parent's client. Thread
+notifications (questions, approvals, errors, finished turns) then go only to
+that client: the browser or desktop app that started it, or the phone's push
+subscription when it was started in the mobile app. Notifications fall back to
+every device when the thread was started from the CLI, SDK, or a plugin, when
+the originating browser or desktop app has not allowed notifications, has its
+channel off, or has not checked in for 5 minutes, and when the phone has no
+push registration on this server (mobile builds older than this change never
+report one). `send` without `--device` always reaches every device, so the
+assistant's `assistant_notify` and other plugin messages are unaffected.
 
 A plugin sends the same notification from its server code with:
 
@@ -63,7 +91,9 @@ const { channels } = await bb.sdk.plugins.callRpc({
 });
 ```
 
-`body` and `threadId` are optional. An empty `channels` means nothing was
+`body`, `threadId`, and `deviceId` are optional. `notifications.devices`
+(`{}`) returns `{ devices: [{ id, kind, label, lastSeenAt, reachable }] }`
+for picking a `deviceId`. An empty `channels` means nothing was
 delivered. `bb plugin rpc inspect push-notifications notifications.send`
 prints the published input and output schemas.
 

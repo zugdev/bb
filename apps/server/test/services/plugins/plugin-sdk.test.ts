@@ -1088,7 +1088,10 @@ describe("plugin bb.sdk against a running server", () => {
       }
       const callerSchema = z.union([
         z.object({ kind: z.literal("plugin"), pluginId: z.string() }),
-        z.object({ kind: z.literal("client") }),
+        z.object({
+          kind: z.literal("client"),
+          experimental_clientId: z.string().optional(),
+        }),
       ]);
       const whoami = vi.fn(
         (
@@ -1127,6 +1130,22 @@ describe("plugin bb.sdk against a running server", () => {
       expect(await cli.json()).toEqual({
         ok: true,
         result: { kind: "client" },
+      });
+
+      const app = await fetch(
+        `${server.baseUrl}/api/v1/plugins/callee/rpc/whoami`,
+        {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            "x-bb-client-id": "browser-client-1",
+          },
+          body: "null",
+        },
+      );
+      expect(await app.json()).toEqual({
+        ok: true,
+        result: { kind: "client", experimental_clientId: "browser-client-1" },
       });
 
       const callsBeforeSpoof = whoami.mock.calls.length;

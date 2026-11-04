@@ -8,6 +8,7 @@ import { threadScope, turnScope } from "@bb/domain";
 import { applyLoggedThreadLifecycleEvent } from "../../../src/services/threads/lifecycle-outcome.js";
 import { beginProjectDeletion } from "../../../src/services/projects/project-deletion.js";
 import { createThreadRecord } from "../../../src/services/threads/thread-create-helpers.js";
+import { runWithRequestClientId } from "../../../src/request-context.js";
 import { archiveThreadAndReleaseChildren } from "../../../src/services/threads/thread-ownership.js";
 import type { ThreadCreateServiceRequest } from "../../../src/services/threads/thread-create-request.js";
 import {
@@ -314,6 +315,21 @@ describe("plugin thread lifecycle events", () => {
       // that treated `thread.created` as "this thread is running" would count
       // a thread that may never start (the concurrency limiter used to).
       expect(recorded[0]?.thread.status).toBe("pending");
+      expect(recorded[0]).not.toHaveProperty("experimental_clientId");
+
+      const fromApp = runWithRequestClientId(
+        { req: { header: () => "browser-client-1" } },
+        () =>
+          createThreadRecord(
+            { db: harness.db, hub: harness.hub },
+            { environmentId: environment.id, request },
+          ),
+      );
+      await vi.waitFor(() => expect(recorded).toHaveLength(2));
+      expect(recorded[1]).toMatchObject({
+        thread: { id: fromApp.id },
+        experimental_clientId: "browser-client-1",
+      });
     } finally {
       delete globals.__createdEvents;
       await cleanup();

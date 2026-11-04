@@ -15,12 +15,41 @@ import {
 import {
   clientChannel,
   createClientDelivery,
+  describeRegistration,
   notificationPermission,
 } from "./client.js";
 import { notificationsThreadAction } from "./notificationsAction.js";
 
+const CLIENT_CHECK_IN_MS = 2 * 60 * 1_000;
+
+function useClientRegistration(): { current: string | null } {
+  const rpc = useRpc<typeof pushNotificationsRpcContract>();
+  const clientId = useRef<string | null>(null);
+  useEffect(() => {
+    let disposed = false;
+    const register = () => {
+      void describeRegistration()
+        .then((input) => rpc.call("clients.register", input))
+        .then((result) => {
+          if (!disposed) clientId.current = result.clientId;
+        })
+        .catch(() => undefined);
+    };
+    register();
+    const timer = setInterval(register, CLIENT_CHECK_IN_MS);
+    window.addEventListener("focus", register);
+    return () => {
+      disposed = true;
+      clearInterval(timer);
+      window.removeEventListener("focus", register);
+    };
+  }, [rpc]);
+  return clientId;
+}
+
 function NotificationDelivery() {
   const navigate = useBbNavigate();
+  const clientId = useClientRegistration();
   const { values } = useSettings();
   const { threadId } = useBbContext();
   const skipFocused = experimental_useExperiment(
@@ -33,13 +62,14 @@ function NotificationDelivery() {
     const next = createClientDelivery(
       (id) => navigate.toThread(id),
       () => currentThreadId.current,
+      () => clientId.current,
     );
     delivery.current = next;
     return () => {
       delivery.current = null;
       next.dispose();
     };
-  }, [navigate]);
+  }, [navigate, clientId]);
   useEffect(() => {
     currentThreadId.current = focusedThreadId;
     delivery.current?.syncFocus();
@@ -84,6 +114,7 @@ function NotificationSettings() {
     setMessage(null);
     try {
       setPermission(await Notification.requestPermission());
+      await rpc.call("clients.register", await describeRegistration());
     } catch (error) {
       setMessage(error instanceof Error ? error.message : String(error));
     } finally {

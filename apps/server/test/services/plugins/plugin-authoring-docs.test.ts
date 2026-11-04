@@ -238,7 +238,7 @@ const THREAD_EVENT_PAYLOAD_FIELDS = {
   "experimental_terminal.input": ["terminal"],
   "experimental_host.deleted": ["host"],
   "experimental_environment.removed": ["removal"],
-  "thread.created": ["thread"],
+  "thread.created": ["thread", "experimental_clientId"],
   "thread.active": ["thread"],
   "thread.idle": ["thread", "lastAssistantText"],
   "thread.failed": ["thread", "error"],
