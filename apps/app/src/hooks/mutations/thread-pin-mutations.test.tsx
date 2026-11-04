@@ -198,6 +198,7 @@ it("rolls back a failed pin under concurrent status and membership writes", asyn
       runtime: { displayStatus: "active" as const },
       activity: entry("t1", null).activity,
       latestAttentionAt: 5,
+      lastUserMessageAt: null,
       updatedAt: 5,
     };
     server.setRows([{ ...entry("t1", null), ...statusChange }]);
@@ -408,6 +409,7 @@ it("reads the thread back when a pin response is older than concurrent thread st
       runtime: { displayStatus: "active" as const },
       activity: entry("t1", null).activity,
       latestAttentionAt: 5,
+      lastUserMessageAt: null,
       updatedAt: 30,
     };
     updateCachedThreadListStatusState(server.queryClient, "t1", statusChange);

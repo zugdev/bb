@@ -116,6 +116,7 @@ export function makeThreadResponse(
     deletedAt: null,
     lastReadAt: null,
     latestAttentionAt: 0,
+    lastUserMessageAt: null,
     createdAt: 0,
     updatedAt: 0,
     runtime: { displayStatus: "idle" },

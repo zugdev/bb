@@ -17,6 +17,7 @@ const PROMPT_DRAFT_PERSIST_DEBOUNCE_MS = 250;
 export type PromptDraftScope =
   | { kind: "automation-edit"; automationId: string }
   | { kind: "new-thread" }
+  | { kind: "split-new-thread"; paneId: string }
   | { kind: "plugin-new-thread"; key: string }
   | { kind: "thread"; projectId: string; threadId: string };
 
@@ -232,6 +233,10 @@ function getPromptDraftStorageKey(scope: PromptDraftScope): string {
   }
   if (scope.kind === "new-thread") {
     return `${PROMPT_DRAFT_STORAGE_PREFIX}-draft-${PROMPT_DRAFT_STORAGE_VERSION}`;
+  }
+  if (scope.kind === "split-new-thread") {
+    const normalizedPaneId = normalizeStorageSegment(scope.paneId);
+    return `${PROMPT_DRAFT_STORAGE_PREFIX}-draft-pane-${normalizedPaneId}-${PROMPT_DRAFT_STORAGE_VERSION}`;
   }
   if (scope.kind === "plugin-new-thread") {
     const normalizedKey = normalizeStorageSegment(scope.key);

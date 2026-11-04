@@ -288,6 +288,7 @@ export const threadStatusChangeMetadataSchema = z
     runtime: threadRuntimeStateSchema,
     activity: threadActivityStateSchema,
     latestAttentionAt: z.number(),
+    lastUserMessageAt: z.number().nullable(),
     updatedAt: z.number(),
   })
   .strict();

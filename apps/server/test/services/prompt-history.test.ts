@@ -5,6 +5,7 @@ import {
   createProject,
   createPromptHistoryEntry,
   createThread,
+  getThread,
   markThreadDeleted,
   noopNotifier,
   promptHistoryEntries,
@@ -539,5 +540,51 @@ describe("prompt history service", () => {
         input: visibleInput,
       },
     ]);
+  });
+  it("stamps the thread with the time of the latest user message only", () => {
+    const { db, firstProject } = setup();
+    const thread = createThread(db, noopNotifier, {
+      projectId: firstProject.id,
+      providerId: "codex",
+    });
+    expect(getThread(db, thread.id)?.lastUserMessageAt).toBeNull();
+
+    recordAcceptedPromptHistoryEntry(
+      { db },
+      {
+        thread,
+        input: textInput("Agent follow-up"),
+        initiator: "agent",
+        target: { kind: "new-turn" },
+        requestSequence: 1,
+      },
+    );
+    expect(getThread(db, thread.id)?.lastUserMessageAt).toBeNull();
+
+    const before = Date.now();
+    recordAcceptedPromptHistoryEntry(
+      { db },
+      {
+        thread,
+        input: textInput("User follow-up"),
+        initiator: "user",
+        target: { kind: "new-turn" },
+        requestSequence: 2,
+      },
+    );
+    const sentAt = getThread(db, thread.id)?.lastUserMessageAt ?? null;
+    expect(sentAt).not.toBeNull();
+    expect(sentAt).toBeGreaterThanOrEqual(before);
+
+    insertPromptHistoryEntry({
+      db,
+      projectId: firstProject.id,
+      threadId: thread.id,
+      scope: "thread",
+      requestSequence: 3,
+      input: textInput("Older replayed entry"),
+      createdAt: 1,
+    });
+    expect(getThread(db, thread.id)?.lastUserMessageAt).toBe(sentAt);
   });
 });

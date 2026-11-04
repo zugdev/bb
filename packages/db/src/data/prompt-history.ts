@@ -1,6 +1,6 @@
 import { acquireProjectAttachmentOwnership } from "./project-attachments.js";
 import { projectAttachmentPaths } from "@bb/domain";
-import { and, desc, eq, isNull, sql } from "drizzle-orm";
+import { and, desc, eq, isNull, lt, or, sql } from "drizzle-orm";
 import {
   PROMPT_HISTORY_ENTRY_LIMIT,
   type PromptHistoryScope,
@@ -85,6 +85,18 @@ export function createPromptHistoryEntry(
         projectAttachmentPaths(input.input),
       );
       const createdAt = input.createdAt ?? Date.now();
+      tx.update(threads)
+        .set({ lastUserMessageAt: createdAt })
+        .where(
+          and(
+            eq(threads.id, input.threadId),
+            or(
+              isNull(threads.lastUserMessageAt),
+              lt(threads.lastUserMessageAt, createdAt),
+            ),
+          ),
+        )
+        .run();
       return tx
         .insert(promptHistoryEntries)
         .values({

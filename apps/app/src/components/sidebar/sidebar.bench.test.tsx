@@ -261,6 +261,7 @@ function buildBootstrap(threadCount: number): SidebarBootstrapResponse {
       createdAt: 1_000_000 - index,
       updatedAt: 2_000_000 - index,
       latestAttentionAt: 2_000_000 - index,
+      lastUserMessageAt: null,
       lastReadAt: index % 3 === 0 ? null : 3_000_000,
       environmentId: `env_${index % 200}`,
       environmentHostId: "host_test",
@@ -463,6 +464,7 @@ async function runScenario(
             activeGoalCount: 0,
           },
           latestAttentionAt: 5_000_000 + iteration,
+          lastUserMessageAt: null,
           updatedAt: 5_000_000 + iteration,
         });
       }),
@@ -481,6 +483,7 @@ async function runScenario(
             ...thread,
             updatedAt: 6_000_000 + iteration * 100 + touched,
             latestAttentionAt: 6_000_000 + iteration * 100 + touched,
+            lastUserMessageAt: null,
           };
         };
         queryClient.setQueryData(sidebarNavigationQueryKey(), {
