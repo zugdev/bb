@@ -335,34 +335,24 @@ describe("mobile workspace sidebar access", () => {
     "/plugins/plugin-api-docs/plugin-api",
     "/settings",
     "/skills",
-  ])(
-    "opens and collapses the sidebar on %s with a full detail panel",
-    async (route) => {
-      setCompactSecondaryPanelPresentation("full");
-      render(
-        <CompactViewportOverrideProvider isCompactViewport>
-          <MemoryRouter initialEntries={[route]}>
-            <AppCommandProvider>
-              <AppLayout>
-                <div>Workspace content</div>
-              </AppLayout>
-            </AppCommandProvider>
-          </MemoryRouter>
-        </CompactViewportOverrideProvider>,
-      );
-      const toggle = screen.getByRole("button", { name: /^Toggle sidebar/ });
-      expect(toggle.getAttribute("aria-expanded")).toBe("false");
-      fireEvent.click(toggle);
-      await waitFor(() =>
-        expect(toggle.getAttribute("aria-expanded")).toBe("true"),
-      );
-      fireEvent.click(toggle);
-      await waitFor(() =>
-        expect(toggle.getAttribute("aria-expanded")).toBe("false"),
-      );
-      expect(getRoot().hasAttribute("inert")).toBe(false);
-    },
-  );
+  ])("leaves the sidebar to swipes on %s with a full detail panel", (route) => {
+    setCompactSecondaryPanelPresentation("full");
+    render(
+      <CompactViewportOverrideProvider isCompactViewport>
+        <MemoryRouter initialEntries={[route]}>
+          <AppCommandProvider>
+            <AppLayout>
+              <div>Workspace content</div>
+            </AppLayout>
+          </AppCommandProvider>
+        </MemoryRouter>
+      </CompactViewportOverrideProvider>,
+    );
+    expect(
+      screen.queryByRole("button", { name: /^Toggle sidebar/ }),
+    ).toBeNull();
+    expect(getRoot().hasAttribute("inert")).toBe(false);
+  });
 });
 
 describe("AppLayout Back to app", () => {

@@ -3,20 +3,14 @@
 import {
   act,
   cleanup,
-  fireEvent,
   render as renderReact,
   screen,
-  waitFor,
 } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AppLayout } from "./AppLayout";
-import { APP_OVERLAY_LAYER } from "@/components/ui/app-overlay-layers";
-import {
-  COMPACT_SHELF_HIDDEN_FIXED_CHROME_CLASS,
-  setCompactSecondaryPanelPresentation,
-} from "@/components/ui/secondary-panel-shelf-visibility";
+import { setCompactSecondaryPanelPresentation } from "@/components/ui/secondary-panel-shelf-visibility";
 
 import { createQueryClientTestHarness } from "@/test/queryClientTestHarness";
 
@@ -225,14 +219,6 @@ function renderPluginPanelRoute(): void {
   );
 }
 
-function isHiddenByCompactShelf(element: HTMLElement): boolean {
-  return (
-    COMPACT_SHELF_HIDDEN_FIXED_CHROME_CLASS.split(" ").every((className) =>
-      element.classList.contains(className),
-    ) && element.dataset.panelShelf === "full"
-  );
-}
-
 describe("AppLayout plugin panel header", () => {
   beforeEach(() => {
     viewportState.compact = false;
@@ -270,37 +256,24 @@ describe("AppLayout plugin panel header", () => {
     ).toBe(true);
   });
 
-  it("hides the fixed left trigger while the compact panel is open", () => {
+  it("renders no fixed left trigger on compact web viewports", () => {
     viewportState.compact = true;
     renderPluginPanelRoute();
 
-    const trigger = screen.getByTestId("app-sidebar-trigger-overlay");
-    expect(trigger.style.zIndex).toBe(
-      String(APP_OVERLAY_LAYER.compactSidebarTrigger),
-    );
-    expect(Number(trigger.style.zIndex)).toBeGreaterThan(
-      APP_OVERLAY_LAYER.secondaryPanelFullPage,
-    );
-    act(() => setCompactSecondaryPanelPresentation("full"));
-    expect(screen.getByTestId("app-sidebar-trigger-overlay")).toBe(trigger);
-    expect(isHiddenByCompactShelf(trigger)).toBe(true);
-
-    act(() => setCompactSecondaryPanelPresentation("closed"));
-    expect(screen.getByTestId("app-sidebar-trigger-overlay")).not.toBeNull();
-    expect(isHiddenByCompactShelf(trigger)).toBe(false);
+    expect(screen.queryByTestId("app-sidebar-trigger-overlay")).toBeNull();
+    expect(
+      screen.queryByRole("button", { name: /^Toggle sidebar/ }),
+    ).toBeNull();
   });
 
-  it("keeps the fixed left trigger visible while the compact sidebar drawer is open", async () => {
+  it("keeps the sidebar trigger in a compact macOS desktop window", () => {
     viewportState.compact = true;
+    viewportState.macosChrome = true;
     renderPluginPanelRoute();
 
-    const trigger = screen.getByTestId("app-sidebar-trigger-overlay");
-    act(() => setCompactSecondaryPanelPresentation("full"));
-    expect(trigger.dataset.panelShelf).toBe("full");
-
-    fireEvent.click(screen.getByRole("button", { name: /^Toggle sidebar/ }));
-
-    await waitFor(() => expect(trigger.dataset.panelShelf).toBeUndefined());
+    expect(
+      screen.getByRole("button", { name: /^Toggle sidebar/ }),
+    ).toBeTruthy();
   });
 
   it("keeps the fixed left trigger visible on wide viewports while a compact panel is showing", () => {

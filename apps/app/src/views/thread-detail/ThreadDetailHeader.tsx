@@ -31,6 +31,7 @@ import {
   MACOS_WINDOW_NO_DRAG_CLASS,
   shouldUseMacosDesktopChrome,
 } from "@/lib/bb-desktop";
+import { useUsesSwipeChrome } from "@/components/layout/useUsesSwipeChrome";
 import { cn } from "@bb/shared-ui/lib/utils";
 import {
   useAppCommandHandler,
@@ -94,6 +95,7 @@ export function ThreadDetailHeader({
   contextCardButton,
 }: ThreadDetailHeaderProps) {
   const isCompactViewport = useIsCompactViewport();
+  const hidesChromeToggles = useUsesSwipeChrome();
   const threadId = thread.id;
   const threadDot = useThreadDot(threadId);
   const headerActions = useThreadHeaderActionEntries(thread);
@@ -175,9 +177,9 @@ export function ThreadDetailHeader({
   };
   const rightPanelIconName = RIGHT_PANEL_TOGGLE_ICON_NAME;
   const isHostedSplitPane = secondaryPanelHost !== null;
-  const showRightPanelToggle = isHostedSplitPane
-    ? hostLayout?.isSuppressed !== true
-    : true;
+  const showRightPanelToggle =
+    !hidesChromeToggles &&
+    (isHostedSplitPane ? hostLayout?.isSuppressed !== true : true);
   const isRightPanelOpen = isHostedSplitPane
     ? isFocused && isWindowPanelOpen
     : isSecondaryPanelOpen;
@@ -353,7 +355,9 @@ export function ThreadDetailHeader({
         ) : null}
         {contextCardButton}
         {rightPanelToggle}
-        {reservesWindowPanelToggle && !isWindowPanelOpen ? (
+        {reservesWindowPanelToggle &&
+        !isWindowPanelOpen &&
+        !hidesChromeToggles ? (
           <span aria-hidden className={HEADER_ICON_BUTTON_CLASS} />
         ) : null}
       </div>
