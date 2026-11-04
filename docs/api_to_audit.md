@@ -2512,6 +2512,15 @@ Docs: `frontend-core-slots.md`.
 7. **Focus and dismissal.** Validate icon toggling, Escape, focus return,
    disclosure replacement, plugin reload, crash isolation, and removal while
    open across desktop and compact sidebar layouts.
+8. **Button content.** `experimental_buttonContent` on a disclosure renders a
+   plugin component inside the footer button in place of the icon, and the
+   button grows to fit. Capacity subtracts each item's measured extra width,
+   remembered per item key for the session so an item that moves into More
+   doesn't free its slot and flip back. Only caller: Provider usage's opt in
+   7 day readout (`sidebarWeeklyUsage`). No core footer item uses it. Decide
+   whether content should be declarative (text plus icon) and whether the
+   remembered widths should reset when an item's content shrinks while it is
+   in More.
 
 ## `app.slots.experimental_threadList` (`@get-bb/plugin-sdk/app`)
 

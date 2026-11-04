@@ -724,4 +724,40 @@ describe("PluginSidebarFooterItems", () => {
     );
     expect(run).toHaveBeenCalledTimes(1);
   });
+
+  it("renders disclosure button content and counts its width against capacity", () => {
+    setPluginSlotRegistrations(
+      "usage",
+      collectPluginAppRegistrations(
+        definePluginApp((app) => {
+          app.experimental_sidebarFooter.register({
+            kind: "disclosure",
+            id: "usage",
+            label: "Provider usage",
+            icon: "ChartColumn",
+            component: UsageDisclosure,
+            experimental_buttonContent: () => <span>42%</span>,
+          });
+        }),
+      ),
+    );
+    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(
+      function (this: HTMLElement) {
+        const width =
+          this.dataset.footerItem === "plugin:usage/usage"
+            ? 90
+            : this.dataset.sidebar === "menu" &&
+                this.querySelector("[data-footer-item]") !== null
+              ? 200
+              : 28;
+        return DOMRect.fromRect({ width, height: 28 });
+      },
+    );
+    const store = createStore();
+    renderWithProviders(<FooterHarness />, store);
+    expect(
+      screen.getByRole("button", { name: "Provider usage" }).textContent,
+    ).toContain("42%");
+    expect(store.get(sidebarFooterCapacityAtom)).toBe(3);
+  });
 });
