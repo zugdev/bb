@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 
+import { PERSONAL_PROJECT_ID } from "@bb/domain";
 import {
   act,
   cleanup,
@@ -236,7 +237,7 @@ describe("AppLayout root compose project preference", () => {
     });
   });
 
-  it("keeps the stored project when the route has no project", () => {
+  it("starts at No project when the route has no project", () => {
     window.localStorage.setItem(
       ROOT_COMPOSE_PROJECT_ID_STORAGE_KEY,
       "proj_last_run",
@@ -256,6 +257,6 @@ describe("AppLayout root compose project preference", () => {
 
     expect(
       window.localStorage.getItem(ROOT_COMPOSE_PROJECT_ID_STORAGE_KEY),
-    ).toBe("proj_last_run");
+    ).toBe(PERSONAL_PROJECT_ID);
   });
 });
