@@ -73,6 +73,54 @@ The `bb-community` marketplace (`https://getbb.app/marketplace/v2/marketplace.js
 6. `pane-workspaces` and `fast-split`: saved pane arrangements and a new thread pane from the sidebar footer.
 7. `tree-sidebar` and `cursor-sidebar`: alternative project sidebars, if the built in "by project" mode falls short.
 
+## Plugins over patches
+
+Audit of `abaeeef6bc..origin/main` on 2026-11-04 (PRs #1 to #30): 293 files and 17,747 added lines, of which 213 files sit outside `plugins/`. 5,325 of the core lines are the generated `0150_snapshot.json`. Each fork change below is in one bucket:
+
+1. Plugin: already lives in a fork plugin.
+2. Surface: can move onto a plugin surface that exists today.
+3. API: needs a small `experimental_` plugin API in core first, named in the row, then moves into a plugin.
+4. Upstream: generally useful and small enough to offer to get-bb/bb. Listed for the user to approve; nothing is opened there.
+5. Patch: stays a core patch, with the reason.
+
+Changes to bundled plugins (`thread-list`, `navigation`, `provider-usage`, `push-notifications`, `environment-git-worktree`) count as patches for rebasing, since upstream edits the same files.
+
+| Feature | PRs | Lives in | Bucket | Plan |
+| --- | --- | --- | --- | --- |
+| Assistant: Slack and email triage, Home section | [#4](https://github.com/zugdev/bb/pull/4), [#14](https://github.com/zugdev/bb/pull/14), [#16](https://github.com/zugdev/bb/pull/16), [#18](https://github.com/zugdev/bb/pull/18) | `plugins/assistant` | Plugin | Done. |
+| Orchestrator | [#3](https://github.com/zugdev/bb/pull/3) | `plugins/orchestrator` | Plugin | Done. |
+| Fork updater button | [#25](https://github.com/zugdev/bb/pull/25), [#19](https://github.com/zugdev/bb/pull/19) | `plugins/fork-updater`, `scripts/fork-*.sh` | Plugin | Done. The scripts and `pnpm fork:update` are fork tooling. Audit again after thr_r6nqx6zfrx lands. |
+| New thread overview: Needs you, latest threads, project picker, recent project chips, `composer.cycleProject` | [#14](https://github.com/zugdev/bb/pull/14), [#23](https://github.com/zugdev/bb/pull/23), [#26](https://github.com/zugdev/bb/pull/26), [#29](https://github.com/zugdev/bb/pull/29) | `RootComposeOverview.tsx`, `NewThreadComposer.tsx` (`changeProject`), app keybindings | API | `PluginSidebarThread.experimental_lastUserMessageAt`, `PluginHomepageSectionProps.experimental_setProjectId(projectId \| null)` and an `experimental_ProjectPicker` component (the composer's `ProjectSelector`). The shortcut moves to `composer.experimental_registerCommand`. Then a homepage section in `plugins/home`. About 560 core lines plus tests. |
+| Home page at `/home` | [#1](https://github.com/zugdev/bb/pull/1), [#14](https://github.com/zugdev/bb/pull/14), [#18](https://github.com/zugdev/bb/pull/18), [#29](https://github.com/zugdev/bb/pull/29) | `HomeView.tsx`, `home-overview.ts`, `HomeThreadRow.tsx` | API | `experimental_lastUserMessageAt` as above, `experimental_useHomepageSections()` so Home can order, hide and mount other plugins' sections, and `PluginNavPanelRegistration.experimental_pinnedTab` so pane tabs pin a plugin page as the first tab in place of core's `/home` route. Then a nav panel in `plugins/home`. About 940 core lines plus 308 test lines. Waits on thr_ki4gmakjuq, since Home is the first tab. |
+| Parent thread link in the header | [#30](https://github.com/zugdev/bb/pull/30) | `ThreadDetailHeader.tsx`, `useParentThreadSection.ts` | Surface | Thread action with `placement: "header"` that reads `parentThreadId` from `experimental_useSidebarThreads` and opens it with `useBbNavigate().toThread`. Waits on thr_x7f5cfkw3e. |
+| Usage readout in the sidebar footer | [#27](https://github.com/zugdev/bb/pull/27) | core `experimental_buttonContent`, `plugins/provider-usage` | Upstream | The API is generic and already audited in `docs/api_to_audit.md`. Offer it with the readout. |
+| Usage reset notifications | [#6](https://github.com/zugdev/bb/pull/6) | `plugins/provider-usage/usage-resets.ts` | Upstream | General feature of a bundled plugin with a setting that defaults on. Keep the plugin patch until upstream answers. |
+| Notifications only on the device that started the thread | [#15](https://github.com/zugdev/bb/pull/15) | core `experimental_clientId` on the RPC caller, mobile bridge, `plugins/push-notifications` | Upstream | Both halves are generic. A plugin can't learn the calling device without the core field. |
+| Claude Code session import | [#5](https://github.com/zugdev/bb/pull/5) | daemon, server, bridges, CLI, SDK (56 files, 2,269 lines) | Upstream | Plugins can't add daemon commands or write thread events, so it stays a patch until upstream takes it. The missing UI should be a plugin on `experimental_listProviderSessions` and `experimental_importProviderSession`. |
+| `threads.lastUserMessageAt` column, migration 0150 | [#1](https://github.com/zugdev/bb/pull/1) | `packages/db`, `packages/domain`, prompt history | Upstream | Small and needed by both Home moves. The snapshot is generated, so it costs nothing on rebase except regenerating. |
+| Split shortcuts `pane.split.right` and `pane.split.down`, `panes.splitDirection`, Split direction setting | [#1](https://github.com/zugdev/bb/pull/1) | `split-layout/ops.ts`, app keybindings, `KeyboardSettingsSection.tsx` | Upstream | Upstream has split panes and no command to split the focused pane. |
+| Right panel toggle in every split pane header | [#21](https://github.com/zugdev/bb/pull/21) | `ThreadDetailHeader.tsx`, `SplitWorkspaceSecondaryPanelHost.tsx` | Upstream | Fixes upstream split headers, which have no toggle. |
+| Compact button on the context window card | [#28](https://github.com/zugdev/bb/pull/28) | `ThreadContextWindowIndicator.tsx`, `ProviderInfo.capabilities.supportsManualCompaction` | Upstream | The button sits in core's context popover, which has no slot. `sdk.threads.compact` already exists upstream. |
+| Draft pencil sized like a status dot | [#20](https://github.com/zugdev/bb/pull/20), [#24](https://github.com/zugdev/bb/pull/24) | `ThreadStatusGlyph.tsx` | Upstream | 25 lines of styling. |
+| Personal Threads group always shown | [#13](https://github.com/zugdev/bb/pull/13) | `plugins/thread-list` | Upstream | Offer as a thread-list preference. |
+| New worktrees start on a detached HEAD | [#10](https://github.com/zugdev/bb/pull/10) | `plugins/environment-git-worktree` | Upstream | Offer as a provider option, default off upstream. |
+| Status rollup of live child threads | [#29](https://github.com/zugdev/bb/pull/29) | `ThreadStatusDot.tsx`, `plugins/thread-list` rows | Upstream | The thread-list row half is generally useful. The Home half moves with Home, and the tab bar half stays with tabs. |
+| Pane tabs: `Alt`/`Mod` T, W, 1 to 9, reopen, project tabs, the tab's sidebar section, visited tabs kept mounted, sidebar threads opening beside a split, splits starting in the pane's project, `toThread({ experimental_tab })` | [#1](https://github.com/zugdev/bb/pull/1), [#9](https://github.com/zugdev/bb/pull/9), [#13](https://github.com/zugdev/bb/pull/13), [#17](https://github.com/zugdev/bb/pull/17), [#23](https://github.com/zugdev/bb/pull/23) | `split-layout/tabs.ts`, `SplitTabBar.tsx`, `SplitThreadArea.tsx`, `ActiveTabThreadsSection.tsx`, app keybindings (17 files, 2,162 lines) | Patch | Tabs own core's split layout, routes and default keybinding table, and no plugin surface owns the window's pane tree. The remaps of upstream commands (reasoning to `Alt+R`, desktop panel tabs to `Mod+Alt`, numbered threads to `Control`) free keys for tabs. Keyboard overrides are scoped by platform and can't express the web and desktop split. Audit again after thr_ki4gmakjuq lands. |
+| New thread defaults to the focused pane's project or No project | [#14](https://github.com/zugdev/bb/pull/14) | `AppSidebar.tsx`, `AppLayout.tsx`, `openSplitTabAtom` | Patch | Reads the focused pane, which only core knows. |
+| Stored Project checkout pick ignored on load | [#7](https://github.com/zugdev/bb/pull/7) | `persisted-selection-fields.ts` | Patch | 13 lines in the composer's storage atoms. A content script would race the atoms' `getOnInit` read. |
+| Open in editor button removed from the header | [#2](https://github.com/zugdev/bb/pull/2), [#21](https://github.com/zugdev/bb/pull/21) | `ThreadDetailHeader.tsx`, deleted `ThreadWorkspaceOpenButton.tsx` | Patch | A preference with no setting. Restoring the deleted component and its stories and only dropping the mount would cut the patch to one file. |
+| Desktop content card and sidebar run to the window edges, 32px title bar | [#1](https://github.com/zugdev/bb/pull/1), [#12](https://github.com/zugdev/bb/pull/12), [#22](https://github.com/zugdev/bb/pull/22) | `sidebar.tsx`, `ThreadSecondaryPanel.tsx`, `bb-desktop.ts`, `MACOS_TRAFFIC_LIGHT_TOP_INSET_PX` | Patch | Window frame layout and the native traffic light inset are out of reach of plugins. Audit again after thr_ube563fq34 lands. |
+| Search button beside New thread | [#1](https://github.com/zugdev/bb/pull/1) | `plugins/navigation/app/Rail.tsx` | Patch | A bundled plugin patch. Replacing the whole navigation provider to add one button would copy more code than it saves. |
+| Fixtures, demo world, guide templates, `docs/fork-*.md` | [#8](https://github.com/zugdev/bb/pull/8), [#11](https://github.com/zugdev/bb/pull/11), [#24](https://github.com/zugdev/bb/pull/24), [#10](https://github.com/zugdev/bb/pull/10), [#5](https://github.com/zugdev/bb/pull/5) | tests, templates, docs | Patch | They follow the feature they describe. |
+
+No fork change fits the Surface bucket without waiting on a running thread, so the moves start with the parent link once thr_x7f5cfkw3e lands, and then the two Home moves, each as one PR for its API and the plugin that uses it:
+
+1. New thread overview into `plugins/home`, with `experimental_lastUserMessageAt`, `experimental_setProjectId` and `experimental_ProjectPicker`.
+2. Parent link into a header thread action, after thr_x7f5cfkw3e.
+3. Home page into `plugins/home`, with `experimental_useHomepageSections` and `experimental_pinnedTab`, after thr_ki4gmakjuq.
+
+Together the two Home moves take about 1,500 lines of core UI and 500 lines of tests out of core.
+
 ## Order
 
 1. mod+D split. Done, see goal 5.
