@@ -47,11 +47,9 @@ const SIDEBAR_MOBILE_BACKDROP_TRANSITION_CLASS =
 
 const SIDEBAR_FRAME_CLASS =
   "bg-sidebar bg-[linear-gradient(var(--surface-recessed),var(--surface-recessed))] pt-(--bb-window-title-bar-height) [--bb-window-frame-top:var(--bb-window-title-bar-height)] [--bb-window-frame-lip:var(--bb-frame-window-lip)]";
-const SIDEBAR_FRAME_LEADING_LIP_CLASS =
-  "pl-(--bb-window-frame-leading-lip) [--bb-window-frame-leading-lip:var(--bb-window-frame-lip)]";
 const SIDEBAR_FRAMED_PANEL_CLASS =
-  "group-data-[framed]/sidebar-wrapper:top-(--bb-window-frame-top) group-data-[framed]/sidebar-wrapper:h-[calc(var(--bb-shell-height)_-_var(--bb-window-frame-top)_-_var(--bb-window-frame-lip))] group-data-[framed]/sidebar-wrapper:border-r-0! group-data-[framed]/sidebar-wrapper:bg-transparent";
-const SIDEBAR_FRAMED_CARD_EDGE_CLASS = "border-y border-l border-border";
+  "group-data-[framed]/sidebar-wrapper:top-(--bb-window-frame-top) group-data-[framed]/sidebar-wrapper:h-[calc(var(--bb-shell-height)_-_var(--bb-window-frame-top))] group-data-[framed]/sidebar-wrapper:border-r-0! group-data-[framed]/sidebar-wrapper:bg-transparent";
+const SIDEBAR_FRAMED_CARD_EDGE_CLASS = "border-l border-border";
 const SIDEBAR_FRAMED_INSET_CLASS =
   "isolate pl-px [mask-repeat:no-repeat] [mask-size:100%_100%] -mt-(--bb-window-title-bar-height) h-[calc(100%+var(--bb-window-title-bar-height))] bg-transparent before:pointer-events-none before:absolute before:inset-x-0 before:bottom-0 before:top-(--bb-window-title-bar-height) before:-z-10 before:bg-background";
 const SIDEBAR_FRAMED_INSET_EDGE_CLASS =
@@ -683,9 +681,6 @@ const SidebarProvider = React.forwardRef<
                   className={cn(
                     "group/sidebar-wrapper flex h-full min-h-0 w-full max-md:overflow-clip",
                     isFramed && SIDEBAR_FRAME_CLASS,
-                    isFramed &&
-                      desktopCollapsedRailWidth === null &&
-                      SIDEBAR_FRAME_LEADING_LIP_CLASS,
                     className,
                   )}
                   ref={ref}
@@ -857,7 +852,7 @@ const SidebarCollapsibleBody = React.forwardRef<
         "group-data-[collapsible=rail]:invisible group-data-[collapsible=rail]:[transition:visibility_0s_linear_200ms]",
         isFramed
           ? [
-              "rounded-tl-(--bb-frame-card-radius) rounded-bl-(--bb-frame-card-radius) bg-sidebar [clip-path:inset(0_-6px_0_0_round_var(--bb-frame-card-radius)_0_0_var(--bb-frame-card-radius))]",
+              "bg-sidebar [clip-path:inset(0_-6px_0_0)]",
               SIDEBAR_FRAMED_CARD_EDGE_CLASS,
             ]
           : "[clip-path:inset(0_-6px_0_0)]",
