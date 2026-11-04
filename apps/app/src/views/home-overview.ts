@@ -74,6 +74,24 @@ export function overviewProjectThreads(
   return overview;
 }
 
+export function homeAttention(
+  projects: readonly { threads: readonly ThreadListEntry[] }[],
+): { needsYou: ThreadListEntry[]; replies: ThreadListEntry[] } {
+  const overviews = projects.map((project) =>
+    overviewProjectThreads(project.threads),
+  );
+  const byAttention = (a: ThreadListEntry, b: ThreadListEntry) =>
+    b.latestAttentionAt - a.latestAttentionAt;
+  return {
+    needsYou: overviews
+      .flatMap((o) => o.needsYou.map((item) => item.thread))
+      .sort(byAttention),
+    replies: overviews
+      .flatMap((o) => o.unread.map((item) => item.thread))
+      .sort(byAttention),
+  };
+}
+
 export const HOME_THREAD_SORTS = [
   { value: "message", label: "Your last message" },
   { value: "activity", label: "Last activity" },
@@ -133,19 +151,22 @@ export function projectSectionId(projectId: string): string {
   return `project:${projectId}`;
 }
 
+export function pluginSectionId(pluginId: string, sectionId: string): string {
+  return `plugin:${pluginId}/${sectionId}`;
+}
+
 export function resolveHomeSections(
   prefs: HomeLayoutPrefs,
   projectIds: readonly string[],
+  pluginSectionIds: readonly string[] = [],
 ): { visible: string[]; hidden: string[] } {
-  const available = [
-    ...HOME_FIXED_SECTION_IDS,
-    ...projectIds.map(projectSectionId),
-  ];
+  const leading = [...HOME_FIXED_SECTION_IDS, ...pluginSectionIds];
+  const available = [...leading, ...projectIds.map(projectSectionId)];
   const unsaved = available.filter((id) => !prefs.order.includes(id));
   const ordered = [
-    ...unsaved.filter((id) => HOME_FIXED_SECTION_IDS.includes(id)),
+    ...unsaved.filter((id) => leading.includes(id)),
     ...prefs.order.filter((id) => available.includes(id)),
-    ...unsaved.filter((id) => !HOME_FIXED_SECTION_IDS.includes(id)),
+    ...unsaved.filter((id) => !leading.includes(id)),
   ];
   const hidden = new Set(prefs.hidden);
   return {

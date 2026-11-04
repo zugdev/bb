@@ -1,5 +1,6 @@
 import { defineRpcContract } from "@get-bb/plugin-sdk";
 import { z } from "zod";
+import { notificationSchema, reminderSchema } from "./home.js";
 
 export const assistantRpcContract = defineRpcContract({
   "assistant.thread": {
@@ -14,6 +15,16 @@ export const assistantRpcContract = defineRpcContract({
   "assistant.seen": {
     input: z.object({}).strict(),
     output: z.object({ unseen: z.number() }).strict(),
+  },
+  "assistant.home": {
+    tags: () => ["home"],
+    input: z.object({}).strict(),
+    output: z
+      .object({
+        reminders: z.array(reminderSchema),
+        notifications: z.array(notificationSchema),
+      })
+      .strict(),
   },
   "assistant.check": {
     input: z.object({}).strict(),

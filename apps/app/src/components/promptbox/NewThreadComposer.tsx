@@ -44,7 +44,10 @@ import type {
   SystemExecutionOptionsModelLoadError,
   RecordTelemetryEventRequest,
 } from "@bb/server-contract";
-import type { ProjectSelectorCreateProjectConfig } from "@/components/pickers/ProjectSelector";
+import type {
+  ProjectSelectorCreateProjectConfig,
+  ProjectSelectorOption,
+} from "@/components/pickers/ProjectSelector";
 import {
   encodeReuseValue,
   encodeProviderValue,
@@ -225,6 +228,8 @@ export interface NewThreadComposerState {
   projectId: string;
   isProjectless: boolean;
   projects: readonly SidebarProject[] | undefined;
+  projectOptions: readonly ProjectSelectorOption[];
+  changeProject: (projectId: string | null) => Promise<void>;
   sidebarNavigation: SidebarBootstrapResponse | undefined;
   sidebarNavigationError: boolean;
   currentProject: SidebarProject | undefined;
@@ -2260,6 +2265,8 @@ export function NewThreadComposer({
         projectId,
         isProjectless,
         projects,
+        projectOptions,
+        changeProject: handleProjectChange,
         sidebarNavigation: sidebarNavigationQuery.data,
         sidebarNavigationError: sidebarNavigationQuery.isError,
         currentProject,

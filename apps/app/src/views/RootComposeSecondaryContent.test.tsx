@@ -163,6 +163,7 @@ function renderRootCompose(args: RenderRootComposeArgs) {
         >
           <RootComposeSecondaryContent
             compactScrollContent={null}
+            overview={null}
             isCompactHomeLayout={false}
             isSecondaryPanelOpen={renderArgs.isSecondaryPanelOpen}
             onToggleSecondaryPanel={() => undefined}
@@ -206,6 +207,7 @@ describe("RootComposeSecondaryContent desktop layout", () => {
       <CompactViewportOverrideProvider isCompactViewport={isCompactViewport}>
         <RootComposeSecondaryContent
           compactScrollContent={compactContent}
+          overview={null}
           isCompactHomeLayout={isCompactViewport}
           isSecondaryPanelOpen={false}
           onToggleSecondaryPanel={noop}

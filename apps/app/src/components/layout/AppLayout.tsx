@@ -132,6 +132,7 @@ import {
   paneContentForPathname,
 } from "@/views/thread-detail/splitThreadNavigation";
 import { useAppSettingsRouteMemory } from "@/hooks/useAppSettingsRouteMemory";
+import { PERSONAL_PROJECT_ID } from "@bb/domain";
 import { useSetRootComposeProjectId } from "@/lib/root-compose-selection";
 import { BackToAppCommandHandler } from "./BackToAppCommandHandler";
 import { HistoryCommandHandlers } from "./HistoryCommandHandlers";
@@ -538,9 +539,7 @@ function AppLayoutContent({ children }: AppLayoutProps) {
     [isCompactViewport, navigate, store],
   );
   useAppCommandHandler("thread.new", () => {
-    if (projectId !== undefined) {
-      setRootComposeProjectId(projectId);
-    }
+    setRootComposeProjectId(projectId ?? PERSONAL_PROJECT_ID);
     void navigate(getRootComposeRoutePath(), {
       state: { focusPrompt: true },
     });

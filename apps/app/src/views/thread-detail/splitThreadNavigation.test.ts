@@ -7,11 +7,13 @@ import {
   splitPane,
 } from "@/lib/split-layout";
 import type { SplitLayout } from "@/lib/split-layout";
+import type { SplitTabsState } from "@/lib/split-layout/tabs";
 import {
   applyThreadOpenToLayout,
   applyThreadPaneActionToLayout,
   createSinglePaneLayout,
   focusedPaneRoute,
+  placeThreadBesideSplit,
   reconcileLayoutForContent,
 } from "./splitThreadNavigation";
 
@@ -230,5 +232,97 @@ describe("applyThreadPaneActionToLayout", () => {
       maximizedPaneId: "pane-2",
       dimInactiveSplits: null,
     });
+  });
+});
+
+describe("placeThreadBesideSplit", () => {
+  const picked = { projectId: "p1", threadId: "thread-9" };
+
+  function tabsWith(
+    ...layouts: (SplitLayout | null)[]
+  ): SplitTabsState {
+    return {
+      tabs: layouts.map((layout, index) => ({
+        id: `tab-${index + 1}`,
+        layout,
+        projectId: null,
+        name: null,
+      })),
+      activeTabId: "tab-1",
+    };
+  }
+
+  it("leaves a single pane tab to the usual replace", () => {
+    const single = createSinglePaneLayout({
+      projectId: "p1",
+      threadId: "thread-1",
+    });
+
+    expect(placeThreadBesideSplit(tabsWith(single), single, picked)).toBeNull();
+    expect(
+      reconcileLayoutForContent(single, { kind: "thread", ...picked }),
+    ).toEqual(createSinglePaneLayout(picked));
+  });
+
+  it("leaves a thread already open in the split to focus its pane", () => {
+    const split = twoPaneLayout();
+    const thread = { projectId: "p1", threadId: "thread-1" };
+
+    expect(placeThreadBesideSplit(tabsWith(split), split, thread)).toBeNull();
+    expect(
+      reconcileLayoutForContent(split, { kind: "thread", ...thread }),
+    ).toEqual({ ...split, focusedPaneId: "pane-1" });
+  });
+
+  it("lets a focused New Thread pane in the split take the thread", () => {
+    const split = splitPane(twoPaneLayout(), "pane-2", "bottom", {
+      kind: "new-thread",
+    });
+
+    expect(placeThreadBesideSplit(tabsWith(split), split, picked)).toBeNull();
+  });
+
+  it("opens a new tab after the split and keeps the split intact", () => {
+    const split = twoPaneLayout();
+    const other = twoPaneLayout();
+
+    const result = placeThreadBesideSplit(
+      tabsWith(null, other),
+      split,
+      picked,
+    );
+
+    expect(result?.layout).toEqual(createSinglePaneLayout(picked));
+    expect(result?.state.tabs).toHaveLength(3);
+    expect(result?.state.tabs[0]?.layout).toBe(split);
+    expect(result?.state.tabs[2]?.layout).toBe(other);
+    expect(result?.state.tabs[1]).toMatchObject({
+      id: result?.state.activeTabId,
+      layout: createSinglePaneLayout(picked),
+      projectId: "p1",
+    });
+  });
+
+  it("reuses the first single pane tab instead of adding another", () => {
+    const split = twoPaneLayout();
+    const browse = createSinglePaneLayout({
+      projectId: "p2",
+      threadId: "thread-5",
+    });
+
+    const result = placeThreadBesideSplit(
+      tabsWith(null, twoPaneLayout(), browse, null),
+      split,
+      picked,
+    );
+
+    expect(result?.state.tabs).toHaveLength(4);
+    expect(result?.state.activeTabId).toBe("tab-3");
+    expect(result?.state.tabs[0]?.layout).toBe(split);
+    expect(result?.state.tabs[2]).toMatchObject({
+      layout: createSinglePaneLayout(picked),
+      projectId: "p1",
+    });
+    expect(result?.state.tabs[3]?.layout).toBeNull();
   });
 });

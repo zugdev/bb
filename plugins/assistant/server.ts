@@ -2,6 +2,12 @@ import { cliCommand, defineCli, type BbPluginApi } from "@get-bb/plugin-sdk";
 import { z } from "zod";
 import { assistantRpcContract } from "./contract.js";
 import {
+  appendNotification,
+  HOME_ITEM_LIMIT,
+  upcomingReminders,
+  type AssistantNotification,
+} from "./home.js";
+import {
   fetchNewUnread,
   latestUid,
   readEmail,
@@ -22,6 +28,7 @@ import {
 const PERSONAL_PROJECT_ID = "proj_personal";
 const THREAD_KEY = "threadId";
 const UNSEEN_KEY = "unseen";
+const NOTIFICATIONS_KEY = "notifications";
 const PANEL_KEY = "assistant/assistant";
 const BUILT_IN_NAVIGATION_KEYS = [
   "__bb__/new-thread",
@@ -32,6 +39,8 @@ const BUILT_IN_NAVIGATION_KEYS = [
 ];
 const EMAIL_UID_KEY = "email:lastUid";
 const slackSinceKey = (team: string) => `slack:${team}:since`;
+
+const automationListOutputSchema = z.array(z.unknown());
 
 const notificationOutputSchema = z.object({
   ok: z.literal(true),
@@ -134,6 +143,28 @@ export default async function plugin(bb: BbPluginApi) {
     const unseen = (await bb.storage.kv.get<number>(UNSEEN_KEY)) ?? 0;
     await bb.storage.kv.set(UNSEEN_KEY, unseen + by);
     bb.rpc.experimental_invalidate(["badge"]);
+  }
+
+  async function recordNotification(notification: AssistantNotification): Promise<void> {
+    const log = (await bb.storage.kv.get<AssistantNotification[]>(NOTIFICATIONS_KEY)) ?? [];
+    await bb.storage.kv.set(NOTIFICATIONS_KEY, appendNotification(log, notification));
+    bb.rpc.experimental_invalidate(["home"]);
+  }
+
+  async function assistantReminders() {
+    if (threadId === undefined) return [];
+    try {
+      const rows = await bb.sdk.plugins.callRpc({
+        pluginId: "automations",
+        method: "automations_list",
+        input: { targetThreadId: threadId },
+        outputSchema: automationListOutputSchema,
+      });
+      return upcomingReminders(rows);
+    } catch (error) {
+      bb.log.warn(`could not list the assistant's reminders: ${String(error)}`);
+      return [];
+    }
   }
 
   async function placeAtTopOfSidebar(): Promise<void> {
@@ -250,6 +281,7 @@ export default async function plugin(bb: BbPluginApi) {
         outputSchema: notificationOutputSchema,
       });
       await bumpUnseen(1);
+      await recordNotification({ title, body, at: Date.now() });
       return result.channels.length === 0
         ? "No notification channel is enabled, so nothing was delivered."
         : `Delivered to ${result.channels.join(", ")}.`;
@@ -318,9 +350,20 @@ export default async function plugin(bb: BbPluginApi) {
       : { tools: [], skills: [] },
   );
 
+  bb.events.on("thread.idle", ({ thread }) => {
+    if (thread.id === threadId) bb.rpc.experimental_invalidate(["home"]);
+  });
+
   bb.rpc.register(assistantRpcContract, {
     async "assistant.thread"() {
       return { threadId: await ensureThread() };
+    },
+    async "assistant.home"() {
+      const notifications = (await bb.storage.kv.get<AssistantNotification[]>(NOTIFICATIONS_KEY)) ?? [];
+      return {
+        reminders: await assistantReminders(),
+        notifications: notifications.slice(0, HOME_ITEM_LIMIT),
+      };
     },
     async "assistant.check"() {
       return checkSources();

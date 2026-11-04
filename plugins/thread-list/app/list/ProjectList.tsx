@@ -622,7 +622,7 @@ function ProjectModeSections({
   const { onOrderChange, order, persistedOrder } = useSidebarModeSectionOrder({
     mode: "project",
     entitySectionIds: projectSectionIds,
-    hasThreadsSection: personalThreads.length > 0 || projectRows.length === 0,
+    hasThreadsSection: personalProjectId !== null || projectRows.length === 0,
     showPinnedSection,
   });
   const reorderDisabled = order.length < 2;

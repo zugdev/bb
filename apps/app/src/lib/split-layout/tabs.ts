@@ -1,8 +1,10 @@
-import { atom, type Setter } from "jotai";
+import { atom, type Setter, type useStore } from "jotai";
 import { atomWithStorage } from "jotai/utils";
 import { z } from "zod";
 import { createTabScopedStorage } from "@/lib/browser-storage";
+import { PERSONAL_PROJECT_ID } from "@bb/domain";
 import { rootComposeProjectIdAtom } from "@/lib/root-compose-selection";
+import { getThreadRoutePath } from "@/lib/route-paths";
 import { maximizedPaneIdAtom, splitLayoutAtom } from "./atoms";
 import {
   countPanes,
@@ -188,6 +190,12 @@ function activateTabLayout(
   return layout;
 }
 
+export const activateSplitTabsAtom = atom(
+  null,
+  (_get, set, next: { state: SplitTabsState; layout: SplitLayout }) =>
+    activateTabLayout(set, next.state, next.layout),
+);
+
 export const openSplitTabAtom = atom(
   null,
   (get, set, projectId: string | null = null): SplitLayout | null => {
@@ -197,9 +205,9 @@ export const openSplitTabAtom = atom(
       NEW_THREAD_LAYOUT,
       projectId,
     );
-    return next === null
-      ? null
-      : activateTabLayout(set, next, NEW_THREAD_LAYOUT);
+    if (next === null) return null;
+    set(rootComposeProjectIdAtom, projectId ?? PERSONAL_PROJECT_ID);
+    return activateTabLayout(set, next, NEW_THREAD_LAYOUT);
   },
 );
 
@@ -252,6 +260,15 @@ export const openThreadInTabAtom = atom(
     return next === null ? null : activateTabLayout(set, next, layout);
   },
 );
+
+export function openThreadInTab(
+  store: ReturnType<typeof useStore>,
+  navigate: (route: string, options: { replace: true }) => void,
+  thread: ThreadRef,
+): void {
+  store.set(openThreadInTabAtom, thread);
+  navigate(getThreadRoutePath(thread), { replace: true });
+}
 
 export const focusThreadInOtherTabAtom = atom(
   null,

@@ -40,7 +40,7 @@ export const MACOS_CHROME_CONTROL_AXIS_CLASS =
   "[transform:translateY(var(--bb-macos-chrome-control-y,calc(var(--bb-macos-traffic-light-center-y)_-_var(--bb-app-chrome-row-height)/2)))]";
 export const MACOS_TITLE_BAR_ROW_CLASS = "h-(--bb-window-title-bar-height)";
 export const MACOS_TITLE_BAR_TRAILING_TOGGLE_CLASS =
-  "w-(--bb-title-bar-control-size) -mr-[calc(var(--bb-panel-chrome-padding)_-_var(--bb-title-bar-trailing-edge-gap)_+_var(--bb-window-frame-lip))]";
+  "w-(--bb-title-bar-control-size) -mr-[calc(var(--bb-panel-chrome-padding)_-_var(--bb-title-bar-trailing-edge-gap))]";
 export const MACOS_TITLE_BAR_PINNED_TOGGLE_CLASS =
   "right-[calc(var(--bb-title-bar-trailing-edge-gap)_-_var(--bb-window-frame-lip))] [&_button]:w-(--bb-title-bar-control-size)";
 export const MACOS_TITLE_BAR_CONTROL_SIZE_CLASS =
@@ -86,14 +86,9 @@ const COLLAPSED_SIDEBAR_TRIGGER_GAP_PX = 8;
 const TITLE_BAR_CONTROL_COUNT = 3;
 const PAGE_HEADER_BASE_INSET_PX = 16;
 
-function getWindowCardMask(
-  titleBarHeight: number,
-  squareTopLeft: boolean,
-): string {
-  const corner = squareTopLeft
-    ? `<rect y='${titleBarHeight}' width='${WINDOW_CARD_RADIUS_PX}' height='${WINDOW_CARD_RADIUS_PX}'/>`
-    : "";
-  const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='100%' height='100%'><rect width='100%' height='${titleBarHeight}'/><rect y='${titleBarHeight}' width='100%' height='100%' rx='${WINDOW_CARD_RADIUS_PX}'/>${corner}</svg>`;
+function getWindowCardMask(titleBarHeight: number): string {
+  const r = WINDOW_CARD_RADIUS_PX;
+  const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='100%' height='100%'><rect width='100%' height='${titleBarHeight}'/><rect y='${titleBarHeight}' width='100%' height='100%' rx='${r}'/><rect x='${r}' y='${titleBarHeight}' width='100%' height='100%'/><rect y='${titleBarHeight + r}' width='100%' height='100%'/></svg>`;
   return `url("data:image/svg+xml,${encodeURIComponent(svg)}")`;
 }
 
@@ -126,11 +121,7 @@ export function applyAppFrameGeometry(
     Object.assign(properties, {
       "--bb-macos-traffic-light-center-y": `${centerY}px`,
       "--bb-window-title-bar-height": `${titleBarHeight}px`,
-      "--bb-window-card-mask": getWindowCardMask(titleBarHeight, false),
-      "--bb-window-card-mask-square-left": getWindowCardMask(
-        titleBarHeight,
-        true,
-      ),
+      "--bb-window-card-mask": getWindowCardMask(titleBarHeight),
       "--bb-macos-traffic-light-reserve": `calc(${MACOS_TRAFFIC_LIGHT_CLEARANCE_PX}px + ${inset + MACOS_TRAFFIC_LIGHT_CLUSTER_WIDTH_PX}px / var(--bb-zoom, 1))`,
       "--bb-window-title-bar-controls-end": `calc(var(--bb-macos-traffic-light-reserve) + ${TITLE_BAR_CONTROL_COUNT * TITLE_BAR_CONTROL_SIZE_PX + TITLE_BAR_SIDEBAR_TOGGLE_GAP_PX}px)`,
       "--bb-macos-collapsed-top-left-reserve": `calc(var(--bb-macos-traffic-light-reserve) + ${TITLE_BAR_CONTROL_SIZE_PX + COLLAPSED_SIDEBAR_TRIGGER_GAP_PX - PAGE_HEADER_BASE_INSET_PX}px)`,

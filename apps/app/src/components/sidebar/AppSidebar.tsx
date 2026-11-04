@@ -7,7 +7,7 @@ import {
 } from "react";
 import { flushSync } from "react-dom";
 import { cn } from "@bb/shared-ui/lib/utils";
-import { THREAD_JUMP_APP_COMMAND_IDS } from "@bb/domain";
+import { PERSONAL_PROJECT_ID, THREAD_JUMP_APP_COMMAND_IDS } from "@bb/domain";
 import { useNavigate } from "react-router-dom";
 import { OverflowFade } from "@bb/shared-ui/overflow-fade";
 import {
@@ -51,6 +51,7 @@ import {
   useIndexedAppCommandHandlers,
 } from "@/components/commands/AppCommandProvider";
 import { useRouteState } from "@/hooks/useRouteState";
+import { useSetRootComposeProjectId } from "@/lib/root-compose-selection";
 import { SidebarNavigationModelProvider } from "./SidebarNavigationModel";
 import { SIDEBAR_FOOTER_MORE_ID } from "./sidebarFooterPreferences";
 import { LazySidebarFooterCustomize } from "./LazySidebarFooterCustomize";
@@ -99,7 +100,9 @@ export function AppSidebar({
   const [desktopInfo] = useState(getBbDesktopInfo);
   const isFramed = useIsSidebarFramed();
   const threadListReplacement = useThreadListReplacement();
-  const { threadId: activeThreadId } = useRouteState();
+  const { threadId: activeThreadId, projectId: activeProjectId } =
+    useRouteState();
+  const setRootComposeProjectId = useSetRootComposeProjectId();
   const navigate = useNavigate();
   const closeOnMobile = useCloseMobileSidebar();
   const { isCompactViewport, open, openMobile } = useSidebar();
@@ -126,10 +129,11 @@ export function AppSidebar({
 
   const handleNewChat = useCallback(() => {
     closeOnMobile();
+    setRootComposeProjectId(activeProjectId ?? PERSONAL_PROJECT_ID);
     void navigate(getRootComposeRoutePath(), {
       state: { focusPrompt: true },
     });
-  }, [closeOnMobile, navigate]);
+  }, [activeProjectId, closeOnMobile, navigate, setRootComposeProjectId]);
 
   const showThreadShortcuts = useCallback(() => {
     const targets = getSidebarThreadShortcutTargets(sidebarRef.current);
