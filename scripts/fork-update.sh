@@ -19,8 +19,10 @@ if [ "${1:-}" = "--pull" ]; then
   git -C "$repo" pull --ff-only
 fi
 
-pnpm -C "$repo" install --frozen-lockfile
-NODE_ENV=production pnpm -C "$repo" exec dotenv --no-expand -c production -- turbo run package --filter=@bb/desktop --output-logs=new-only
+if [ "${1:-}" != "--swap" ]; then
+  pnpm -C "$repo" install --frozen-lockfile
+  NODE_ENV=production pnpm -C "$repo" exec dotenv --no-expand -c production -- turbo run package --filter=@bb/desktop --output-logs=new-only
+fi
 
 rm -rf "$staged"
 ditto "$app" "$staged"

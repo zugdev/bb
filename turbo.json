@@ -1285,6 +1285,25 @@
         "topo"
       ]
     },
+    "bb-plugin-fork-updater#typecheck": {
+      "dependsOn": ["@get-bb/plugin-sdk#build:types", "topo"],
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "$TURBO_ROOT$/packages/plugin-registry/flavors/**"
+      ]
+    },
+    "bb-plugin-fork-updater#test": {
+      "env": ["VITEST_MAX_WORKERS"],
+      "dependsOn": [
+        "//#ensure-native-modules",
+        "@get-bb/plugin-sdk#build",
+        "topo"
+      ],
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "$TURBO_ROOT$/packages/plugin-registry/flavors/**"
+      ]
+    },
     "bb-plugin-keep-awake#typecheck": {
       "dependsOn": ["@get-bb/plugin-sdk#build:types", "topo"],
       "inputs": [
