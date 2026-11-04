@@ -70,6 +70,9 @@ export const worktreeRpcContract = defineRpcContract({
   },
 });
 
+export const DETACHED_WORKTREE_INSTRUCTIONS =
+  "A new bb Worktree environment starts on a detached HEAD at its base branch (usually origin/main). Before your first commit, choose the branch from the task: when the task continues existing work, check out that branch with `git switch <branch>`; otherwise create a short branch named after the task with `git switch -c <name>`. Never commit on the detached HEAD.";
+
 const ADOPTED_RESOURCE = { adopted: true } as const;
 
 function isAdoptedResource(resource: JsonValue | null): boolean {
@@ -130,7 +133,7 @@ export default async function worktreePlugin(bb: BbPluginApi): Promise<void> {
   async function createManagedWorktree(
     context: WorktreeOperation,
     branch: {
-      branchName: string;
+      branchName: string | null;
       baseBranch: WorktreeBaseBranch;
       branchMode: "reset" | "reuse-existing";
     },
@@ -186,7 +189,7 @@ export default async function worktreePlugin(bb: BbPluginApi): Promise<void> {
         return adoptExistingWorktree(context, context.inputs.path);
       }
       return createManagedWorktree(context, {
-        branchName: context.suggestedBranchName,
+        branchName: null,
         baseBranch: context.inputs.branch,
         branchMode: "reset",
       });
@@ -195,16 +198,8 @@ export default async function worktreePlugin(bb: BbPluginApi): Promise<void> {
       if ("kind" in context.inputs) {
         return adoptExistingWorktree(context, context.inputs.path);
       }
-      const branchName = context.previous.environment.branchName;
-      if (branchName === null) {
-        return {
-          status: "failed",
-          message:
-            "The removed worktree had no branch checked out, so there is no branch to restore it on.",
-        };
-      }
       return createManagedWorktree(context, {
-        branchName,
+        branchName: context.previous.environment.branchName,
         baseBranch: context.inputs.branch,
         branchMode: "reuse-existing",
       });
@@ -241,6 +236,8 @@ export default async function worktreePlugin(bb: BbPluginApi): Promise<void> {
       }
     },
   });
+
+  bb.agents.contributeInstructions(() => DETACHED_WORKTREE_INSTRUCTIONS);
 
   bb.rpc.register(worktreeRpcContract, {
     async defaultBaseBranch({ projectId, hostId }) {
