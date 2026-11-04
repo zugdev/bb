@@ -178,6 +178,19 @@ export async function inspectGitRepository(
   };
 }
 
+export async function resolveMainRepositoryRoot(
+  cwd: string,
+  options: GitTimeoutOptions = {},
+): Promise<string | null> {
+  const result = await runGit(
+    ["rev-parse", "--path-format=absolute", "--git-common-dir"],
+    { cwd, ...options, allowFailure: true },
+  ).catch(() => null);
+  if (result === null || result.exitCode !== 0) return null;
+  const commonDir = trimOutput(result.stdout);
+  return path.basename(commonDir) === ".git" ? path.dirname(commonDir) : null;
+}
+
 export async function detectLinkedWorktree(
   cwd: string,
   options: GitTimeoutOptions = {},

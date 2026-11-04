@@ -2,6 +2,7 @@ import type { DesktopBrowserBroker } from "./desktop-browser-broker.js";
 import {
   CompetingTurnError,
   type AgentRuntimeBridgeLaunch,
+  type ImportedProviderSession,
 } from "@bb/agent-runtime";
 import type { AvailableModel } from "@bb/domain";
 import type { EventSink } from "./event-sink.js";
@@ -21,6 +22,7 @@ import {
 import { BRIDGE_JSON_RPC_ERRORS } from "@bb/provider-bridge-protocol";
 import type {
   CommandListResult,
+  SessionsListResult,
   ProviderInstallationCommand,
   ProviderInstallationRunResult,
   ProviderInstallationStatus,
@@ -81,6 +83,15 @@ export interface CommandDispatchOptions {
     bridgeLaunch: AgentRuntimeBridgeLaunch;
     cwd?: string;
   }) => Promise<ProviderUsageResult>;
+  listProviderSessions: (args: {
+    providerId: string;
+    bridgeLaunch: AgentRuntimeBridgeLaunch;
+  }) => Promise<SessionsListResult>;
+  readProviderSession: (args: {
+    providerId: string;
+    bridgeLaunch: AgentRuntimeBridgeLaunch;
+    sessionId: string;
+  }) => Promise<ImportedProviderSession>;
   providerInstallationStatus: (args: {
     providerId: string;
     bridgeLaunch: AgentRuntimeBridgeLaunch;

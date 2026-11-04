@@ -18,6 +18,8 @@ import {
   providerMaintenanceParamsSchema,
   providerInstallationRunParamsSchema,
   providerInstallationStatusParamsSchema,
+  experimental_sessionsListParamsSchema,
+  experimental_sessionsReadParamsSchema,
 } from "@get-bb/plugin-sdk/provider-bridge";
 import { z } from "zod";
 import { claudePermissionModeSchema } from "../interactive-contract.js";
@@ -165,6 +167,14 @@ const claudeCodeCommandSchema = z.discriminatedUnion("method", [
   z.object({
     method: z.literal("skills/configure"),
     params: skillsConfigureParamsSchema,
+  }),
+  z.object({
+    method: z.literal("sessions/list"),
+    params: experimental_sessionsListParamsSchema,
+  }),
+  z.object({
+    method: z.literal("sessions/read"),
+    params: experimental_sessionsReadParamsSchema,
   }),
 ]);
 

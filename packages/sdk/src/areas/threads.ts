@@ -17,6 +17,7 @@ import {
   threadTabsResponseSchema,
 } from "@bb/server-contract";
 import type {
+  ImportThreadRequest,
   CreateQueuedMessageRequest,
   CreateThreadRequest,
   QueuedMessageListQuery,
@@ -189,6 +190,7 @@ export type ThreadDescendantsListResult = ThreadDescendantsListResponse;
 export type ThreadCascadeListResult = ThreadCascadeListResponse;
 export type ThreadSpawnResult = ThreadResponse;
 export type ThreadForkResult = ThreadResponse;
+export type ThreadImportResult = ThreadResponse;
 export type ThreadInteractionGetResult = PendingInteraction;
 export type ThreadInteractionListResult = ThreadPendingInteractionsResponse;
 export type ThreadInteractionResolveResult = PendingInteraction;
@@ -232,7 +234,8 @@ export type ThreadStorageFilesResult = ThreadStorageFileListResponse;
 export type ThreadStorageLocationResult = ThreadStorageLocationResponse;
 export type ThreadStoragePathsResult = ThreadStoragePathListResponse;
 export type ThreadChildSummaryResult = ThreadChildSummaryResponse;
-export type ThreadDefaultExecutionOptionsResult = ResolvedThreadExecutionOptions | null;
+export type ThreadDefaultExecutionOptionsResult =
+  ResolvedThreadExecutionOptions | null;
 export type ThreadConversationOutlineResult = ThreadConversationOutlineResponse;
 export type ThreadTimelineTurnSummaryDetailsResult =
   TimelineTurnSummaryDetailsResponse;
@@ -257,6 +260,10 @@ export type ThreadSpawnArgs = ThreadSpawnBaseArgs &
         prompt: string;
       }
   );
+
+export interface ThreadImportArgs extends ImportThreadRequest {
+  signal?: AbortSignal;
+}
 
 export interface ThreadForkArgs extends Omit<
   ForkThreadRequest,
@@ -685,6 +692,9 @@ export interface ThreadsArea {
   experimental_regenerateTitle(
     args: ThreadActionArgs,
   ): Promise<ThreadMutationResult>;
+  experimental_importProviderSession(
+    args: ThreadImportArgs,
+  ): Promise<ThreadImportResult>;
   updatePluginMetadata(
     args: ThreadPluginMetadataUpdateArgs,
   ): Promise<ThreadPluginMetadataResult>;
@@ -1397,6 +1407,14 @@ export function createThreadsArea(args: CreateSdkAreaArgs): ThreadsArea {
             json: { threadIds: [...input.threadIds], action: input.action },
           },
           ...signalRequestArgs(input.signal),
+        ),
+      );
+    },
+    async experimental_importProviderSession({ signal, ...input }) {
+      return transport.readJson(
+        transport.api.v1.threads.import.$post(
+          { json: input },
+          ...signalRequestArgs(signal),
         ),
       );
     },

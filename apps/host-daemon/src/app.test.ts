@@ -292,6 +292,12 @@ function createFakeRuntime(): AgentRuntime {
     async providerUsage() {
       return { supported: false as const };
     },
+    async listProviderSessions() {
+      return { sessions: [] };
+    },
+    async readProviderSession() {
+      throw new Error("Unexpected provider session read call");
+    },
     async providerInstallationStatus() {
       throw new Error("Unexpected provider installation status call");
     },

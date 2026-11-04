@@ -152,6 +152,7 @@ Use `--selected-model <model-id>` to discover its reasoning choices and include 
 - `bb thread create`
 - `bb thread new`
 - `bb thread fork`
+- `bb thread import`
 - `bb thread list`
 - `bb thread show`
 - `bb thread get`

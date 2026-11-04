@@ -7,6 +7,9 @@ export type {
   AgentRuntimeProcessExitInfo,
   AgentRuntimeProviderSession,
   AgentRuntimeSkillRoot,
+  ImportedProviderSession,
+  ImportedProviderSessionEvent,
+  ImportedProviderSessionTurn,
   ReapedIdleProviderSession,
 } from "./types.js";
 export type { RuntimeOpenBackgroundWork } from "./runtime-background-work-state.js";

@@ -7,6 +7,7 @@ import {
 } from "@bb/domain";
 import { z } from "zod";
 import { bridgeExecutionOptionsSchema } from "./execution-options.js";
+import { threadDeltaSchema } from "./thread-delta.js";
 
 export const BRIDGE_REQUEST_METHODS = {
   initialize: "initialize",
@@ -28,6 +29,8 @@ export const BRIDGE_REQUEST_METHODS = {
   turnStart: "turn/start",
   turnSteer: "turn/steer",
   skillsConfigure: "skills/configure",
+  sessionsList: "sessions/list",
+  sessionsRead: "sessions/read",
 } as const;
 
 const sessionConstructionFields = {
@@ -151,3 +154,54 @@ export const threadIdentityResultSchema = z
     sessionRestorable: z.boolean().optional(),
   })
   .passthrough();
+
+export const sessionsListParamsSchema = z.object({}).passthrough();
+
+export const providerSessionSummarySchema = z
+  .object({
+    sessionId: z.string().min(1),
+    cwd: z.string().min(1),
+    title: z.string(),
+    updatedAt: z.number().int().nonnegative(),
+    sizeBytes: z.number().int().nonnegative(),
+  })
+  .passthrough();
+export type ProviderSessionSummary = z.infer<
+  typeof providerSessionSummarySchema
+>;
+
+export const sessionsListResultSchema = z
+  .object({ sessions: z.array(providerSessionSummarySchema) })
+  .passthrough();
+export type SessionsListResult = z.infer<typeof sessionsListResultSchema>;
+
+export const sessionsReadParamsSchema = z
+  .object({ sessionId: z.string().min(1) })
+  .passthrough();
+
+export const providerSessionStepSchema = z
+  .object({
+    at: z.number().int().nonnegative(),
+    deltas: z.array(threadDeltaSchema),
+  })
+  .passthrough();
+export type ProviderSessionStep = z.infer<typeof providerSessionStepSchema>;
+
+export const providerSessionTurnSchema = z
+  .object({
+    prompt: z.string(),
+    startedAt: z.number().int().nonnegative(),
+    steps: z.array(providerSessionStepSchema),
+  })
+  .passthrough();
+export type ProviderSessionTurn = z.infer<typeof providerSessionTurnSchema>;
+
+export const sessionsReadResultSchema = z
+  .object({
+    sessionId: z.string().min(1),
+    cwd: z.string().min(1),
+    turns: z.array(providerSessionTurnSchema),
+    truncated: z.boolean(),
+  })
+  .passthrough();
+export type SessionsReadResult = z.infer<typeof sessionsReadResultSchema>;

@@ -1,6 +1,7 @@
 import { mkdir } from "node:fs/promises";
 import path from "node:path";
 import { withVcsProcessPriority } from "@bb/process-utils";
+import { resolveMainRepositoryRoot } from "@bb/host-workspace";
 import { operationEnvironment } from "./operation-environment.js";
 import {
   runEnvironmentHook,
@@ -649,6 +650,45 @@ const onlineRpcHandlers: OnlineRpcHandlerMap = {
         options,
       ),
     }),
+  "provider.sessions.list": async (command, options) => {
+    const result = await options.listProviderSessions({
+      providerId: command.providerId,
+      bridgeLaunch: await resolveRuntimeBridgeLaunch(
+        command.bridgeLaunch,
+        options,
+      ),
+    });
+    const roots = new Map<string, Promise<string | null>>();
+    const rootOf = (cwd: string) => {
+      const known = roots.get(cwd);
+      if (known !== undefined) return known;
+      const resolving = resolveMainRepositoryRoot(cwd);
+      roots.set(cwd, resolving);
+      return resolving;
+    };
+    return {
+      sessions: await Promise.all(
+        result.sessions.map(async (session) => ({
+          ...session,
+          repositoryRoot: await rootOf(session.cwd),
+        })),
+      ),
+    };
+  },
+  "provider.sessions.read": async (command, options) => {
+    const session = await options.readProviderSession({
+      providerId: command.providerId,
+      bridgeLaunch: await resolveRuntimeBridgeLaunch(
+        command.bridgeLaunch,
+        options,
+      ),
+      sessionId: command.sessionId,
+    });
+    return {
+      ...session,
+      repositoryRoot: await resolveMainRepositoryRoot(session.cwd),
+    };
+  },
   "host.discover_repos": (command) =>
     discoverRepos({
       maxDepth: command.maxDepth,

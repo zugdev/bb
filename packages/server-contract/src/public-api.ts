@@ -111,6 +111,7 @@ import {
   type EditMessageRequest,
   type EditMessageResponse,
   type ForkThreadRequest,
+  type ImportThreadRequest,
   type RestartTerminalRequest,
   type DeleteThreadSectionRequest,
   type DeleteThreadRequest,
@@ -127,6 +128,8 @@ import {
   type HostDirectoryListing,
   type HostDirectoryQuery,
   type HostDiscoveredReposResponse,
+  type HostProviderSessionsQuery,
+  type HostProviderSessionsResponse,
   type HostEnrollmentCommandResponse,
   type HostReconnectResponse,
   type HostListQuery,
@@ -309,6 +312,7 @@ import {
   updateQueuedMessageRequestSchema,
   createThreadRequestSchema,
   forkThreadRequestSchema,
+  importThreadRequestSchema,
   updateThreadPluginMetadataRequestSchema,
   pluginThreadMetadataListRequestSchema,
   threadAncestorsListRequestSchema,
@@ -327,6 +331,7 @@ import {
   hostDeleteQuerySchema,
   environmentCleanupQuerySchema,
   hostCloneDefaultPathQuerySchema,
+  hostProviderSessionsQuerySchema,
   hostFileListRequestSchema,
   hostFileReadRequestSchema,
   hostFileWriteRequestSchema,
@@ -970,6 +975,14 @@ export const publicApiRoutes = {
       request: noRequest<PathId>(),
       response: jsonResponse<HostDiscoveredReposResponse>(),
     }),
+    providerSessions: defineRoute({
+      path: "/hosts/:id/provider-sessions",
+      method: "get",
+      request: optionalQueryRequest<PathId, HostProviderSessionsQuery>(
+        hostProviderSessionsQuerySchema,
+      ),
+      response: jsonResponse<HostProviderSessionsResponse>(),
+    }),
     file: defineRoute({
       path: "/hosts/:id/files/:filePath{.+}",
       method: "get",
@@ -1353,6 +1366,14 @@ export const publicApiRoutes = {
       method: "post",
       request: jsonRequest<EmptyInput, ForkThreadRequest>(
         forkThreadRequestSchema,
+      ),
+      response: jsonResponse<ThreadResponse>({ status: 201 }),
+    }),
+    import: defineRoute({
+      path: "/threads/import",
+      method: "post",
+      request: jsonRequest<EmptyInput, ImportThreadRequest>(
+        importThreadRequestSchema,
       ),
       response: jsonResponse<ThreadResponse>({ status: 201 }),
     }),

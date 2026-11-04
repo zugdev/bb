@@ -63,6 +63,7 @@ import {
 } from "./sdk-session.js";
 import { MissingClaudeCliError } from "./missing-cli-error.js";
 import { claudeConfigDirectory, forkClaudeSession } from "./session-fork.js";
+import { listClaudeSessions, readClaudeSession } from "./session-import.js";
 import { createClaudeCodeBridgeModelListMemo } from "./model-list.js";
 import {
   PROVIDER_COMMANDS_STATE_KIND,
@@ -2274,6 +2275,7 @@ async function handleRequest(request: ClaudeCodeJsonRpcRequest): Promise<void> {
           steerMode: "inject",
           skills: { configure: true },
           commands: { list: true },
+          sessions: { import: true },
         },
       };
       sendResult(request.id, result);
@@ -2373,6 +2375,31 @@ async function handleRequest(request: ClaudeCodeJsonRpcRequest): Promise<void> {
     case "skills/configure":
       configuredSkillRoots = request.params.roots;
       sendResult(request.id, { ok: true });
+      break;
+    case "sessions/list":
+      sendResult(
+        request.id,
+        await listClaudeSessions({
+          configDirectory: claudeConfigDirectory(buildSessionEnv({})),
+        }),
+      );
+      break;
+    case "sessions/read":
+      try {
+        sendResult(
+          request.id,
+          await readClaudeSession({
+            configDirectory: claudeConfigDirectory(buildSessionEnv({})),
+            sessionId: request.params.sessionId,
+          }),
+        );
+      } catch (error) {
+        sendError(
+          request.id,
+          -32000,
+          error instanceof Error ? error.message : String(error),
+        );
+      }
       break;
   }
 }

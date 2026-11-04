@@ -106,6 +106,7 @@ export const pendingThreadStartContextSchema = z.object({
   fork: threadForkDescriptorSchema.nullable(),
   /** Provider-facing input when it differs from the persisted start seed. */
   providerInput: z.array(promptInputSchema).optional(),
+  seedWithoutRun: z.boolean().default(false),
   startedOnBehalfOf: startedOnBehalfOfSchema.nullable(),
   titleProvided: z.boolean(),
 });
@@ -417,6 +418,7 @@ async function runDispatchAttempt(
       : {
           environmentIntent: interruptedStartupRequest.environmentIntent,
           fork: interruptedStartupRequest.fork,
+          seedWithoutRun: false,
           startedOnBehalfOf: args.startedOnBehalfOf,
           titleProvided: interruptedStartupRequest.titleProvided,
         };
@@ -898,6 +900,7 @@ async function admitPendingThread(
             ? {}
             : { providerInput: startContext.providerInput }),
           ...(args.retryOf !== undefined ? { retryOf: args.retryOf } : {}),
+          seedWithoutRun: startContext.seedWithoutRun,
           startedOnBehalfOf: startContext.startedOnBehalfOf,
           titleProvided: startContext.titleProvided,
         });

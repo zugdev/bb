@@ -7,6 +7,7 @@ import { cancelProviderEnvironmentCreation } from "../environments/environment-e
 import { getPreparingEnvironment } from "@bb/db";
 import { getThread, type DbTransaction, type EnvironmentRow } from "@bb/db";
 import {
+  type ClientTurnRequestId,
   type EnvironmentProviderSelection,
   type PromptInput,
   type ResolvedThreadExecutionOptions,
@@ -65,6 +66,7 @@ interface RequestThreadProvisionArgs {
   originPluginId: string | null;
   providerInput?: PromptInput[];
   retryOf?: TurnRequestRetryMarker;
+  seedWithoutRun: boolean;
   startedOnBehalfOf: StartedOnBehalfOf | null;
   thread: Thread;
   titleProvided: boolean;
@@ -293,51 +295,61 @@ async function startThreadIfEnvironmentReady(
   });
 }
 
+function appendThreadStartRequest(
+  deps: Pick<AppDeps, "db" | "hub">,
+  args: RequestThreadProvisionArgs,
+): ClientTurnRequestId {
+  const { initiator, senderThreadId } = args.author;
+  const target: TurnRequestTarget = { kind: "thread-start" };
+  const request = appendClientTurnEvent(deps, {
+    threadId: args.thread.id,
+    environmentId: args.thread.environmentId,
+    type: "client/turn/requested",
+    ...(args.retryOf !== undefined ? { retryOf: args.retryOf } : {}),
+    input: args.input,
+    execution: args.execution,
+    initiator,
+    originPluginId: args.originPluginId,
+    senderThreadId,
+    requestMethod: "thread/start",
+    source: "spawn",
+    target,
+  });
+  recordAcceptedPromptHistoryEntry(deps, {
+    thread: args.thread,
+    input: args.input,
+    initiator,
+    target,
+    requestSequence: request.sequence,
+  });
+  appendClientTurnEvent(deps, {
+    threadId: args.thread.id,
+    environmentId: args.thread.environmentId,
+    type: "client/thread/start",
+    initiator,
+    requestMethod: "thread/start",
+    source: "spawn",
+  });
+  return request.requestId;
+}
+
 export function requestThreadProvision(
   deps: Pick<AppDeps, "db" | "hub">,
   args: RequestThreadProvisionArgs,
 ): ThreadProvisionContext {
   return deps.db.transaction(() => {
-    const { initiator, senderThreadId } = args.author;
-    const target: TurnRequestTarget = { kind: "thread-start" };
-    const request = appendClientTurnEvent(deps, {
-      threadId: args.thread.id,
-      environmentId: args.thread.environmentId,
-      type: "client/turn/requested",
-      ...(args.retryOf !== undefined ? { retryOf: args.retryOf } : {}),
-      input: args.input,
-      execution: args.execution,
-      initiator,
-      originPluginId: args.originPluginId,
-      senderThreadId,
-      requestMethod: "thread/start",
-      source: "spawn",
-      target,
-    });
-    recordAcceptedPromptHistoryEntry(deps, {
-      thread: args.thread,
-      input: args.input,
-      initiator,
-      target,
-      requestSequence: request.sequence,
-    });
-    appendClientTurnEvent(deps, {
-      threadId: args.thread.id,
-      environmentId: args.thread.environmentId,
-      type: "client/thread/start",
-      initiator,
-      requestMethod: "thread/start",
-      source: "spawn",
-    });
-
+    const clientRequestId =
+      args.seedWithoutRun && args.input.length === 0
+        ? createClientTurnRequestId()
+        : appendThreadStartRequest(deps, args);
     const context = createThreadStartup({
-      clientRequestId: request.requestId,
+      clientRequestId,
       environmentIntent: args.environmentIntent,
       execution: args.execution,
       fork: args.fork,
       input: args.providerInput ?? args.input,
-      initiator,
-      seedWithoutRun: args.startedOnBehalfOf !== null,
+      initiator: args.author.initiator,
+      seedWithoutRun: args.seedWithoutRun || args.startedOnBehalfOf !== null,
       titleProvided: args.titleProvided,
     });
     saveThreadProvisionContext({

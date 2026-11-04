@@ -127,7 +127,7 @@ function* serializeTranscript(entries: SessionStoreEntry[]): Generator<string> {
   }
 }
 
-async function findTranscript(
+export async function findTranscript(
   projectsDirectory: string,
   sessionId: string,
 ): Promise<{ projectDirectory: string; entries: SessionStoreEntry[] } | null> {

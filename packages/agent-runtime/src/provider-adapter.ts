@@ -48,6 +48,8 @@ export type AdapterCommand =
   | { type: "commands/list"; cwd: string }
   | { type: "provider/health"; cwd?: string }
   | { type: "provider/usage"; cwd?: string }
+  | { type: "sessions/list" }
+  | { type: "sessions/read"; sessionId: string }
   | {
       type: "provider/installation/status";
       cwd?: string;

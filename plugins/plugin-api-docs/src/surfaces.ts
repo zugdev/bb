@@ -1555,6 +1555,8 @@ export const SURFACE_GROUPS: SurfaceGroup[] = [
           "experimental_getHostPathComparisonKey",
           "PluginBbSdk.hosts.get",
           "PluginBbSdk.hosts.experimental_discoverRepos",
+          "PluginBbSdk.hosts.experimental_listProviderSessions",
+          "PluginBbSdk.threads.experimental_importProviderSession",
           "PluginBbSdk.experimental_promptHistory.list",
           "PluginBbSdk.environments.experimental_cleanup",
           "PluginBbSdk.environments.experimental_diffViewed",

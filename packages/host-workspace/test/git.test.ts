@@ -17,6 +17,7 @@ import {
   getWorkspaceGitOperation,
   parsePorcelainEntries,
   readGitBlob,
+  resolveMainRepositoryRoot,
 } from "../src/git.js";
 
 const tempDirs: string[] = [];
@@ -327,5 +328,30 @@ describe("detectLinkedWorktree", () => {
     await expect(detectLinkedWorktree(worktreePath)).resolves.toBe(true);
     await expect(detectLinkedWorktree(ordinaryCheckout)).resolves.toBe(false);
     await expect(detectLinkedWorktree(plainDir)).resolves.toBe(false);
+  });
+});
+
+describe("resolveMainRepositoryRoot", () => {
+  it("maps worktrees and subfolders to the main checkout", async () => {
+    const repoPath = await fs.realpath(await initReadGitBlobRepo());
+    const worktreePath = `${repoPath}-wt`;
+    tempDirs.push(worktreePath);
+    await runGit(["worktree", "add", "-b", "wt", worktreePath], {
+      cwd: repoPath,
+    });
+    const plainDir = await fs.mkdtemp(path.join(os.tmpdir(), "bb-plain-root-"));
+    tempDirs.push(plainDir);
+
+    await expect(resolveMainRepositoryRoot(repoPath)).resolves.toBe(repoPath);
+    await expect(resolveMainRepositoryRoot(worktreePath)).resolves.toBe(
+      repoPath,
+    );
+    await expect(
+      resolveMainRepositoryRoot(path.join(worktreePath, "docs")),
+    ).resolves.toBe(repoPath);
+    await expect(resolveMainRepositoryRoot(plainDir)).resolves.toBeNull();
+    await expect(
+      resolveMainRepositoryRoot(path.join(plainDir, "missing")),
+    ).resolves.toBeNull();
   });
 });

@@ -1031,11 +1031,32 @@ export function appendStoredThreadEventsInTransaction(
   db: DbTransaction,
   eventArgs: readonly AppendStoredThreadEventArgs[],
 ): number[] {
+  const now = Date.now();
+  return appendStoredThreadEventRowsInTransaction(
+    db,
+    eventArgs.map((args) => ({ ...args, createdAt: now })),
+  );
+}
+
+export type AppendImportedThreadEventArgs = AppendStoredThreadEventArgs & {
+  createdAt: number;
+};
+
+export function appendImportedThreadEventsInTransaction(
+  db: DbTransaction,
+  eventArgs: readonly AppendImportedThreadEventArgs[],
+): number[] {
+  return appendStoredThreadEventRowsInTransaction(db, eventArgs);
+}
+
+function appendStoredThreadEventRowsInTransaction(
+  db: DbTransaction,
+  eventArgs: readonly AppendImportedThreadEventArgs[],
+): number[] {
   if (eventArgs.length === 0) {
     return [];
   }
 
-  const now = Date.now();
   const threadIds = [...new Set(eventArgs.map((args) => args.threadId))];
   const highWaterMarks = getHighWaterMarks(db, threadIds);
   const nextSequencesByThreadId = new Map(
@@ -1066,7 +1087,7 @@ export function appendStoredThreadEventsInTransaction(
     insertStoredEventRow(db, {
       attachmentOwnership: "required",
       conflict: "error",
-      createdAt: now,
+      createdAt: args.createdAt,
       data: JSON.stringify(args.data),
       environmentId: args.environmentId ?? null,
       itemId: itemFields.itemId,
@@ -1080,7 +1101,7 @@ export function appendStoredThreadEventsInTransaction(
       type: args.type,
     });
     upsertThreadSearchSegments(db, {
-      updatedAt: now,
+      updatedAt: args.createdAt,
       segments: listThreadSearchSegmentsForStoredEventArgs({
         eventArgs: args,
         sequence,
@@ -3165,7 +3186,10 @@ function selectStoredConversationOutlineEventRows(
     .where(
       and(
         rootWhere,
-        storedConversationOutlineLifecycleWhere(args.threadId, args.sequenceStart),
+        storedConversationOutlineLifecycleWhere(
+          args.threadId,
+          args.sequenceStart,
+        ),
       ),
     );
   const completedConversationRows = db
@@ -3174,7 +3198,10 @@ function selectStoredConversationOutlineEventRows(
     .where(
       and(
         rootWhere,
-        storedConversationOutlineCompletedWhere(args.threadId, args.sequenceStart),
+        storedConversationOutlineCompletedWhere(
+          args.threadId,
+          args.sequenceStart,
+        ),
       ),
     );
   const structuralRows = db
@@ -4275,6 +4302,32 @@ export function getStoredProviderSession(
   threadId: string,
 ): StoredProviderSession {
   return resolveThreadProviderSession(db, threadId);
+}
+
+export interface ListLiveThreadIdsClaimingProviderThreadArgs {
+  providerId: string;
+  providerThreadId: string;
+}
+
+export function listLiveThreadIdsClaimingProviderThread(
+  db: DbQueryConnection,
+  args: ListLiveThreadIdsClaimingProviderThreadArgs,
+): string[] {
+  return db
+    .selectDistinct({ threadId: events.threadId })
+    .from(events)
+    .innerJoin(threads, eq(threads.id, events.threadId))
+    .where(
+      and(
+        eq(events.type, "thread/identity"),
+        eq(events.providerThreadId, args.providerThreadId),
+        eq(threads.providerId, args.providerId),
+        isNull(threads.deletedAt),
+      ),
+    )
+    .orderBy(events.threadId)
+    .all()
+    .map((row) => row.threadId);
 }
 
 export function getLastStoredProviderThreadId(

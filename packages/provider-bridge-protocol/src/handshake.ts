@@ -40,6 +40,9 @@ export const bridgeCapabilitiesSchema = z
     commands: z
       .object({ list: z.boolean().default(false) })
       .default({ list: false }),
+    sessions: z
+      .object({ import: z.boolean().default(false) })
+      .default({ import: false }),
   })
   .passthrough();
 

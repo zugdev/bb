@@ -248,6 +248,24 @@ export function createBridgeProtocolAdapter(
               ...cwdAndStaticProviderOptions(command.cwd),
             },
           };
+        case "sessions/list":
+          if (!handshake.sessions.import) {
+            return { kind: "noop", reason: "sessions.import not advertised" };
+          }
+          return {
+            kind: "request",
+            method: BRIDGE_REQUEST_METHODS.sessionsList,
+            params: {},
+          };
+        case "sessions/read":
+          if (!handshake.sessions.import) {
+            return { kind: "noop", reason: "sessions.import not advertised" };
+          }
+          return {
+            kind: "request",
+            method: BRIDGE_REQUEST_METHODS.sessionsRead,
+            params: { sessionId: command.sessionId },
+          };
         case "provider/installation/status":
           return {
             kind: "request",
