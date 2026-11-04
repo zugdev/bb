@@ -39,7 +39,7 @@ import {
   SPLIT_LAYOUT_STORAGE_KEY,
 } from "@/lib/split-layout";
 import type { LayoutNode, PaneContent, SplitLayout } from "@/lib/split-layout";
-import { splitTabsAtom } from "@/lib/split-layout/tabs";
+import { selectSplitTabAtom, splitTabsAtom } from "@/lib/split-layout/tabs";
 import {
   getPromptDraftAccessor,
   usePromptDraftStorage,
@@ -1079,6 +1079,72 @@ describe("SplitThreadArea", () => {
     });
   });
 
+  it("keeps a visited split tab mounted while another tab is shown", async () => {
+    threadStore.set("thr-c", { archivedAt: null, deletedAt: null });
+    threadStore.set("thr-d", { archivedAt: null, deletedAt: null });
+    const tabOne = twoPaneLayout("pane-1");
+    const tabTwo: SplitLayout = {
+      root: {
+        type: "split",
+        dir: "row",
+        sizes: [0.5, 0.5],
+        children: [
+          { type: "pane", paneId: "pane-1", content: threadContent("thr-c") },
+          { type: "pane", paneId: "pane-2", content: threadContent("thr-d") },
+        ],
+      },
+      focusedPaneId: "pane-1",
+    };
+    const store = renderSplitArea({
+      path: threadPath("thr-a"),
+      layout: tabOne,
+    });
+    act(() => {
+      store.set(splitTabsAtom, {
+        tabs: [
+          { id: "tab-1", layout: tabOne, projectId: null, name: null },
+          { id: "tab-2", layout: tabTwo, projectId: null, name: null },
+        ],
+        activeTabId: "tab-1",
+      });
+    });
+    fireEvent.change(await screen.findByTestId("draft-thr-b"), {
+      target: { value: "keep this draft" },
+    });
+
+    act(() => {
+      store.set(selectSplitTabAtom, "tab-2");
+    });
+    await screen.findByTestId("draft-thr-c");
+    expect(
+      document.querySelectorAll("[data-split-pane-id]"),
+    ).toHaveLength(2);
+    expect(
+      screen.getByTestId("draft-thr-b").closest("[inert]"),
+    ).not.toBeNull();
+    expect(screen.getByTestId("draft-thr-c").closest("[inert]")).toBeNull();
+
+    act(() => {
+      store.set(selectSplitTabAtom, "tab-1");
+    });
+    act(() => {
+      store.set(selectSplitTabAtom, "tab-2");
+    });
+    act(() => {
+      store.set(selectSplitTabAtom, "tab-1");
+    });
+
+    expect(paneMounts.get("thr-a")).toBe(1);
+    expect(paneMounts.get("thr-c")).toBe(1);
+    expect(
+      (screen.getByTestId("draft-thr-b") as HTMLTextAreaElement).value,
+    ).toBe("keep this draft");
+    expect(screen.getByTestId("draft-thr-b").closest("[inert]")).toBeNull();
+    fireEvent.change(screen.getByTestId("draft-thr-b"), {
+      target: { value: "" },
+    });
+  });
+
   it("pauses a hidden pane timeline and refreshes it when restored", async () => {
     timelineProbe.active = true;
     renderSplitArea({
@@ -2109,8 +2175,8 @@ describe("SplitThreadArea", () => {
     fireEvent.click(screen.getByTestId("external-nav"));
 
     expect(await screen.findByTestId("pane-thr-c")).toBeTruthy();
-    expect(screen.queryByTestId("pane-thr-a")).toBeNull();
-    expect(screen.queryByTestId("pane-thr-b")).toBeNull();
+    expect(screen.getByTestId("pane-thr-a").closest("[inert]")).not.toBeNull();
+    expect(screen.getByTestId("pane-thr-b").closest("[inert]")).not.toBeNull();
     const tabs = store.get(splitTabsAtom).tabs;
     expect(tabs).toHaveLength(2);
     expect(tabs[0]?.layout).toEqual(twoPaneLayout("pane-2"));

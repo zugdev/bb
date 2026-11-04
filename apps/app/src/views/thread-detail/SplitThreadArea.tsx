@@ -294,10 +294,9 @@ function SplitThreadAreaContent({ routeContent }: SplitThreadAreaProps) {
   const dimsInactiveSplits = useAtomValue(dimInactiveSplitsAtom);
   const [maximizedPaneId, setMaximizedPaneIdAtom] =
     useAtom(maximizedPaneIdAtom);
-  const secondaryPanelRegistry = useMemo(
-    () => createPaneSecondaryPanelRegistry(),
-    [],
-  );
+  const splitTabs = useAtomValue(splitTabsAtom);
+  const recentTabIds = useRecentSplitTabIds(splitTabs.activeTabId);
+  const registryForTab = useTabSecondaryPanelRegistries(splitTabs.tabs);
 
   const routeThread = useMemo<ThreadRoutePathArgs | null>(
     () => (projectId && threadId ? { projectId, threadId } : null),
@@ -339,10 +338,17 @@ function SplitThreadAreaContent({ routeContent }: SplitThreadAreaProps) {
         ? reconcileLayoutForContent(null, currentContent)
         : null);
   const panes = layout === null ? [] : listPanes(layout.root);
-  const paneHost = usePaneHosts(panes.map((pane) => pane.paneId));
-  const paneRects = useMemo(
-    () => (layout === null ? null : computePaneRects(layout.root)),
-    [layout],
+  const keptTabs = splitTabs.tabs.flatMap((tab) => {
+    const isActive = tab.id === splitTabs.activeTabId;
+    if (!isActive && !recentTabIds.includes(tab.id)) return [];
+    const tabLayout = isActive ? layout : tab.layout;
+    if (tabLayout === null || countPanes(tabLayout.root) < 2) return [];
+    return [{ id: tab.id, isActive, layout: tabLayout }];
+  });
+  const paneHost = usePaneHosts(
+    keptTabs.flatMap((tab) =>
+      listPanes(tab.layout.root).map((pane) => tabPaneKey(tab.id, pane.paneId)),
+    ),
   );
   const isSplitActive = splitWorkspaceActive && panes.length > 1;
   const maximizedPane =
@@ -444,6 +450,13 @@ function SplitThreadAreaContent({ routeContent }: SplitThreadAreaProps) {
   const [keyboardFocusRequest, setKeyboardFocusRequest] = useState<{
     paneId: string;
   } | null>(null);
+  const [shownTabId, setShownTabId] = useState(splitTabs.activeTabId);
+  if (shownTabId !== splitTabs.activeTabId) {
+    setShownTabId(splitTabs.activeTabId);
+    if (layout !== null) {
+      setKeyboardFocusRequest({ paneId: layout.focusedPaneId });
+    }
+  }
   useEffect(() => {
     if (keyboardFocusRequest === null) return;
     const paneId = keyboardFocusRequest.paneId;
@@ -794,6 +807,99 @@ function SplitThreadAreaContent({ routeContent }: SplitThreadAreaProps) {
     />
   ) : null;
 
+  const activeWorkspaceTab = keptTabs.find((tab) => tab.isActive) ?? null;
+  const shownTabFocusedPaneId =
+    effectiveMaximizedPaneId ?? layout.focusedPaneId;
+  const onFocusPane = (paneId: string) => {
+    setKeyboardFocusRequest(null);
+    focusPane(paneId);
+  };
+  const workspace =
+    keptTabs.length === 0 ? null : (
+      <div
+        key="workspace"
+        ref={preservedScrollWorkspaceRef}
+        aria-hidden={activeWorkspaceTab === null || undefined}
+        inert={activeWorkspaceTab === null}
+        style={activeWorkspaceTab === null ? HIDDEN_TAB_STYLE : undefined}
+        className={cn(
+          "relative -m-4 flex min-h-0 min-w-0 flex-1 overflow-hidden md:-m-5",
+          activeWorkspaceTab === null &&
+            "pointer-events-none invisible absolute inset-0",
+        )}
+      >
+        <SplitWorkspaceSecondaryPanelHost
+          focusedPaneId={
+            activeWorkspaceTab === null
+              ? (keptTabs[0]?.layout.focusedPaneId ?? layout.focusedPaneId)
+              : shownTabFocusedPaneId
+          }
+          isPaneMaximized={
+            activeWorkspaceTab !== null && effectiveMaximizedPaneId !== null
+          }
+          registry={registryForTab(
+            activeWorkspaceTab?.id ?? keptTabs[0]?.id ?? splitTabs.activeTabId,
+          )}
+        >
+          {keptTabs.map((tab) => {
+            const tabProps = {
+              isTopRow: true,
+              isBottomRow: true,
+              isLeftEdge: true,
+              isRightEdge: true,
+              dimsInactiveSplits,
+              isTabActive: tab.isActive,
+              focusedPaneId: tab.isActive ? shownTabFocusedPaneId : null,
+              maximizedPaneId: tab.isActive ? effectiveMaximizedPaneId : null,
+              secondaryPanelRegistry: registryForTab(tab.id),
+              onFocusPane,
+              onClosePane: closePane,
+              onToggleMaximizePane: toggleMaximizePane,
+              onMovePaneToSide: movePaneToSide,
+              onResize: resize,
+              onNavigateInPane: navigateInPane,
+              onBeginPaneDrag: beginPaneDrag,
+              onPruneStalePane: pruneStalePane,
+              paneHost: (paneId: string) =>
+                paneHost(tabPaneKey(tab.id, paneId)),
+            };
+            const rects = computePaneRects(tab.layout.root);
+            return (
+              <Fragment key={tab.id}>
+                <div
+                  aria-hidden={!tab.isActive || undefined}
+                  inert={!tab.isActive}
+                  style={tab.isActive ? undefined : HIDDEN_TAB_STYLE}
+                  className={cn(
+                    "flex min-h-0 min-w-0 flex-1",
+                    !tab.isActive &&
+                      "pointer-events-none invisible absolute inset-0",
+                  )}
+                >
+                  <SplitTree
+                    {...tabProps}
+                    node={tab.layout.root}
+                    path={EMPTY_PATH}
+                  />
+                </div>
+                {listPanes(tab.layout.root).map((pane) =>
+                  createPortal(
+                    <SplitPaneLeaf
+                      {...tabProps}
+                      {...paneEdges(rects.get(pane.paneId))}
+                      node={pane}
+                    />,
+                    paneHost(tabPaneKey(tab.id, pane.paneId)),
+                    tabPaneKey(tab.id, pane.paneId),
+                  ),
+                )}
+              </Fragment>
+            );
+          })}
+        </SplitWorkspaceSecondaryPanelHost>
+      </div>
+    );
+
   if (singlePane !== null) {
     const singlePaneContent = splitWorkspaceActive
       ? singlePane.content
@@ -802,6 +908,7 @@ function SplitThreadAreaContent({ routeContent }: SplitThreadAreaProps) {
       <>
         {commandHandlers}
         <WorkspacePaneContent
+          key="single"
           content={singlePaneContent}
           paneId={singlePane.paneId}
           isFocused
@@ -821,59 +928,15 @@ function SplitThreadAreaContent({ routeContent }: SplitThreadAreaProps) {
           ownsWindowTopLeft
           onNavigateInPane={navigateInPane}
         />
+        {workspace}
       </>
     );
   }
 
-  const splitPaneProps = {
-    isTopRow: true,
-    isBottomRow: true,
-    isLeftEdge: true,
-    isRightEdge: true,
-    dimsInactiveSplits,
-    focusedPaneId: effectiveMaximizedPaneId ?? layout.focusedPaneId,
-    maximizedPaneId: effectiveMaximizedPaneId,
-    secondaryPanelRegistry,
-    onFocusPane: (paneId: string) => {
-      setKeyboardFocusRequest(null);
-      focusPane(paneId);
-    },
-    onClosePane: closePane,
-    onToggleMaximizePane: toggleMaximizePane,
-    onMovePaneToSide: movePaneToSide,
-    onResize: resize,
-    onNavigateInPane: navigateInPane,
-    onBeginPaneDrag: beginPaneDrag,
-    onPruneStalePane: pruneStalePane,
-    paneHost,
-  };
-
   return (
     <>
       {commandHandlers}
-      <div
-        ref={preservedScrollWorkspaceRef}
-        className="relative -m-4 flex min-h-0 min-w-0 flex-1 overflow-hidden md:-m-5"
-      >
-        <SplitWorkspaceSecondaryPanelHost
-          focusedPaneId={effectiveMaximizedPaneId ?? layout.focusedPaneId}
-          isPaneMaximized={effectiveMaximizedPaneId !== null}
-          registry={secondaryPanelRegistry}
-        >
-          <SplitTree {...splitPaneProps} node={layout.root} path={EMPTY_PATH} />
-          {panes.map((pane) =>
-            createPortal(
-              <SplitPaneLeaf
-                {...splitPaneProps}
-                {...paneEdges(paneRects?.get(pane.paneId))}
-                node={pane}
-              />,
-              paneHost(pane.paneId),
-              pane.paneId,
-            ),
-          )}
-        </SplitWorkspaceSecondaryPanelHost>
-      </div>
+      {workspace}
     </>
   );
 }
@@ -970,7 +1033,8 @@ interface SplitTreeProps {
   isBottomRow: boolean;
   isLeftEdge: boolean;
   isRightEdge: boolean;
-  focusedPaneId: string;
+  isTabActive: boolean;
+  focusedPaneId: string | null;
   maximizedPaneId: string | null;
   secondaryPanelRegistry: PaneSecondaryPanelRegistry;
   onFocusPane: (paneId: string) => void;
@@ -1065,11 +1129,11 @@ function SplitPaneLeaf(props: SplitPaneLeafProps) {
         !isMaximized && !isBottomRow && "[--bb-content-bottom-inset:0px]",
       )}
       tabIndex={-1}
-      data-split-pane-id={node.paneId}
+      data-split-pane-id={props.isTabActive ? node.paneId : undefined}
       data-focused={isFocused ? "true" : "false"}
       data-maximized={isMaximized ? "true" : undefined}
     >
-      {node.content.kind === "thread" ? (
+      {props.isTabActive && node.content.kind === "thread" ? (
         <PaneStaleWatcher
           key={node.content.threadId}
           threadId={node.content.threadId}
@@ -1081,7 +1145,7 @@ function SplitPaneLeaf(props: SplitPaneLeafProps) {
         paneId={node.paneId}
         isFocused={isFocused}
         isSplitPane
-        timelineEnabled={!isHiddenByMaximize}
+        timelineEnabled={props.isTabActive && !isHiddenByMaximize}
         secondaryPanelRegistry={props.secondaryPanelRegistry}
         onClosePane={props.onClosePane}
         isMaximized={isMaximized}
@@ -1110,6 +1174,45 @@ function SplitPaneLeaf(props: SplitPaneLeafProps) {
       />
     </div>
   );
+}
+
+const KEPT_SPLIT_TAB_COUNT = 3;
+
+const HIDDEN_TAB_STYLE = { contentVisibility: "hidden" } as const;
+
+function tabPaneKey(tabId: string, paneId: string): string {
+  return `${tabId}/${paneId}`;
+}
+
+function useRecentSplitTabIds(activeTabId: string): readonly string[] {
+  const [recent, setRecent] = useState<readonly string[]>([activeTabId]);
+  if (recent[0] !== activeTabId) {
+    setRecent(
+      [activeTabId, ...recent.filter((id) => id !== activeTabId)].slice(
+        0,
+        KEPT_SPLIT_TAB_COUNT,
+      ),
+    );
+  }
+  return recent;
+}
+
+function useTabSecondaryPanelRegistries(tabs: readonly { id: string }[]) {
+  const registriesRef = useRef(new Map<string, PaneSecondaryPanelRegistry>());
+  const liveKey = tabs.map((tab) => tab.id).join("\n");
+  useEffect(() => {
+    const live = new Set(liveKey.split("\n"));
+    for (const tabId of registriesRef.current.keys()) {
+      if (!live.has(tabId)) registriesRef.current.delete(tabId);
+    }
+  }, [liveKey]);
+  return useCallback((tabId: string) => {
+    const existing = registriesRef.current.get(tabId);
+    if (existing !== undefined) return existing;
+    const registry = createPaneSecondaryPanelRegistry();
+    registriesRef.current.set(tabId, registry);
+    return registry;
+  }, []);
 }
 
 function usePaneHosts(paneIds: readonly string[]) {
