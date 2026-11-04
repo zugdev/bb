@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import {
   definePluginApp,
+  experimental_Icon as Icon,
   experimental_useRpcMutation,
   experimental_useRpcQuery,
   ThreadChat,
@@ -71,7 +72,42 @@ function formatRelative(at: number): string {
   return relativeTime.format(0, "minute");
 }
 
-const ROW_CLASS = "flex h-7 min-w-0 items-center gap-2.5 text-sm";
+const ROW_CLASS =
+  "-mx-2 flex h-7 min-w-0 items-center gap-2.5 rounded-md px-2 text-left text-sm transition-colors hover:bg-state-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
+const ACTION_CLASS =
+  "flex h-7 shrink-0 items-center gap-1.5 rounded-md px-2 text-xs text-muted-foreground transition-colors hover:bg-state-hover hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
+
+interface AssistantListRow {
+  key: string;
+  label: string;
+  at: number;
+  detail?: string;
+}
+
+function AssistantList({
+  title,
+  rows,
+  onOpen,
+}: {
+  title: string;
+  rows: AssistantListRow[];
+  onOpen: () => void;
+}) {
+  return (
+    <div className="flex min-w-0 flex-col">
+      <h3 className="flex items-baseline gap-2 pb-1.5 text-sm font-medium">
+        {title}
+        <span className="text-xs font-normal text-muted-foreground tabular-nums">{rows.length}</span>
+      </h3>
+      {rows.map((row) => (
+        <button key={row.key} type="button" className={ROW_CLASS} onClick={onOpen} aria-label={row.detail ? `${row.label}: ${row.detail}` : row.label}>
+          <span className="min-w-0 flex-1 truncate">{row.label}</span>
+          <span className="shrink-0 text-xs text-muted-foreground tabular-nums">{formatRelative(row.at)}</span>
+        </button>
+      ))}
+    </div>
+  );
+}
 
 function AssistantHomeSection() {
   const navigate = useBbNavigate();
@@ -80,53 +116,41 @@ function AssistantHomeSection() {
     method: "assistant.home",
     input: {},
   });
-  const reminders = data?.reminders ?? [];
-  const notifications = data?.notifications ?? [];
-  return (
-    <div className="flex flex-col gap-3 rounded-xl bg-surface-recessed px-4 py-3">
-      <div className="grid gap-x-8 gap-y-3 md:grid-cols-2">
-        <div className="flex min-w-0 flex-col">
-          <h3 className="pb-1 text-xs font-medium text-muted-foreground">Upcoming reminders</h3>
-          {reminders.length === 0 ? (
-            <p className="py-1 text-xs text-muted-foreground">No reminders scheduled</p>
-          ) : (
-            reminders.map((reminder) => (
-              <div key={reminder.id} className={ROW_CLASS}>
-                <span className="min-w-0 flex-1 truncate">{reminder.name}</span>
-                <span className="shrink-0 text-xs text-muted-foreground tabular-nums">
-                  {formatRelative(reminder.nextRunAt)}
-                </span>
-              </div>
-            ))
-          )}
-        </div>
-        <div className="flex min-w-0 flex-col">
-          <h3 className="pb-1 text-xs font-medium text-muted-foreground">Latest notifications</h3>
-          {notifications.length === 0 ? (
-            <p className="py-1 text-xs text-muted-foreground">No notifications yet</p>
-          ) : (
-            notifications.map((notification) => (
-              <div
-                key={`${notification.at}-${notification.title}`}
-                className={ROW_CLASS}
-                title={notification.body}
-              >
-                <span className="min-w-0 flex-1 truncate">{notification.title}</span>
-                <span className="shrink-0 text-xs text-muted-foreground tabular-nums">
-                  {formatRelative(notification.at)}
-                </span>
-              </div>
-            ))
-          )}
-        </div>
+  const openAssistant = () => navigate.toPluginPanel("assistant");
+  const reminders = (data?.reminders ?? []).map((reminder) => ({
+    key: reminder.id,
+    label: reminder.name,
+    at: reminder.nextRunAt,
+  }));
+  const notifications = (data?.notifications ?? []).map((notification) => ({
+    key: `${notification.at}-${notification.title}`,
+    label: notification.title,
+    at: notification.at,
+    detail: notification.body,
+  }));
+  const openButton = (
+    <button type="button" className={ACTION_CLASS} onClick={openAssistant}>
+      <Icon name="Bot" className="size-3.5" aria-hidden />
+      Open Assistant
+    </button>
+  );
+  if (reminders.length === 0 && notifications.length === 0) {
+    return (
+      <div className="flex min-h-11 items-center gap-3 rounded-xl bg-surface-recessed py-2 pl-4 pr-2">
+        <p className="min-w-0 flex-1 truncate text-xs text-muted-foreground">
+          Nothing scheduled. Ask the assistant for a reminder or a daily inbox check.
+        </p>
+        {openButton}
       </div>
-      <button
-        type="button"
-        className="self-start rounded-md text-xs font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        onClick={() => navigate.toPluginPanel("assistant")}
-      >
-        Open Assistant
-      </button>
+    );
+  }
+  return (
+    <div className="flex flex-col gap-2 rounded-xl bg-surface-recessed px-4 py-3.5">
+      <div className="grid gap-x-8 gap-y-5 md:grid-cols-2">
+        {reminders.length > 0 ? <AssistantList title="Upcoming reminders" rows={reminders} onOpen={openAssistant} /> : null}
+        {notifications.length > 0 ? <AssistantList title="Latest notifications" rows={notifications} onOpen={openAssistant} /> : null}
+      </div>
+      <div className="-mx-2 flex">{openButton}</div>
     </div>
   );
 }
