@@ -244,7 +244,7 @@ Mobile.
 
 On the New thread screen a homepage section gets `projectId`, the composer's selected project (null for No project), and `experimental_setProjectId(projectId | null)`, which selects a project through the composer's own `changeProject`. That is the path the composer's footer project picker takes, so it copies draft attachments and refuses while uploads run the same way. `experimental_setProjectId` is null on Home and while the composer is submitting. `experimental_placement: "lead"` renders a section before all other sections on the New thread screen, without the host heading, and keeps it off Home.
 
-**Core callers.** `RootComposeSurface` (`apps/app/src/views/RootComposeView.tsx`) builds the section project from `changeProject` and `isSubmitting`. `PluginHomepageSections` and `HomeView` render lead and titled sections. The home plugin's New thread overview is the only lead section.
+**Core callers.** `RootComposeSurface` (`apps/app/src/views/RootComposeView.tsx`) builds the section project from `changeProject` and `isSubmitting`. `PluginHomepageSections` renders lead and titled sections there, and `experimental_HomepageSection` renders one titled section with no project. The home plugin's New thread overview is the only lead section, and its Home page leaves lead sections out.
 
 Docs: `frontend-core-slots.md`.
 
@@ -257,7 +257,7 @@ Docs: `frontend-core-slots.md`.
 
 When the user last sent the thread a message, in epoch milliseconds; null before the first. It reads `threads.lastUserMessageAt` (migration 0150) through `toPluginSidebarThread`.
 
-**Core callers.** `HomeView` and `home-overview.ts` sort Home's project sections by the same column on `ThreadListEntry`. The home plugin sorts the New thread overview's latest threads and recent project chips with it.
+**Core callers.** None in the app since Home moved to the home plugin. The home plugin sorts Home's project sections, the New thread overview's latest threads and its recent project chips with it.
 
 Docs: `frontend-registration.md`.
 
@@ -274,6 +274,55 @@ Docs: `frontend-core-slots.md`.
 **Audit before stabilizing.**
 
 1. **Variant.** It always renders the outline variant. Decide whether plugins need the ghost variant the composer footer uses.
+
+## `PluginNavPanelRegistration.experimental_pinnedTab`
+
+`experimental_pinnedTab: true` makes a nav panel the first pane tab. The page keeps core's `/home` URL (`PINNED_TAB_ROUTE_PATH`), so saved links and history keep working: `PinnedTabView` renders the tab bar and then the panel there, outside every tab's split layout. `SplitTabBar` draws the first tab from the panel's icon and title, the first tab shortcut opens it, and the sidebar's This tab section and quick create's stay on the page rule treat it like the old Home. Sidebar navigation, the palette's panel list and the remembered panel chrome leave it out. The first pinned registration wins; with none, there is no first tab and the first tab shortcut does nothing.
+
+**Core callers.** `SplitTabBar`, `PinnedTabView`, `ActiveTabThreadsSection`, `useQuickCreateProject`, `SidebarNavigationModelProvider` and `CommandPaletteBody` all read it through `pinnedTabPanel` (`apps/app/src/lib/pinned-tab.ts`). The home plugin's Home page is the only pinned panel.
+
+Docs: `frontend-core-slots.md`.
+
+**Audit before stabilizing.**
+
+1. **URL.** Decide whether the pinned page should move to its plugin route once plugin panel routes can render outside a split layout.
+2. **Conflicts.** Decide whether a second pinned panel should warn instead of quietly behaving as unpinned.
+
+## `experimental_useHomepageSections` and `experimental_HomepageSection` (`@get-bb/plugin-sdk/app`)
+
+`experimental_useHomepageSections()` lists every plugin's homepage section in registration order as `{ pluginId, id, title, experimental_placement }`. `experimental_HomepageSection` (`{ pluginId, sectionId }`) draws one the way Home does: the host heading, then the section in its plugin's scope with crash containment, with `projectId` and `experimental_setProjectId` null.
+
+**Core callers.** `experimental_HomepageSection` is `PluginHomepageSection` (`apps/app/src/components/plugin/PluginHomepageSections.tsx`), the frame `PluginHomepageSections` uses on the New thread screen. The home plugin's Home page lists, orders and hides sections with the hook and mounts them with the component, under the ids `plugin:<pluginId>/<sectionId>` saved in `bb.home.layout`.
+
+Docs: `frontend-core-slots.md`.
+
+**Audit before stabilizing.**
+
+1. **Project.** Decide whether Home should give sections a project setter that opens a New thread tab.
+
+## `experimental_useThreadSearch` and `experimental_useAddProject` (`@get-bb/plugin-sdk/app`)
+
+`experimental_useThreadSearch()` returns `{ shortcut, open(anchor) }` for the `thread.search` app command. `experimental_useAddProject()` returns `{ isAvailable, isCreating, open() }` for bb's quick create project dialog; on the pinned tab the page stays put after the project is created.
+
+**Core callers.** The sidebar's Search item dispatches the same `thread.search` command through `useAppCommandRunner`. `useQuickCreateProjectController` (`apps/app/src/hooks/useQuickCreateProject.tsx`) is behind the composer's and the project picker's Add project. The home plugin's Home page uses both for its header buttons.
+
+Docs: `frontend-core-slots.md`.
+
+**Audit before stabilizing.**
+
+1. **Scope.** Decide whether these should be one generic way to run bb's app commands.
+
+## `BbNavigate.toCompose({ experimental_tab })` and `PluginSidebarProject.experimental_gitRemoteUrl`
+
+`toCompose({ projectId, experimental_tab: true })` opens the New thread screen in a new pane tab in that project through `openComposeTab`, and falls back to plain navigation on compact viewports. `experimental_gitRemoteUrl` is the project's git remote from the sidebar payload, or null.
+
+**Core callers.** `openComposeTab` (`apps/app/src/views/thread-detail/splitThreadNavigation.ts`) is what the tab bar's +, `splitTab.new` and the project tab picker call. `useSidebarThreads` (`apps/app/src/lib/plugin-sidebar-hooks.ts`) fills `experimental_gitRemoteUrl` from the sidebar payload's `gitRemoteUrl`. The home plugin uses both in Home's project sections.
+
+Docs: `frontend-hooks-and-ui.md`, `frontend-registration.md`.
+
+**Audit before stabilizing.**
+
+1. **Remote.** Decide whether projects with several sources need every remote.
 
 ## `experimental_useCommandShortcut` (`@get-bb/plugin-sdk/app`)
 

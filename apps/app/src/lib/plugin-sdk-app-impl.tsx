@@ -35,6 +35,12 @@ import {
   PluginProjectPicker,
   usePluginCommandShortcut,
 } from "@/components/plugin/plugin-project-picker";
+import {
+  PluginHomepageSectionById,
+  useHomepageSectionInfos,
+  usePluginAddProject,
+  usePluginThreadSearch,
+} from "@/components/plugin/plugin-home-surfaces";
 import { ImageLightbox } from "@/components/ui/image-lightbox";
 import { ComposerMentionIcon } from "@/components/promptbox/mentions/PromptMentionIcon";
 import {
@@ -188,6 +194,10 @@ export const pluginSdkAppImplementation = {
   experimental_ShortcutHint: AppCommandShortcutHint,
   experimental_useCommandShortcut: usePluginCommandShortcut,
   experimental_ProjectPicker: PluginProjectPicker,
+  experimental_useHomepageSections: useHomepageSectionInfos,
+  experimental_HomepageSection: PluginHomepageSectionById,
+  experimental_useAddProject: usePluginAddProject,
+  experimental_useThreadSearch: usePluginThreadSearch,
   experimental_ImageLightbox: ImageLightbox,
   experimental_PromptMentionIcon: ComposerMentionIcon,
   experimental_describePromptMention: describePromptMention,

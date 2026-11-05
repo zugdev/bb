@@ -247,6 +247,18 @@ export const experimental_useCommandShortcut = runtimeFunction(
 export const experimental_ProjectPicker = runtimeComponent(
   "experimental_ProjectPicker",
 );
+export const experimental_useHomepageSections = runtimeFunction(
+  "experimental_useHomepageSections",
+);
+export const experimental_HomepageSection = runtimeComponent(
+  "experimental_HomepageSection",
+);
+export const experimental_useAddProject = runtimeFunction(
+  "experimental_useAddProject",
+);
+export const experimental_useThreadSearch = runtimeFunction(
+  "experimental_useThreadSearch",
+);
 export const experimental_ImageLightbox = runtimeComponent(
   "experimental_ImageLightbox",
 );

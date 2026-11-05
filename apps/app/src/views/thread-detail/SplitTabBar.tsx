@@ -35,7 +35,8 @@ import {
   useIndexedAppCommandHandlers,
 } from "@/components/commands/AppCommandProvider";
 import { AppCommandShortcutHint } from "@/components/commands/AppCommandShortcutHint";
-import { HOME_ROUTE_PATH } from "@/lib/route-paths";
+import { PINNED_TAB_ROUTE_PATH } from "@/lib/route-paths";
+import { usePinnedTabPanel } from "@/lib/pinned-tab";
 import type { AppShortcutPresentation } from "@/lib/app-keybindings";
 import {
   useIsSidebarFramed,
@@ -64,12 +65,11 @@ import {
   useThreadDescendants,
   useThreadEntriesById,
 } from "@/components/thread/ThreadStatusDot";
-import { homeThreadDot } from "@/views/home-overview";
+import { threadDot } from "@/components/thread/thread-dot";
 import type { PaneContent, SplitLayout } from "@/lib/split-layout";
 import {
   closeSplitTabAtom,
   movePaneToTabAtom,
-  openSplitTabAtom,
   renameSplitTabAtom,
   reopenClosedSplitItemAtom,
   selectSplitTabAtom,
@@ -77,7 +77,7 @@ import {
   splitTabsAtom,
   type SplitTab,
 } from "@/lib/split-layout/tabs";
-import { focusedPaneRoute } from "./splitThreadNavigation";
+import { focusedPaneRoute, openComposeTab } from "./splitThreadNavigation";
 
 function usePaneTitle(content: PaneContent | null): string {
   const threadId =
@@ -130,7 +130,7 @@ function SplitTabTitle({
             pane.content.kind === "thread"
               ? entries.get(pane.content.threadId)
               : undefined;
-          return entry === undefined ? null : homeThreadDot(entry, descendants);
+          return entry === undefined ? null : threadDot(entry, descendants);
         }),
   );
   return (
@@ -236,7 +236,7 @@ function SplitTabRenameInput({
 
 function NewProjectTabPicker({ onDone }: { onDone: () => void }) {
   const store = useStore();
-  const show = useShowSplitTabLayout();
+  const navigate = useNavigate();
   const navigation = useSidebarNavigation();
   const projects = useMemo(
     () =>
@@ -255,7 +255,7 @@ function NewProjectTabPicker({ onDone }: { onDone: () => void }) {
         if (!open) onDone();
       }}
       onChange={(projectId) => {
-        if (projectId !== null) show(store.set(openSplitTabAtom, projectId));
+        if (projectId !== null) openComposeTab(store, navigate, projectId);
       }}
     />
   );
@@ -270,7 +270,7 @@ function SplitTabCommandHandlers({
   const navigate = useNavigate();
   const show = useShowSplitTabLayout();
   useAppCommandHandler("splitTab.new", () => {
-    show(store.set(openSplitTabAtom));
+    openComposeTab(store, navigate);
     return true;
   });
   useAppCommandHandler("splitTab.newForProject", () => {
@@ -281,9 +281,11 @@ function SplitTabCommandHandlers({
     show(store.set(reopenClosedSplitItemAtom));
     return true;
   });
+  const hasPinnedTab = usePinnedTabPanel() !== null;
   useIndexedAppCommandHandlers(SPLIT_TAB_SELECT_APP_COMMAND_IDS, (index) => {
     if (index === 0) {
-      navigate(HOME_ROUTE_PATH);
+      if (!hasPinnedTab) return false;
+      navigate(PINNED_TAB_ROUTE_PATH);
       return true;
     }
     const tab = store.get(splitTabsAtom).tabs[index - 1];
@@ -433,7 +435,8 @@ export function SplitTabBar() {
   const navigate = useNavigate();
   const location = useLocation();
   const show = useShowSplitTabLayout();
-  const isHome = location.pathname === HOME_ROUTE_PATH;
+  const pinnedTab = usePinnedTabPanel();
+  const isPinnedTab = location.pathname === PINNED_TAB_ROUTE_PATH;
   const [renamingTabId, setRenamingTabId] = useState<string | null>(null);
   const [isPickingProject, setIsPickingProject] = useState(false);
   const beginTabDrag = (event: ReactPointerEvent, label: string) => {
@@ -458,7 +461,7 @@ export function SplitTabBar() {
       onDrop: () => undefined,
     });
   };
-  const homeCommand = SPLIT_TAB_SELECT_APP_COMMAND_IDS[0];
+  const pinnedTabCommand = SPLIT_TAB_SELECT_APP_COMMAND_IDS[0];
   const isInTitleBar = useIsSidebarFramed();
   const isSidebarShowing = useIsSidebarShowing();
   const isCompactViewport = useIsCompactViewport();
@@ -468,7 +471,7 @@ export function SplitTabBar() {
   const noDragClassName = usesDesktopChrome && MACOS_WINDOW_NO_DRAG_CLASS;
   const { stripRef, viewportRef, contentRef, activeTabRef, overflow } =
     useTabStripOverflow({
-      activeKey: isHome ? null : state.activeTabId,
+      activeKey: isPinnedTab ? null : state.activeTabId,
       contentKey: state.tabs,
     });
   return (
@@ -490,15 +493,19 @@ export function SplitTabBar() {
       <SplitTabCommandHandlers
         onPickProject={() => setIsPickingProject(true)}
       />
-      <TabShell
-        isActive={isHome}
-        noDragClassName={noDragClassName}
-        onSelect={() => navigate(HOME_ROUTE_PATH)}
-      >
-        <Icon name="Home" className="size-3" />
-        <span>Home</span>
-        <AppCommandShortcutHint shortcut={shortcuts.get(homeCommand) ?? null} />
-      </TabShell>
+      {pinnedTab === null ? null : (
+        <TabShell
+          isActive={isPinnedTab}
+          noDragClassName={noDragClassName}
+          onSelect={() => navigate(PINNED_TAB_ROUTE_PATH)}
+        >
+          <Icon name={pinnedTab.icon} className="size-3" />
+          <span>{pinnedTab.title}</span>
+          <AppCommandShortcutHint
+            shortcut={shortcuts.get(pinnedTabCommand) ?? null}
+          />
+        </TabShell>
+      )}
       <div ref={stripRef} className="relative flex min-w-0 items-stretch">
         <OverflowFade
           placement="left"
@@ -532,7 +539,7 @@ export function SplitTabBar() {
                   layout={
                     tab.id === state.activeTabId ? activeLayout : tab.layout
                   }
-                  isActive={!isHome && tab.id === state.activeTabId}
+                  isActive={!isPinnedTab && tab.id === state.activeTabId}
                   activeTabRef={activeTabRef}
                   command={command}
                   shortcut={
@@ -570,7 +577,7 @@ export function SplitTabBar() {
           CHROME_SUBTLE_ICON_BUTTON_FOREGROUND_CLASS,
           noDragClassName,
         )}
-        onClick={() => show(store.set(openSplitTabAtom))}
+        onClick={() => openComposeTab(store, navigate)}
       >
         <Icon name="Plus" className="size-3" />
       </button>

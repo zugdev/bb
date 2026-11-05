@@ -49,7 +49,7 @@ import {
   LEGACY_PROJECT_SETTINGS_ROUTE_PATH,
   PLUGIN_DETAIL_ROUTE_PATH,
   PLUGINS_ROUTE_PATH,
-  HOME_ROUTE_PATH,
+  PINNED_TAB_ROUTE_PATH,
   REGISTRY_SKILL_DETAIL_ROUTE_PATH,
   REGISTRY_SKILLS_ROUTE_PATH,
   SETTINGS_PLUGIN_ROUTE_PATH,
@@ -121,7 +121,7 @@ const splitWorkspaceRouteModule = trackCriticalLoad(
   import("./views/SplitWorkspaceRoute"),
 );
 splitWorkspaceRouteModule.catch(() => {});
-const HomeView = lazy(() => import("./views/HomeView"));
+const PinnedTabView = lazy(() => import("./views/PinnedTabView"));
 const SplitWorkspaceRoute = lazy(() => splitWorkspaceRouteModule);
 
 function NavigatePreservingLocation({ pathname }: { pathname: string }) {
@@ -424,7 +424,7 @@ export function AppRoutes() {
             path={REGISTRY_SKILL_DETAIL_ROUTE_PATH}
             element={<SkillsView />}
           />
-          <Route path={HOME_ROUTE_PATH} element={<HomeView />} />
+          <Route path={PINNED_TAB_ROUTE_PATH} element={<PinnedTabView />} />
           <Route path={PLUGINS_ROUTE_PATH} element={<PluginsRoute />} />
           <Route path={PLUGIN_DETAIL_ROUTE_PATH} element={<PluginsRoute />} />
           <Route

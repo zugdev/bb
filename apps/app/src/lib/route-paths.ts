@@ -155,4 +155,4 @@ export function resolveRouteHref({
   };
 }
 
-export const HOME_ROUTE_PATH = "/home";
+export const PINNED_TAB_ROUTE_PATH = "/home";

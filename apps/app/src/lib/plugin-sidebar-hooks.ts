@@ -189,6 +189,7 @@ export function useSidebarThreads(
         isPersonal: project.id === PERSONAL_PROJECT_ID,
         href: getProjectComposeRoutePath(project.id),
         settingsHref: getSettingsProjectRoutePath(project.id),
+        experimental_gitRemoteUrl: project.gitRemoteUrl,
       })),
       sections: data.sections,
     };

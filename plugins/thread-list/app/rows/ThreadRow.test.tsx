@@ -1140,6 +1140,7 @@ describe("ThreadRow", () => {
           isPersonal: false,
           href: "/projects/proj_other",
           settingsHref: "/projects/proj_other/settings",
+          experimental_gitRemoteUrl: null,
         },
       ],
       thread: createThread({

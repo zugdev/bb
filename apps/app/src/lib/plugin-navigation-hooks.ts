@@ -28,6 +28,7 @@ import { openThreadInTab } from "@/lib/split-layout/tabs";
 import { findPaneByThread } from "@/lib/split-layout";
 import { splitLayoutAtom } from "@/lib/split-layout/atoms";
 import { useOptionalPaneContext } from "@/views/thread-detail/PaneContext";
+import { openComposeTab } from "@/views/thread-detail/splitThreadNavigation";
 import { useAppNavigationHost } from "@/lib/app-navigation-host";
 import {
   normalizeExperimentalFileOpenOptions,
@@ -137,6 +138,11 @@ export function useBbNavigate(): BbNavigate {
       const replacesAutomationEditRoute =
         pluginId === AUTOMATIONS_PLUGIN_ID &&
         isAutomationEditRoutePath(location.pathname);
+      if (options?.experimental_tab && !isCompact) {
+        onNavigate?.();
+        openComposeTab(store, navigate, options.projectId ?? null);
+        return;
+      }
       if (options?.projectId !== undefined) {
         setRootComposeProjectId(options.projectId);
       }
@@ -161,11 +167,13 @@ export function useBbNavigate(): BbNavigate {
       });
     },
     [
+      isCompact,
       location.pathname,
       navigate,
       onNavigate,
       pluginId,
       setRootComposeProjectId,
+      store,
     ],
   );
   const openThreadPanel = useMemo(

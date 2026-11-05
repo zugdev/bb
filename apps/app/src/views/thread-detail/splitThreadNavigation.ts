@@ -11,8 +11,10 @@ import {
   setFocus,
   splitPane,
 } from "@/lib/split-layout";
+import type { useStore } from "jotai";
 import {
   insertSplitTab,
+  openSplitTabAtom,
   selectSplitTab,
   type SplitTabsState,
 } from "@/lib/split-layout/tabs";
@@ -219,6 +221,16 @@ export function replaceOriginPaneContent(
     ...replacePaneContent(layout, paneId, content),
     focusedPaneId: layout.focusedPaneId,
   };
+}
+
+export function openComposeTab(
+  store: ReturnType<typeof useStore>,
+  navigate: (route: string, options: { replace: true }) => void,
+  projectId: string | null = null,
+): void {
+  const layout = store.set(openSplitTabAtom, projectId);
+  const route = layout === null ? null : focusedPaneRoute(layout);
+  if (route !== null) navigate(route, { replace: true });
 }
 
 export function focusedPaneRoute(layout: SplitLayout): string | null {

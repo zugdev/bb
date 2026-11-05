@@ -3,14 +3,14 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "The New thread overview: threads that need you, the selected project's latest threads, and recent project shortcuts.",
+  "description": "Home, the first pane tab, and the New thread overview: threads that need you, every project's threads, and recent project shortcuts.",
   "engines": {
     "bb": ">=0.0",
     "bbPluginSdk": ">=0.6.115"
   },
   "bb": {
     "name": "Home",
-    "description": "The New thread overview: threads that need you, the selected project's latest threads, and recent project shortcuts.",
+    "description": "Home, the first pane tab, and the New thread overview: threads that need you, every project's threads, and recent project shortcuts.",
     "branding": {
       "icon": "Home"
     },
@@ -27,7 +27,10 @@
     "prepare:bundled": "bb-plugin-build prepare-bundled"
   },
   "dependencies": {
-    "@bb/shared-ui": "workspace:*"
+    "@bb/shared-ui": "workspace:*",
+    "@dnd-kit/core": "^6.3.1",
+    "@dnd-kit/sortable": "^10.0.0",
+    "@dnd-kit/utilities": "^3.2.2"
   },
   "devDependencies": {
     "@bb/plugin-build": "workspace:*",

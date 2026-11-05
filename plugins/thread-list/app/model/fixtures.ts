@@ -113,6 +113,7 @@ export function makePluginProject(
     isPersonal: false,
     href: `/projects/${id}`,
     settingsHref: `/settings/projects/${id}`,
+    experimental_gitRemoteUrl: null,
     ...overrides,
   };
 }
