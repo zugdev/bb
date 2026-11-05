@@ -256,6 +256,12 @@ experimental_Original }` — draws the sidebar navigation. Registration:
   `experimental_threadContextCardRow`, `experimental_threadContextCardSection`,
   `experimental_threadAction` (menu entries and header buttons), and
   `experimental_browserToolbarAction` are covered in frontend-registration.md.
+- `experimental_threadHeaderLeading` → `{ threadId, isNarrow }`. Register
+  `{ id, component }` to render before the thread title in an open thread's
+  header. `isNarrow` is true at compact width and in split panes under 560px,
+  where header actions fold into the thread menu. Open a thread in the same
+  pane with `useBbNavigate().toThread(id, { experimental_inPane: true })`.
+  Experimental: see `docs/api_to_audit.md`.
 - `fileOpener` → `{ path: string, source, experimental_lineRange?, Original }` — register as a viewer/editor
   for file extensions: `{ id, title, extensions: ["md"], component }`.
   Matching files use the first applicable opener in deterministic slot order
