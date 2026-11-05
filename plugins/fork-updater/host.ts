@@ -78,6 +78,31 @@ async function isAncestor(cwd: string, commit: string, of: string): Promise<bool
   );
 }
 
+async function showJson(cwd: string, ref: string, path: string): Promise<unknown> {
+  try {
+    return JSON.parse(await git(cwd, "show", `${ref}:${path}`)) as unknown;
+  } catch {
+    return null;
+  }
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+async function forkPluginDirs(cwd: string, ref: string): Promise<string[]> {
+  const allowlist = await showJson(cwd, ref, "scripts/fork-plugins.json");
+  const entries = isRecord(allowlist) && Array.isArray(allowlist.plugins) ? allowlist.plugins : [];
+  const dirs: string[] = [];
+  for (const entry of entries) {
+    const match = typeof entry === "string" ? /^plugins\/([^/]+)$/u.exec(entry) : null;
+    if (match === null) continue;
+    const manifest = await showJson(cwd, ref, `${entry}/package.json`);
+    if (isRecord(manifest) && isRecord(manifest.bb)) dirs.push(match[1]!);
+  }
+  return dirs;
+}
+
 async function runStep(checkoutPath: string, step: UpdateStep): Promise<void> {
   switch (step) {
     case "fast-forward": {
@@ -128,8 +153,17 @@ export default experimental_defineHostEntry({
       await git(checkoutPath, "fetch", "origin");
       const remoteCommit = await git(checkoutPath, "rev-parse", "origin/main");
       const builtIsAncestor = await isAncestor(checkoutPath, builtCommit, remoteCommit);
+      const forkPlugins = await forkPluginDirs(checkoutPath, remoteCommit);
       if (!builtIsAncestor) {
-        return { remoteCommit, builtIsAncestor, commits: [], changedFiles: [], installedCommit, swapError };
+        return {
+          remoteCommit,
+          builtIsAncestor,
+          commits: [],
+          changedFiles: [],
+          forkPluginDirs: forkPlugins,
+          installedCommit,
+          swapError,
+        };
       }
       const range = `${builtCommit}..${remoteCommit}`;
       const commits = (await git(checkoutPath, "log", "--no-merges", "--format=%h%x09%s", range))
@@ -142,7 +176,7 @@ export default experimental_defineHostEntry({
       const changedFiles = (await git(checkoutPath, "diff", "--name-only", builtCommit, remoteCommit))
         .split("\n")
         .filter((line) => line !== "");
-      return { remoteCommit, builtIsAncestor, commits, changedFiles, installedCommit, swapError };
+      return { remoteCommit, builtIsAncestor, commits, changedFiles, forkPluginDirs: forkPlugins, installedCommit, swapError };
     },
     async run({ checkoutPath, step }) {
       await runStep(checkoutPath, step);
