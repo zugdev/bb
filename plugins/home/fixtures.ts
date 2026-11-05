@@ -77,6 +77,7 @@ export function makeProject(
     isPersonal,
     href: `/projects/${id}`,
     settingsHref: `/settings/projects/${id}`,
+    experimental_gitRemoteUrl: null,
   };
 }
 

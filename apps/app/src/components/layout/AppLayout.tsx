@@ -100,7 +100,7 @@ import {
   getSettingsProjectRoutePath,
   getRootComposeRoutePath,
   getThreadRoutePath,
-  HOME_ROUTE_PATH,
+  PINNED_TAB_ROUTE_PATH,
   isProjectlessProjectId,
   SETTINGS_ROUTE_PATH,
 } from "@/lib/route-paths";
@@ -611,7 +611,7 @@ function AppLayoutContent({ children }: AppLayoutProps) {
     !isThreadView &&
     !isRootView &&
     pluginPanelRoute === null &&
-    location.pathname !== HOME_ROUTE_PATH;
+    location.pathname !== PINNED_TAB_ROUTE_PATH;
   const [desktopInfo] = useState(getBbDesktopInfo);
   const desktopWindowState = useDesktopWindowState();
   const usesDesktopChrome = shouldUseMacosDesktopChrome(desktopInfo);

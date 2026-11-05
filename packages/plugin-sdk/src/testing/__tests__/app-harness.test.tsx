@@ -29,6 +29,10 @@ const {
   experimental_PermissionModePicker: PermissionModePicker,
   experimental_ProjectPicker: ProjectPicker,
   experimental_useCommandShortcut,
+  experimental_HomepageSection: HomepageSection,
+  experimental_useAddProject,
+  experimental_useHomepageSections,
+  experimental_useThreadSearch,
   experimental_useAppPanel,
   experimental_useFixedTabTarget,
   ThreadChat,
@@ -637,6 +641,7 @@ describe("loadPluginApp", () => {
               isPersonal: true,
               href: "/",
               settingsHref: "/settings",
+              experimental_gitRemoteUrl: null,
             },
             {
               id: "proj_web",
@@ -644,6 +649,7 @@ describe("loadPluginApp", () => {
               isPersonal: false,
               href: "/projects/proj_web",
               settingsHref: "/settings/projects/proj_web",
+              experimental_gitRemoteUrl: null,
             },
           ],
         },
@@ -662,6 +668,94 @@ describe("loadPluginApp", () => {
     expect(onChange).toHaveBeenCalledWith(null);
     expect(slot.getByText("⌥ O")).toBeTruthy();
     expect(slot.getByText("none")).toBeTruthy();
+  });
+
+  it("captures and validates a pinned nav panel", async () => {
+    const captured = await loadPluginApp(
+      definePluginApp((builder) => {
+        builder.slots.navPanel({
+          id: "home",
+          title: "Home",
+          icon: "Home",
+          path: "home",
+          component: Panel,
+          experimental_pinnedTab: true,
+        });
+      }),
+    );
+    expect(captured.navPanels[0]?.experimental_pinnedTab).toBe(true);
+    await expect(
+      loadPluginApp(
+        definePluginApp((builder) => {
+          builder.slots.navPanel({
+            id: "home",
+            title: "Home",
+            icon: "Home",
+            path: "home",
+            component: Panel,
+            experimental_pinnedTab: "yes" as unknown as boolean,
+          });
+        }),
+      ),
+    ).rejects.toThrow('"experimental_pinnedTab" must be a boolean');
+  });
+
+  it("reports homepage sections, draws one, and fakes bb's search and Add project", () => {
+    const openSearch = vi.fn();
+    const openAddProject = vi.fn();
+    function Page() {
+      const sections = experimental_useHomepageSections();
+      const search = experimental_useThreadSearch();
+      const addProject = experimental_useAddProject();
+      return (
+        <div>
+          {sections.map((section) => (
+            <HomepageSection
+              key={section.id}
+              pluginId={section.pluginId}
+              sectionId={section.id}
+            />
+          ))}
+          <HomepageSection pluginId="missing" sectionId="none" />
+          <button type="button" onClick={() => search.open(null)}>
+            {search.shortcut?.label}
+          </button>
+          <button
+            type="button"
+            disabled={!addProject.isAvailable}
+            onClick={addProject.open}
+          >
+            Add project
+          </button>
+        </div>
+      );
+    }
+    const slot = renderSlot(
+      { component: Page },
+      {},
+      {
+        homepageSections: [
+          {
+            pluginId: "assistant",
+            id: "assistant",
+            title: "Assistant",
+            experimental_placement: null,
+          },
+        ],
+        experimental_threadSearch: {
+          shortcut: { label: "⌘ K", ariaKeyshortcuts: "Meta+K" },
+          open: openSearch,
+        },
+        experimental_addProject: { open: openAddProject },
+      },
+    );
+    expect(
+      slot.getAllByRole("heading").map((heading) => heading.textContent),
+    ).toEqual(["Assistant"]);
+    fireEvent.click(slot.getByRole("button", { name: "⌘ K" }));
+    expect(openSearch).toHaveBeenCalledWith(null);
+    fireEvent.click(slot.getByRole("button", { name: "Add project" }));
+    expect(openAddProject).toHaveBeenCalledTimes(1);
   });
 
   it("captures and validates New thread panel action registrations", async () => {

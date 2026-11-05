@@ -1,4 +1,5 @@
 import { useEffect, useMemo } from "react";
+import { pinnedTabPanel } from "@/lib/pinned-tab";
 import { z } from "zod";
 import { createLastKnownCache } from "@/lib/last-known-cache";
 import {
@@ -88,7 +89,11 @@ export function rememberPluginNavPanelChrome(
   navPanels: readonly PluginNavPanelSlot[],
 ): void {
   if (!bootComplete) return;
-  writeLastKnownPluginNavPanelChrome(navPanels.map(pluginNavPanelChromeOf));
+  writeLastKnownPluginNavPanelChrome(
+    navPanels
+      .filter((panel) => panel !== pinnedTabPanel(navPanels))
+      .map(pluginNavPanelChromeOf),
+  );
 }
 
 export function usePluginNavPanelChrome(): PluginNavPanelChromeEntry[] {

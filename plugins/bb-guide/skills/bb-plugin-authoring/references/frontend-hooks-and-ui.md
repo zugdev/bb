@@ -51,7 +51,8 @@ registerChoiceHandler, registerActionHandler }` inside a `pendingInteraction`
 openUrl(url), experimental_openFilePreview(options),
 experimental_openFileExternally(options), experimental_openTerminal({ terminalId }) }`.
   `toCompose` opens the root compose screen; pass `initialPrompt` to seed the
-  composer draft and `focusPrompt: true` to focus it. Open side-panel tabs
+  composer draft and `focusPrompt: true` to focus it, or
+  `experimental_tab: true` to open it in a new pane tab in `projectId`. Open side-panel tabs
   with the [panel controller](#panel-controller).
   `openUrl` owns HTTP(S) only and returns false for schemes BB
   leaves to normal anchor behavior. The two file methods accept an

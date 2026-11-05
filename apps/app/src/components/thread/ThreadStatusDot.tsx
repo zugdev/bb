@@ -3,14 +3,14 @@ import { cn } from "@bb/shared-ui/lib/utils";
 import { useSidebarNavigation } from "@/hooks/queries/sidebar-navigation-query";
 import { threadEntryMapFor } from "@/lib/sidebar-thread-entries";
 import {
-  homeThreadDot,
+  threadDot,
   liveThreadDescendants,
   NO_THREAD_DESCENDANTS,
-  type HomeThreadDot,
+  type ThreadDot,
   type ThreadDescendants,
-} from "@/views/home-overview";
+} from "@/components/thread/thread-dot";
 
-const STATUS_DOTS: Record<HomeThreadDot, { className: string; label: string }> =
+const STATUS_DOTS: Record<ThreadDot, { className: string; label: string }> =
   {
     working: { className: "bg-muted-foreground", label: "Working" },
     done: { className: "bg-success", label: "Finished, unread" },
@@ -18,7 +18,7 @@ const STATUS_DOTS: Record<HomeThreadDot, { className: string; label: string }> =
     failed: { className: "bg-destructive", label: "Failed" },
   };
 
-const DOT_PRIORITY: readonly HomeThreadDot[] = [
+const DOT_PRIORITY: readonly ThreadDot[] = [
   "waiting",
   "failed",
   "working",
@@ -26,8 +26,8 @@ const DOT_PRIORITY: readonly HomeThreadDot[] = [
 ];
 
 export function mostUrgentThreadDot(
-  dots: readonly (HomeThreadDot | null)[],
-): HomeThreadDot | null {
+  dots: readonly (ThreadDot | null)[],
+): ThreadDot | null {
   return DOT_PRIORITY.find((dot) => dots.includes(dot)) ?? null;
 }
 
@@ -35,7 +35,7 @@ export function ThreadStatusDot({
   dot,
   className,
 }: {
-  dot: HomeThreadDot | null;
+  dot: ThreadDot | null;
   className?: string;
 }) {
   if (dot === null) return null;
@@ -84,10 +84,10 @@ export function useThreadDescendants(): ThreadDescendants {
   return threadDescendantsFor(useThreadEntriesById());
 }
 
-export function useThreadDot(threadId: string | null): HomeThreadDot | null {
+export function useThreadDot(threadId: string | null): ThreadDot | null {
   const entries = useThreadEntriesById();
   const entry = threadId === null ? undefined : entries.get(threadId);
   return entry === undefined
     ? null
-    : homeThreadDot(entry, threadDescendantsFor(entries));
+    : threadDot(entry, threadDescendantsFor(entries));
 }

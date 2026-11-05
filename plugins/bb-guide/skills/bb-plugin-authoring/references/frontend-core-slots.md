@@ -104,7 +104,16 @@ Slot props contracts (versioned, additive-only):
   unencoded segments (bb encodes them) — browser back/forward then walks
   panel-internal history (prefer this over hash routing).
   Registration:
-  `{ id, title, icon, path, component, experimental_useBadge?, experimental_usePageTitle?, headerContent?, experimental_sidebar? }`.
+  `{ id, title, icon, path, component, experimental_useBadge?, experimental_usePageTitle?, headerContent?, experimental_sidebar?, experimental_pinnedTab? }`.
+  `experimental_pinnedTab: true` makes the panel the first pane tab at `/home`:
+  bb draws the tab with its icon and title before every other tab, binds the
+  first tab shortcut to it, renders it under the tab bar outside every split
+  layout, and leaves it out of sidebar navigation and the palette. The first
+  pinned registration wins. A pinned page usually lists other plugins'
+  homepage sections with `experimental_useHomepageSections()` and draws each
+  with `experimental_HomepageSection` (`{ pluginId, sectionId }`), and can use
+  `experimental_useThreadSearch()` (`{ shortcut, open(anchor) }`) and
+  `experimental_useAddProject()` (`{ isAvailable, isCreating, open() }`).
   The host renders your compact plugin icon + `title` into the shared app
   header (the same title bar as Settings pages) with your optional
   `headerContent` component as the header actions on the right — so do not

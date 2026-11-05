@@ -10,10 +10,10 @@ import {
 import { listPanes } from "@/lib/split-layout";
 import { splitLayoutAtom } from "@/lib/split-layout/atoms";
 import { splitTabsAtom } from "@/lib/split-layout/tabs";
-import { getThreadRoutePath, HOME_ROUTE_PATH } from "@/lib/route-paths";
+import { getThreadRoutePath, PINNED_TAB_ROUTE_PATH } from "@/lib/route-paths";
 import { getThreadDisplayTitle } from "@/lib/thread-title";
 import { useDefaultRequestRename } from "@/lib/thread-actions/thread-action-registry";
-import { homeThreadDot } from "@/views/home-overview";
+import { threadDot } from "@/components/thread/thread-dot";
 
 export function ActiveTabThreadsSection({
   onNavigate,
@@ -26,8 +26,8 @@ export function ActiveTabThreadsSection({
   const descendants = useThreadDescendants();
   const navigate = useNavigate();
   const requestRename = useDefaultRequestRename();
-  const isHome = useLocation().pathname === HOME_ROUTE_PATH;
-  if (isHome || layout === null) return null;
+  const isPinnedTab = useLocation().pathname === PINNED_TAB_ROUTE_PATH;
+  if (isPinnedTab || layout === null) return null;
   const focusedPaneId = layout.focusedPaneId;
   const rows = listPanes(layout.root).flatMap((pane) => {
     if (pane.content.kind !== "thread") return [];
@@ -64,7 +64,7 @@ export function ActiveTabThreadsSection({
               onDoubleClick={() => requestRename(content.threadId)}
             >
               <span className="flex size-3 shrink-0 items-center justify-center">
-                <ThreadStatusDot dot={homeThreadDot(entry, descendants)} />
+                <ThreadStatusDot dot={threadDot(entry, descendants)} />
               </span>
               <span className="min-w-0 flex-1 truncate">
                 {getThreadDisplayTitle(entry)}

@@ -79,6 +79,10 @@ import {
   type ExperimentalFailedVoiceRecordingsProps,
   type ExperimentalShortcutHintProps,
   type ExperimentalProjectPickerProps,
+  type ExperimentalAddProject,
+  type ExperimentalThreadSearch,
+  type ExperimentalHomepageSectionInfo,
+  type ExperimentalHomepageSectionProps,
   type ExperimentalShortcutPresentation,
   type ExperimentalImageLightboxProps,
   type ExperimentalPromptMentionIconProps,
@@ -379,6 +383,9 @@ interface SlotEnv {
   sidebarRowStatuses: ReadonlyMap<string, PluginSidebarThreadRowStatus>;
   sidebarShortcuts: ReadonlyMap<string, PluginSidebarThreadShortcut>;
   commandShortcuts: ReadonlyMap<string, ExperimentalShortcutPresentation>;
+  homepageSections: readonly ExperimentalHomepageSectionInfo[];
+  addProject: ExperimentalAddProject;
+  threadSearch: ExperimentalThreadSearch;
   sidebarSplitLayout: PluginSidebarSplitLayout | null;
   composerRenderer: ExperimentalComposerRendererApi | null;
   environmentProviders: PluginEnvironmentProvidersState;
@@ -1383,6 +1390,20 @@ function TestShortcutHint({
   );
 }
 
+function TestHomepageSection({
+  pluginId,
+  sectionId,
+}: ExperimentalHomepageSectionProps) {
+  const section = useSlotEnv("experimental_HomepageSection").homepageSections.find(
+    (candidate) => candidate.pluginId === pluginId && candidate.id === sectionId,
+  );
+  return section === undefined ? null : (
+    <section data-plugin-id={pluginId} data-section-id={sectionId}>
+      <h2>{section.title}</h2>
+    </section>
+  );
+}
+
 function TestProjectPicker({
   value,
   onChange,
@@ -1839,6 +1860,16 @@ const testPluginSdkApp = {
     );
   },
   experimental_ProjectPicker: TestProjectPicker,
+  experimental_useHomepageSections(): readonly ExperimentalHomepageSectionInfo[] {
+    return useSlotEnv("experimental_useHomepageSections").homepageSections;
+  },
+  experimental_HomepageSection: TestHomepageSection,
+  experimental_useAddProject(): ExperimentalAddProject {
+    return useSlotEnv("experimental_useAddProject").addProject;
+  },
+  experimental_useThreadSearch(): ExperimentalThreadSearch {
+    return useSlotEnv("experimental_useThreadSearch").threadSearch;
+  },
   experimental_ImageLightbox: TestImageLightbox,
   experimental_PromptMentionIcon: TestPromptMentionIcon,
   experimental_describePromptMention(
@@ -2419,6 +2450,21 @@ export interface RenderSlotOptions<
    * plugin's command id. Omitted → every command reports null.
    */
   commandShortcuts?: Record<string, ExperimentalShortcutPresentation>;
+  /**
+   * Sections `experimental_useHomepageSections()` reports and
+   * `experimental_HomepageSection` draws as a heading. Omitted → none.
+   */
+  homepageSections?: readonly ExperimentalHomepageSectionInfo[];
+  /**
+   * What `experimental_useAddProject()` returns. Omitted → available, not
+   * creating, and `open` does nothing.
+   */
+  experimental_addProject?: Partial<ExperimentalAddProject>;
+  /**
+   * What `experimental_useThreadSearch()` returns. Omitted → unbound, and
+   * `open` does nothing.
+   */
+  experimental_threadSearch?: Partial<ExperimentalThreadSearch>;
   /** The split layout `useSidebarSplitLayout()` reports. Omitted → null. */
   sidebarSplitLayout?: PluginSidebarSplitLayout;
   /**
@@ -3411,6 +3457,16 @@ export function renderSlot<
     sidebarRowStatuses,
     sidebarShortcuts,
     commandShortcuts,
+    homepageSections: options.homepageSections ?? [],
+    addProject: {
+      isAvailable: options.experimental_addProject?.isAvailable ?? true,
+      isCreating: options.experimental_addProject?.isCreating ?? false,
+      open: options.experimental_addProject?.open ?? (() => undefined),
+    },
+    threadSearch: {
+      shortcut: options.experimental_threadSearch?.shortcut ?? null,
+      open: options.experimental_threadSearch?.open ?? (() => undefined),
+    },
     sidebarSplitLayout: options.sidebarSplitLayout ?? null,
     composerRenderer: options.composerRenderer ?? null,
     environmentProviders,

@@ -17,7 +17,7 @@ import {
 import {
   APP_ROOT_ROUTE_PATH,
   getRootComposeRoutePath,
-  HOME_ROUTE_PATH,
+  PINNED_TAB_ROUTE_PATH,
 } from "@/lib/route-paths";
 import { useSetRootComposeProjectId } from "@/lib/root-compose-selection";
 import type {
@@ -57,7 +57,7 @@ export function useQuickCreateProject(): QuickCreateProjectController {
   const location = useLocation();
   const setRootComposeProjectId = useSetRootComposeProjectId();
   const shouldReplaceRoute = location.pathname === APP_ROOT_ROUTE_PATH;
-  const staysOnPage = location.pathname === HOME_ROUTE_PATH;
+  const staysOnPage = location.pathname === PINNED_TAB_ROUTE_PATH;
 
   const submit = useCallback(
     ({ path, hostId, target, closeDialog }: LocalPathSubmitParams) => {

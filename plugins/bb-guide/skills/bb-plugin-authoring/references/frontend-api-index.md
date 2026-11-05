@@ -62,6 +62,10 @@ Read the installed SDK declarations for the exact current signatures.
 - `experimental_ShortcutHint`
 - `experimental_useCommandShortcut`
 - `experimental_ProjectPicker`
+- `experimental_useHomepageSections`
+- `experimental_HomepageSection`
+- `experimental_useAddProject`
+- `experimental_useThreadSearch`
 - `experimental_ImageLightbox`
 - `experimental_PromptMentionIcon`
 - `experimental_describePromptMention`
@@ -366,6 +370,10 @@ Read the installed SDK declarations for the exact current signatures.
 - `ExperimentalFailedVoiceRecordingsProps`
 - `ExperimentalShortcutHintProps`
 - `ExperimentalProjectPickerProps`
+- `ExperimentalHomepageSectionInfo`
+- `ExperimentalHomepageSectionProps`
+- `ExperimentalAddProject`
+- `ExperimentalThreadSearch`
 - `ExperimentalImageLightboxProps`
 - `ExperimentalPromptMentionIconProps`
 - `ExperimentalPromptMentionPresentation`

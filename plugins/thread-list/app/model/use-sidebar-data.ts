@@ -16,6 +16,7 @@ export interface SidebarProject {
   href: string;
   settingsHref: string;
   isPersonal: boolean;
+  experimental_gitRemoteUrl: string | null;
   threads: SidebarThread[];
 }
 
@@ -61,7 +62,8 @@ function sameProjectShape(
     previous.name === project.name &&
     previous.href === project.href &&
     previous.settingsHref === project.settingsHref &&
-    previous.isPersonal === project.isPersonal
+    previous.isPersonal === project.isPersonal &&
+    previous.experimental_gitRemoteUrl === project.experimental_gitRemoteUrl
   );
 }
 
@@ -108,6 +110,7 @@ export function buildSidebarData(
       href: project.href,
       settingsHref: project.settingsHref,
       isPersonal: project.isPersonal,
+      experimental_gitRemoteUrl: project.experimental_gitRemoteUrl,
       threads:
         before !== undefined && sameElements(before.threads, bucket)
           ? before.threads

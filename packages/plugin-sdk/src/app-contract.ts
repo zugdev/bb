@@ -1024,6 +1024,16 @@ export interface PluginNavPanelRegistration {
    */
   experimental_useBadge?: () => ExperimentalBadge | null;
   /**
+   * Pin this panel as the first pane tab, at `/home`. bb draws the tab with
+   * the panel's icon and title before every other tab, opens it with the
+   * first tab shortcut, renders the panel there with the tab bar above it and
+   * outside every tab's split layout, and leaves it out of sidebar navigation
+   * and the palette's panel list. When several panels pin, the first
+   * registered wins and the others behave as unpinned panels. Experimental:
+   * see docs/api_to_audit.md.
+   */
+  experimental_pinnedTab?: boolean;
+  /**
    * Optional component rendered on the right side of the shared title bar
    * (e.g. a sync button or a count). Contained separately from the body: a
    * throwing headerContent is hidden without breaking the title bar.
@@ -1489,6 +1499,12 @@ export interface PluginSidebarProject {
   href: string;
   /** The app-relative URL of the project's settings page. */
   settingsHref: string;
+  /**
+   * The git remote of the project's first source, as git reports it (an SSH
+   * or HTTPS URL); null without a remote. Experimental: see
+   * docs/api_to_audit.md.
+   */
+  experimental_gitRemoteUrl: string | null;
 }
 
 /**
@@ -3333,6 +3349,35 @@ export interface ExperimentalFailedVoiceRecordingsProps {
 export interface ExperimentalShortcutHintProps {
   shortcut: ExperimentalShortcutPresentation | null;
   className?: string;
+}
+
+/** One homepage section, from `experimental_useHomepageSections()`. */
+export interface ExperimentalHomepageSectionInfo {
+  pluginId: string;
+  /** The section's registration id. */
+  id: string;
+  title: string;
+  /** The registration's `experimental_placement`; null when omitted. */
+  experimental_placement: "lead" | null;
+}
+
+/** Props of `experimental_HomepageSection`. */
+export interface ExperimentalHomepageSectionProps {
+  pluginId: string;
+  sectionId: string;
+}
+
+/** bb's thread search, from `experimental_useThreadSearch()`. */
+export interface ExperimentalThreadSearch {
+  shortcut: ExperimentalShortcutPresentation | null;
+  open(anchor: HTMLElement | null): void;
+}
+
+/** bb's Add project flow, from `experimental_useAddProject()`. */
+export interface ExperimentalAddProject {
+  isAvailable: boolean;
+  isCreating: boolean;
+  open(): void;
 }
 
 /** Props of `experimental_ProjectPicker`. */
@@ -5322,8 +5367,12 @@ export interface BbNavigate {
    * files the new thread in a section and pin state (omitted: unpinned,
    * outside sections); `environmentId` reuses that environment and `hostId`
    * picks a machine for a new one (`environmentId` wins when both are set).
+   * `experimental_tab: true` opens it in a new pane tab, in `projectId` when
+   * given, the way the tab bar's project picker does, and falls back to plain
+   * navigation where tabs are off. Experimental: see docs/api_to_audit.md.
    */
   toCompose(options?: {
+    experimental_tab?: boolean;
     projectId?: string;
     initialPrompt?: string;
     focusPrompt?: boolean;
@@ -6139,6 +6188,34 @@ export interface PluginSdkApp {
   experimental_VoiceRecordingBar: ComponentType<ExperimentalVoiceRecordingBarProps>;
   experimental_FailedVoiceRecordings: ComponentType<ExperimentalFailedVoiceRecordingsProps>;
   experimental_ShortcutHint: ComponentType<ExperimentalShortcutHintProps>;
+  /**
+   * Every plugin's `homepageSection` registration in registration order,
+   * this plugin's included, following reloads. Render one with
+   * {@link PluginSdkApp.experimental_HomepageSection}. Experimental: see
+   * docs/api_to_audit.md.
+   */
+  experimental_useHomepageSections(): readonly ExperimentalHomepageSectionInfo[];
+  /**
+   * One homepage section the way Home draws it: the host heading with the
+   * section's title, then its component in that plugin's scope with crash
+   * containment, given no project (`projectId` and
+   * `experimental_setProjectId` are null). Renders nothing for an unknown
+   * section. Experimental: see docs/api_to_audit.md.
+   */
+  experimental_HomepageSection: ComponentType<ExperimentalHomepageSectionProps>;
+  /**
+   * bb's Add project flow: `open()` shows the dialog that picks a folder on a
+   * machine and creates the project. `isAvailable` is false where bb can't
+   * add projects (no machine). From the pinned tab the page stays where it
+   * is after the project is created. Experimental: see docs/api_to_audit.md.
+   */
+  experimental_useAddProject(): ExperimentalAddProject;
+  /**
+   * bb's thread search, the command behind the sidebar's Search item:
+   * `open(anchor)` opens the search palette, and `shortcut` is its binding or
+   * null when unbound. Experimental: see docs/api_to_audit.md.
+   */
+  experimental_useThreadSearch(): ExperimentalThreadSearch;
   /**
    * The shortcut bound to one of this plugin's commands (`id` as registered
    * through `app.commands.register` or `composer.experimental_registerCommand`),

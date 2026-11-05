@@ -1,14 +1,27 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   definePluginApp,
+  experimental_HomepageSection as HomepageSection,
   experimental_ProjectPicker as ProjectPicker,
+  experimental_useAddProject,
   experimental_useCommandShortcut,
+  experimental_useHomepageSections,
   experimental_useSidebarThreads,
+  experimental_useThreadSearch,
   useBbNavigate,
   type PluginComposerApi,
   type PluginHomepageSectionProps,
 } from "@get-bb/plugin-sdk/app";
-import { nextCycledProject, recentProjects } from "./home-overview";
+import {
+  DEFAULT_HOME_LAYOUT,
+  isHomeLayoutPrefs,
+  isHomeThreadSort,
+  nextCycledProject,
+  recentProjects,
+  type HomeLayoutPrefs,
+  type HomeThreadSort,
+} from "./home-overview";
+import { HomePage } from "./HomePage";
 import { NewThreadOverview } from "./NewThreadOverview";
 
 export const CYCLE_PROJECT_COMMAND_ID = "cycle-project";
@@ -85,7 +98,104 @@ function NewThreadOverviewSection({
   );
 }
 
+export const HOME_LAYOUT_KEY = "bb.home.layout";
+const HOME_THREAD_SORT_KEY = "bb.home.threadSort";
+const HOME_THREAD_OLDEST_FIRST_KEY = "bb.home.threadOldestFirst";
+
+function readStored<T>(
+  key: string,
+  isValue: (value: unknown) => value is T,
+  fallback: T,
+): T {
+  try {
+    const stored = window.localStorage.getItem(key);
+    if (stored === null) return fallback;
+    const parsed: unknown = JSON.parse(stored);
+    return isValue(parsed) ? parsed : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function useStoredState<T>(
+  key: string,
+  isValue: (value: unknown) => value is T,
+  fallback: T,
+): [T, (value: T) => void] {
+  const [value, setValue] = useState(() => readStored(key, isValue, fallback));
+  const store = useCallback(
+    (next: T) => {
+      setValue(next);
+      window.localStorage.setItem(key, JSON.stringify(next));
+    },
+    [key],
+  );
+  return [value, store];
+}
+
+const isBoolean = (value: unknown): value is boolean =>
+  typeof value === "boolean";
+
+function HomePanel() {
+  const { threads, projects } = experimental_useSidebarThreads();
+  const navigate = useBbNavigate();
+  const sections = experimental_useHomepageSections();
+  const threadSearch = experimental_useThreadSearch();
+  const addProject = experimental_useAddProject();
+  const [layout, setLayout] = useStoredState<HomeLayoutPrefs>(
+    HOME_LAYOUT_KEY,
+    isHomeLayoutPrefs,
+    DEFAULT_HOME_LAYOUT,
+  );
+  const [sort, setSort] = useStoredState<HomeThreadSort>(
+    HOME_THREAD_SORT_KEY,
+    isHomeThreadSort,
+    "message",
+  );
+  const [isOldestFirst, setIsOldestFirst] = useStoredState(
+    HOME_THREAD_OLDEST_FIRST_KEY,
+    isBoolean,
+    false,
+  );
+  const pluginSections = useMemo(
+    () => sections.filter((section) => section.experimental_placement === null),
+    [sections],
+  );
+  return (
+    <HomePage
+      threads={threads}
+      projects={projects}
+      pluginSections={pluginSections}
+      renderPluginSection={(section) => (
+        <HomepageSection pluginId={section.pluginId} sectionId={section.id} />
+      )}
+      layout={layout}
+      setLayout={setLayout}
+      order={{ sort, setSort, isOldestFirst, setIsOldestFirst }}
+      search={{
+        shortcutLabel: threadSearch.shortcut?.label ?? null,
+        open: threadSearch.open,
+      }}
+      addProject={addProject}
+      onOpenThread={(thread) =>
+        navigate.toThread(thread.id, { experimental_tab: true })
+      }
+      onNewThread={(projectId) =>
+        navigate.toCompose({ projectId, experimental_tab: true })
+      }
+    />
+  );
+}
+
 export default definePluginApp((app) => {
+  app.slots.navPanel({
+    id: "home",
+    title: "Home",
+    icon: "Home",
+    path: "home",
+    component: HomePanel,
+    experimental_pinnedTab: true,
+  });
   app.slots.homepageSection({
     id: "new-thread-overview",
     title: "New thread overview",

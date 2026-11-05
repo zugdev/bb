@@ -1,7 +1,4 @@
 import { useMemo, useState, type CSSProperties, type ReactNode } from "react";
-import { useAtom, useStore } from "jotai";
-import { atomWithStorage } from "jotai/utils";
-import { Link, useNavigate } from "react-router-dom";
 import {
   closestCenter,
   DndContext,
@@ -18,33 +15,17 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import type { ThreadListEntry } from "@bb/domain";
-import type { ProjectWithThreadsResponse } from "@bb/server-contract";
-import { Icon } from "@bb/shared-ui/icon";
+import {
+  experimental_Icon as Icon,
+  type PluginSidebarProject,
+  type PluginSidebarThread,
+} from "@get-bb/plugin-sdk/app";
 import { cn } from "@bb/shared-ui/lib/utils";
-import { useSidebarNavigation } from "@/hooks/queries/sidebar-navigation-query";
-import { threadEntryMapFor } from "@/lib/sidebar-thread-entries";
-import { threadDescendantsFor } from "@/components/thread/ThreadStatusDot";
 import {
-  HOME_SECTION_PROJECT,
-  isLeadHomepageSection,
-  PluginHomepageSection,
-} from "@/components/plugin/PluginHomepageSections";
-import { usePluginSlots } from "@/lib/plugin-slots";
-import {
-  useAppCommandRunner,
-  useAppCommandShortcut,
-} from "@/components/commands/AppCommandProvider";
-import { useQuickCreateProjectController } from "@/hooks/useQuickCreateProject";
-import { createJsonLocalStorage } from "@/lib/browser-storage";
-import { getSettingsProjectRoutePath } from "@/lib/route-paths";
-import { openSplitTabAtom, openThreadInTab } from "@/lib/split-layout/tabs";
-import {
-  DEFAULT_HOME_LAYOUT,
   HOME_THREAD_SORTS,
   homeAttention,
   homeThreadTime,
-  isHomeLayoutPrefs,
+  liveThreadDescendants,
   moveHomeSection,
   pluginSectionId,
   projectSectionId,
@@ -55,46 +36,43 @@ import {
   type HomeLayoutPrefs,
   type HomeThreadSort,
 } from "./home-overview";
-import {
-  HomeThreadDescendantsContext,
-  ThreadRow,
-  type OpenThread,
-} from "./HomeThreadRow";
-import {
-  SplitTabBar,
-  useShowSplitTabLayout,
-} from "./thread-detail/SplitTabBar";
+import { ThreadDescendantsContext, ThreadRow, type OpenThread } from "./ThreadRow";
 
 const PROJECT_ROW_LIMIT = 6;
 const ATTENTION_ROW_LIMIT = 5;
 
-const homeLayoutAtom = atomWithStorage<HomeLayoutPrefs>(
-  "bb.home.layout",
-  DEFAULT_HOME_LAYOUT,
-  createJsonLocalStorage(isHomeLayoutPrefs),
-  { getOnInit: true },
-);
-
-const homeThreadSortAtom = atomWithStorage<HomeThreadSort>(
-  "bb.home.threadSort",
-  "message",
-  createJsonLocalStorage((value): value is HomeThreadSort =>
-    HOME_THREAD_SORTS.some((sort) => sort.value === value),
-  ),
-  { getOnInit: true },
-);
-
-const homeThreadOldestFirstAtom = atomWithStorage<boolean>(
-  "bb.home.threadOldestFirst",
-  false,
-  createJsonLocalStorage(
-    (value): value is boolean => typeof value === "boolean",
-  ),
-  { getOnInit: true },
-);
-
 const ICON_BUTTON_CLASS =
   "flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-state-hover hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
+
+export interface HomePluginSection {
+  pluginId: string;
+  id: string;
+  title: string;
+}
+
+export interface HomeThreadOrder {
+  sort: HomeThreadSort;
+  setSort: (sort: HomeThreadSort) => void;
+  isOldestFirst: boolean;
+  setIsOldestFirst: (isOldestFirst: boolean) => void;
+}
+
+export interface HomePageProps {
+  threads: readonly PluginSidebarThread[];
+  projects: readonly PluginSidebarProject[];
+  pluginSections: readonly HomePluginSection[];
+  renderPluginSection: (section: HomePluginSection) => ReactNode;
+  layout: HomeLayoutPrefs;
+  setLayout: (layout: HomeLayoutPrefs) => void;
+  order: HomeThreadOrder;
+  search: {
+    shortcutLabel: string | null;
+    open: (anchor: HTMLElement) => void;
+  };
+  addProject: { isAvailable: boolean; isCreating: boolean; open: () => void };
+  onOpenThread: OpenThread;
+  onNewThread: (projectId: string) => void;
+}
 
 function AttentionColumn({
   title,
@@ -104,7 +82,7 @@ function AttentionColumn({
   onOpen,
 }: {
   title: string;
-  threads: readonly ThreadListEntry[];
+  threads: readonly PluginSidebarThread[];
   emptyText: string;
   projectNames: ReadonlyMap<string, string>;
   onOpen: OpenThread;
@@ -144,8 +122,8 @@ function AttentionPanel({
   projectNames,
   onOpen,
 }: {
-  needsYou: readonly ThreadListEntry[];
-  replies: readonly ThreadListEntry[];
+  needsYou: readonly PluginSidebarThread[];
+  replies: readonly PluginSidebarThread[];
   projectNames: ReadonlyMap<string, string>;
   onOpen: OpenThread;
 }) {
@@ -172,23 +150,24 @@ function AttentionPanel({
 
 function ProjectSection({
   project,
-  isPersonal,
+  threads: projectThreads,
+  order,
   onOpen,
   onNewThread,
 }: {
-  project: ProjectWithThreadsResponse;
-  isPersonal: boolean;
+  project: PluginSidebarProject;
+  threads: readonly PluginSidebarThread[];
+  order: HomeThreadOrder;
   onOpen: OpenThread;
   onNewThread: () => void;
 }) {
   const [filter, setFilter] = useState<string | null>(null);
   const [page, setPage] = useState(0);
-  const [sort, setSort] = useAtom(homeThreadSortAtom);
-  const [isOldestFirst, setIsOldestFirst] = useAtom(homeThreadOldestFirstAtom);
+  const { sort, setSort, isOldestFirst, setIsOldestFirst } = order;
   const query = filter ?? "";
   const threads = useMemo(
-    () => sortAndFilterHomeThreads(project.threads, sort, query, isOldestFirst),
-    [project.threads, sort, query, isOldestFirst],
+    () => sortAndFilterHomeThreads(projectThreads, sort, query, isOldestFirst),
+    [projectThreads, sort, query, isOldestFirst],
   );
   const pageCount = Math.max(1, Math.ceil(threads.length / PROJECT_ROW_LIMIT));
   const currentPage = Math.min(page, pageCount - 1);
@@ -196,12 +175,12 @@ function ProjectSection({
   const shown = threads.slice(pageStart, pageStart + PROJECT_ROW_LIMIT);
   const sortIndex = HOME_THREAD_SORTS.findIndex((s) => s.value === sort);
   const sortOption = HOME_THREAD_SORTS[sortIndex] ?? HOME_THREAD_SORTS[0];
-  const repoUrl = repoWebUrl(project.gitRemoteUrl);
+  const repoUrl = repoWebUrl(project.experimental_gitRemoteUrl);
   return (
     <section className="group/project flex flex-col">
       <div className="flex h-8 items-center gap-2">
         <Icon
-          name={isPersonal ? "UserRound" : "FolderGit"}
+          name={project.isPersonal ? "UserRound" : "FolderGit"}
           className="size-4 text-muted-foreground"
         />
         <h2 className="min-w-0 truncate text-sm font-semibold">
@@ -255,13 +234,13 @@ function ProjectSection({
               <Icon name="Github" className="size-3.5" />
             </a>
           )}
-          <Link
-            to={getSettingsProjectRoutePath(project.id)}
+          <a
+            href={project.settingsHref}
             aria-label="Project settings"
             className={ICON_BUTTON_CLASS}
           >
             <Icon name="Settings" className="size-3.5" />
-          </Link>
+          </a>
         </div>
       </div>
       {filter === null ? null : (
@@ -402,16 +381,20 @@ function SortableSection({
   );
 }
 
-export default function HomeView() {
-  const { data } = useSidebarNavigation();
-  const store = useStore();
-  const show = useShowSplitTabLayout();
-  const navigate = useNavigate();
-  const [prefs, setPrefs] = useAtom(homeLayoutAtom);
+export function HomePage({
+  threads,
+  projects: unorderedProjects,
+  pluginSections: pluginSectionList,
+  renderPluginSection,
+  layout: prefs,
+  setLayout: setPrefs,
+  order,
+  search,
+  addProject,
+  onOpenThread,
+  onNewThread,
+}: HomePageProps) {
   const [isEditing, setIsEditing] = useState(false);
-  const quickCreateProject = useQuickCreateProjectController();
-  const commandRunner = useAppCommandRunner();
-  const searchShortcut = useAppCommandShortcut("thread.search");
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
     useSensor(KeyboardSensor, {
@@ -419,20 +402,29 @@ export default function HomeView() {
     }),
   );
   const projects = useMemo(
-    () => (data === undefined ? [] : [data.personalProject, ...data.projects]),
-    [data],
+    () => [
+      ...unorderedProjects.filter((project) => project.isPersonal),
+      ...unorderedProjects.filter((project) => !project.isPersonal),
+    ],
+    [unorderedProjects],
   );
   const projectNames = useMemo(
     () => new Map(projects.map((project) => [project.id, project.name])),
     [projects],
   );
-  const attention = useMemo(() => homeAttention(projects), [projects]);
-  const descendants = threadDescendantsFor(threadEntryMapFor(data));
-  const { homepageSections } = usePluginSlots();
+  const threadsByProject = useMemo(() => {
+    const byProject = new Map<string, PluginSidebarThread[]>();
+    for (const thread of threads) {
+      const list = byProject.get(thread.projectId);
+      if (list === undefined) byProject.set(thread.projectId, [thread]);
+      else list.push(thread);
+    }
+    return byProject;
+  }, [threads]);
+  const attention = useMemo(() => homeAttention(threads), [threads]);
+  const descendants = useMemo(() => liveThreadDescendants(threads), [threads]);
   const pluginSections = new Map(
-    homepageSections
-      .filter((section) => !isLeadHomepageSection(section))
-      .map((section) => [
+    pluginSectionList.map((section) => [
       pluginSectionId(section.pluginId, section.id),
       section,
     ]),
@@ -442,11 +434,6 @@ export default function HomeView() {
     projects.map((project) => project.id),
     [...pluginSections.keys()],
   );
-  const openThread: OpenThread = (thread) =>
-    openThreadInTab(store, navigate, {
-      projectId: thread.projectId,
-      threadId: thread.id,
-    });
 
   const describe = (id: string) => {
     if (id === "attention")
@@ -458,7 +445,7 @@ export default function HomeView() {
             needsYou={attention.needsYou}
             replies={attention.replies}
             projectNames={projectNames}
-            onOpen={openThread}
+            onOpen={onOpenThread}
           />
         ),
       };
@@ -467,25 +454,20 @@ export default function HomeView() {
       return {
         icon: "Puzzle",
         label: pluginSection.title,
-        body: (
-          <PluginHomepageSection
-            section={pluginSection}
-            project={HOME_SECTION_PROJECT}
-          />
-        ),
+        body: renderPluginSection(pluginSection),
       };
     const project = projects.find((p) => projectSectionId(p.id) === id);
     if (project === undefined) return null;
-    const isPersonal = project.id === data?.personalProject.id;
     return {
-      icon: isPersonal ? "UserRound" : "FolderGit",
+      icon: project.isPersonal ? "UserRound" : "FolderGit",
       label: project.name,
       body: (
         <ProjectSection
           project={project}
-          isPersonal={isPersonal}
-          onOpen={openThread}
-          onNewThread={() => show(store.set(openSplitTabAtom, project.id))}
+          threads={threadsByProject.get(project.id) ?? []}
+          order={order}
+          onOpen={onOpenThread}
+          onNewThread={() => onNewThread(project.id)}
         />
       ),
     };
@@ -500,33 +482,30 @@ export default function HomeView() {
   };
 
   return (
-    <HomeThreadDescendantsContext value={descendants}>
-      <SplitTabBar />
+    <ThreadDescendantsContext value={descendants}>
       <div className="min-h-0 flex-1 overflow-y-auto">
         <div className="mx-auto flex max-w-3xl flex-col gap-8 pt-4 pb-10">
           <div className="flex items-center gap-2">
             <button
               type="button"
               className="flex h-8 items-center gap-2 rounded-lg bg-surface-recessed px-3 text-sm text-muted-foreground transition-colors hover:bg-state-hover hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              onClick={(event) =>
-                commandRunner.dispatch("thread.search", event.currentTarget)
-              }
+              onClick={(event) => search.open(event.currentTarget)}
             >
               <Icon name="Search" className="size-3.5" />
               Search threads
-              {searchShortcut === null ? null : (
+              {search.shortcutLabel === null ? null : (
                 <kbd className="pl-3 font-sans text-xs">
-                  {searchShortcut.label}
+                  {search.shortcutLabel}
                 </kbd>
               )}
             </button>
             <div className="ml-auto flex items-center gap-1">
-              {quickCreateProject.isAvailable ? (
+              {addProject.isAvailable ? (
                 <button
                   type="button"
-                  disabled={quickCreateProject.isCreating}
+                  disabled={addProject.isCreating}
                   className="flex h-8 items-center gap-2 rounded-lg px-2.5 text-xs text-muted-foreground transition-colors hover:bg-state-hover hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
-                  onClick={quickCreateProject.openCreateDialog}
+                  onClick={addProject.open}
                 >
                   <Icon name="FolderPlus" className="size-3.5" />
                   Add project
@@ -622,6 +601,6 @@ export default function HomeView() {
           ) : null}
         </div>
       </div>
-    </HomeThreadDescendantsContext>
+    </ThreadDescendantsContext>
   );
 }

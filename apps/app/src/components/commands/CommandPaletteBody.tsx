@@ -1,4 +1,5 @@
 import { useServerChoices } from "@/hooks/useServerChoices";
+import { pinnedTabPanel } from "@/lib/pinned-tab";
 import {
   useCallback,
   useEffect,
@@ -82,7 +83,9 @@ export function CommandPaletteBody({
     () =>
       buildPluginPagePaletteActions({
         navigate: (path) => void navigate(path),
-        panels: pluginSlots.navPanels,
+        panels: pluginSlots.navPanels.filter(
+          (panel) => panel !== pinnedTabPanel(pluginSlots.navPanels),
+        ),
       }),
     [navigate, pluginSlots.navPanels],
   );

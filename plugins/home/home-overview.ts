@@ -167,3 +167,147 @@ export function formatRelativeTime(timestamp: number, now: number): string {
     day: "numeric",
   });
 }
+
+export function homeAttention(threads: readonly PluginSidebarThread[]): {
+  needsYou: PluginSidebarThread[];
+  replies: PluginSidebarThread[];
+} {
+  const descendants = liveThreadDescendants(threads);
+  const byAttention = (a: PluginSidebarThread, b: PluginSidebarThread) =>
+    b.latestAttentionAt - a.latestAttentionAt;
+  const needsYou: PluginSidebarThread[] = [];
+  const replies: PluginSidebarThread[] = [];
+  for (const thread of homeTopLevelThreads(threads)) {
+    const status = resolveHomeThreadStatus(thread, descendants);
+    if (NEEDS_YOU_INDICATORS.has(status.indicator)) needsYou.push(thread);
+    else if (!status.isWorking && status.indicator === "unread-success")
+      replies.push(thread);
+  }
+  return { needsYou: needsYou.sort(byAttention), replies: replies.sort(byAttention) };
+}
+
+export const HOME_THREAD_SORTS = [
+  { value: "message", label: "Your last message" },
+  { value: "activity", label: "Last activity" },
+  { value: "created", label: "Created" },
+] as const;
+
+export type HomeThreadSort = (typeof HOME_THREAD_SORTS)[number]["value"];
+
+export function isHomeThreadSort(value: unknown): value is HomeThreadSort {
+  return HOME_THREAD_SORTS.some((sort) => sort.value === value);
+}
+
+export function homeThreadTime(
+  thread: PluginSidebarThread,
+  sort: HomeThreadSort,
+): number {
+  if (sort === "activity") return thread.latestAttentionAt;
+  if (sort === "created") return thread.createdAt;
+  return lastMessageTime(thread);
+}
+
+export function sortAndFilterHomeThreads(
+  threads: readonly PluginSidebarThread[],
+  sort: HomeThreadSort,
+  query: string,
+  isOldestFirst = false,
+): PluginSidebarThread[] {
+  const needle = query.trim().toLowerCase();
+  const direction = isOldestFirst ? -1 : 1;
+  return homeTopLevelThreads(threads)
+    .filter(
+      (thread) =>
+        needle.length === 0 ||
+        thread.displayTitle.toLowerCase().includes(needle),
+    )
+    .sort(
+      (a, b) => direction * (homeThreadTime(b, sort) - homeThreadTime(a, sort)),
+    );
+}
+
+export const HOME_FIXED_SECTION_IDS = ["attention"];
+
+export interface HomeLayoutPrefs {
+  order: string[];
+  hidden: string[];
+}
+
+export const DEFAULT_HOME_LAYOUT: HomeLayoutPrefs = { order: [], hidden: [] };
+
+export function isHomeLayoutPrefs(value: unknown): value is HomeLayoutPrefs {
+  if (typeof value !== "object" || value === null) return false;
+  const { order, hidden } = value as Record<string, unknown>;
+  return (
+    Array.isArray(order) &&
+    Array.isArray(hidden) &&
+    [...order, ...hidden].every((id) => typeof id === "string")
+  );
+}
+
+export function projectSectionId(projectId: string): string {
+  return `project:${projectId}`;
+}
+
+export function pluginSectionId(pluginId: string, sectionId: string): string {
+  return `plugin:${pluginId}/${sectionId}`;
+}
+
+export function resolveHomeSections(
+  prefs: HomeLayoutPrefs,
+  projectIds: readonly string[],
+  pluginSectionIds: readonly string[] = [],
+): { visible: string[]; hidden: string[] } {
+  const leading = [...HOME_FIXED_SECTION_IDS, ...pluginSectionIds];
+  const available = [...leading, ...projectIds.map(projectSectionId)];
+  const unsaved = available.filter((id) => !prefs.order.includes(id));
+  const ordered = [
+    ...unsaved.filter((id) => leading.includes(id)),
+    ...prefs.order.filter((id) => available.includes(id)),
+    ...unsaved.filter((id) => !leading.includes(id)),
+  ];
+  const hidden = new Set(prefs.hidden);
+  return {
+    visible: ordered.filter((id) => !hidden.has(id)),
+    hidden: ordered.filter((id) => hidden.has(id)),
+  };
+}
+
+export function moveHomeSection(
+  prefs: HomeLayoutPrefs,
+  visible: readonly string[],
+  activeId: string,
+  overId: string,
+): HomeLayoutPrefs {
+  const from = visible.indexOf(activeId);
+  const to = visible.indexOf(overId);
+  if (from === -1 || to === -1 || from === to) return prefs;
+  const order = [...visible];
+  order.splice(to, 0, ...order.splice(from, 1));
+  return { order: [...order, ...prefs.hidden], hidden: prefs.hidden };
+}
+
+export function setHomeSectionHidden(
+  prefs: HomeLayoutPrefs,
+  visible: readonly string[],
+  id: string,
+  isHidden: boolean,
+): HomeLayoutPrefs {
+  const hidden = prefs.hidden.filter((hiddenId) => hiddenId !== id);
+  return {
+    order: isHidden ? [...visible, ...hidden] : [...visible, id, ...hidden],
+    hidden: isHidden ? [...hidden, id] : hidden,
+  };
+}
+
+export function repoWebUrl(gitRemoteUrl: string | null): string | null {
+  if (gitRemoteUrl === null) return null;
+  const ssh = /^[^@]+@([^:]+):(.+?)(?:\.git)?$/.exec(gitRemoteUrl);
+  if (ssh) return `https://${ssh[1]}/${ssh[2]}`;
+  try {
+    const url = new URL(gitRemoteUrl);
+    return `https://${url.host}${url.pathname.replace(/\.git$/, "")}`;
+  } catch {
+    return null;
+  }
+}
