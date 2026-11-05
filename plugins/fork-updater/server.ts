@@ -25,6 +25,8 @@ export function formatStatus(status: ForkUpdaterStatus): string {
   else if (status.kind === "plugins")
     lines.push(`${status.commits.length} pending commits, plugin reload only: ${status.reloadPluginIds.join(", ")}`);
   else lines.push(`${status.commits.length} pending commits, needs an app rebuild and restart`);
+  if (status.installPluginDirs.length > 0)
+    lines.push(`Installs ${status.installPluginDirs.length} new plugins: ${status.installPluginDirs.join(", ")}`);
   for (const commit of status.commits) lines.push(`  ${commit.sha} ${commit.subject}`);
   if (status.progress !== null) lines.push(`In progress: ${status.progress}`);
   if (status.error !== null) lines.push(`Error: ${status.error}`);
@@ -51,6 +53,7 @@ export default async function forkUpdaterPlugin(bb: BbPluginApi): Promise<void> 
     commits: [],
     kind: "up-to-date",
     reloadPluginIds: [],
+    installPluginDirs: [],
     checkedAt: null,
     progress: null,
     error: null,
@@ -76,11 +79,35 @@ export default async function forkUpdaterPlugin(bb: BbPluginApi): Promise<void> 
     return primaryHostId;
   }
 
-  async function localPlugins() {
+  async function installedPlugins() {
     const { plugins } = await bb.sdk.plugins.list();
-    return plugins
-      .filter((plugin) => plugin.source.startsWith("path:"))
-      .map((plugin) => ({ id: plugin.id, rootDir: plugin.rootDir }));
+    return plugins;
+  }
+
+  function pluginsRoot(path: string): string {
+    return `${path.replace(/\/+$/u, "")}/plugins`;
+  }
+
+  function missingForkPlugins(
+    path: string,
+    dirs: readonly string[],
+    plugins: readonly { id: string; source: string }[],
+  ): string[] {
+    const root = pluginsRoot(path);
+    return dirs.filter(
+      (dir) =>
+        !plugins.some(
+          (plugin) => plugin.id === dir || plugin.source === `path:${root}/${dir}` || plugin.source === `builtin:${dir}`,
+        ),
+    );
+  }
+
+  async function installForkPlugins(path: string, dirs: readonly string[]): Promise<void> {
+    const root = pluginsRoot(path);
+    for (const dir of dirs) {
+      setStatus({ progress: `Installing ${dir}` });
+      await bb.sdk.plugins.install({ source: `path:${root}/${dir}` });
+    }
   }
 
   async function runStep(step: UpdateStep, path: string): Promise<string> {
@@ -102,18 +129,30 @@ export default async function forkUpdaterPlugin(bb: BbPluginApi): Promise<void> 
       );
       if (result.installedCommit !== null) await saveBuiltCommit(result.installedCommit);
       swapError = result.swapError ?? swapError;
+      const plugins = await installedPlugins();
+      let missing = missingForkPlugins(path, result.forkPluginDirs, plugins);
+      if (result.installedCommit !== null && missing.length > 0) {
+        await installForkPlugins(path, missing);
+        setStatus({ progress: null });
+        missing = [];
+      }
+      const localPlugins = plugins
+        .filter((plugin) => plugin.source.startsWith("path:"))
+        .map((plugin) => ({ id: plugin.id, rootDir: plugin.rootDir }));
       const classified = result.builtIsAncestor
-        ? classifyChanges(path, result.changedFiles, await localPlugins())
+        ? classifyChanges(path, result.changedFiles, localPlugins, missing)
         : ({ kind: "rebuild" } as const);
       const docsOnly = classified.kind === "docs";
       if (docsOnly) await saveBuiltCommit(await runStep("fast-forward", path));
+      const upToDate = classified.kind === "up-to-date" || docsOnly;
       setStatus({
         checkoutPath: path,
         builtCommit,
         remoteCommit: result.remoteCommit,
         commits: docsOnly ? [] : result.commits,
-        kind: docsOnly ? "up-to-date" : classified.kind,
+        kind: upToDate ? (missing.length > 0 ? "plugins" : "up-to-date") : classified.kind,
         reloadPluginIds: classified.kind === "plugins" ? classified.pluginIds : [],
+        installPluginDirs: missing,
         checkedAt: Date.now(),
         ...(result.swapError === null ? {} : { progress: null }),
         error: swapError,
@@ -151,10 +190,11 @@ export default async function forkUpdaterPlugin(bb: BbPluginApi): Promise<void> 
           setStatus({ progress: `Reloading ${pluginId}` });
           if (pluginId !== bb.pluginId) await bb.sdk.plugins.reload({ pluginId });
         }
+        await installForkPlugins(path, current.installPluginDirs);
         await saveBuiltCommit(head);
         setStatus({ progress: null, builtCommit: head });
         if (current.reloadPluginIds.includes(bb.pluginId)) {
-          setStatus({ kind: "up-to-date", commits: [], reloadPluginIds: [] });
+          setStatus({ kind: "up-to-date", commits: [], reloadPluginIds: [], installPluginDirs: [] });
           selfReloadPending = true;
         }
         return status;

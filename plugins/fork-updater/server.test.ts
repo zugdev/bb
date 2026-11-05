@@ -9,10 +9,14 @@ interface SwapReport {
   swapError: string | null;
 }
 
-function setup(changedFiles: string[], failStep: string | null = null) {
+function setup(changedFiles: string[], failStep: string | null = null, forkPluginDirs: string[] = []) {
   const report: SwapReport = { installedCommit: null, swapError: null };
   const steps: string[] = [];
   const reload = vi.fn(async () => ({}));
+  const install = vi.fn(async (args: { source: string }) => {
+    steps.push(`install ${args.source}`);
+    return {};
+  });
   const host = createFakePluginHost({
     pluginId: "fork-updater",
     sdk: {
@@ -22,9 +26,11 @@ function setup(changedFiles: string[], failStep: string | null = null) {
           plugins: [
             { id: "assistant", source: `path:${CHECKOUT}/plugins/assistant`, rootDir: `${CHECKOUT}/plugins/assistant` },
             { id: "fork-updater", source: `path:${CHECKOUT}/plugins/fork-updater`, rootDir: `${CHECKOUT}/plugins/fork-updater` },
+            { id: "bb--git", source: "builtin:git", rootDir: "/Applications/bb.app/builtin-plugins/git" },
           ],
         }),
         reload,
+        install,
       },
     },
     experimental_callHostRpc: async ({ method, input }) => {
@@ -34,6 +40,7 @@ function setup(changedFiles: string[], failStep: string | null = null) {
           builtIsAncestor: true,
           commits: [{ sha: "bbbbbbb", subject: "Change things" }],
           changedFiles,
+          forkPluginDirs,
           ...report,
         };
       }
@@ -43,7 +50,7 @@ function setup(changedFiles: string[], failStep: string | null = null) {
       return { headCommit: "bbbbbbb" };
     },
   });
-  return { host, steps, reload, report };
+  return { host, steps, reload, install, report };
 }
 
 describe("fork updater", () => {
@@ -134,5 +141,43 @@ describe("fork updater", () => {
     expect(await host.bb.storage.kv.get("built-commit")).toBe("5008564189");
     const status = await host.harness.callRpc("status", { refresh: false });
     expect(status).toMatchObject({ progress: null, error: expect.stringContaining("uncommitted changes") });
+  });
+
+  it("reports allowlisted plugins that are not installed yet", async () => {
+    const { host, install } = setup(["apps/server/src/index.ts"], null, ["assistant", "git", "home", "parent-link"]);
+    await plugin(host.bb);
+    const result = await host.harness.runCli(["status"]);
+    expect(result.stdout).toContain("Installs 2 new plugins: home, parent-link");
+    expect(install).not.toHaveBeenCalled();
+  });
+
+  it("installs a new plugin after the fast forward without rebuilding", async () => {
+    const { host, steps, reload } = setup(["plugins/home/server.ts", "plugins/assistant/app.tsx"], null, ["assistant", "home"]);
+    await plugin(host.bb);
+    await host.harness.runCli(["update"]);
+    expect(steps).toEqual(["fast-forward", `install path:${CHECKOUT}/plugins/home`]);
+    expect(reload).toHaveBeenCalledWith({ pluginId: "assistant" });
+  });
+
+  it("offers an update when only an allowlisted plugin is missing", async () => {
+    const { host, steps } = setup([], null, ["home"]);
+    await plugin(host.bb);
+    expect(await host.harness.callRpc("status", { refresh: true })).toMatchObject({
+      kind: "plugins",
+      installPluginDirs: ["home"],
+    });
+    await host.harness.runCli(["update"]);
+    expect(steps).toEqual(["fast-forward", `install path:${CHECKOUT}/plugins/home`]);
+  });
+
+  it("installs new plugins only once the rebuilt app reports the swap", async () => {
+    const { host, steps, report } = setup(["pnpm-lock.yaml", "plugins/home/server.ts"], null, ["home"]);
+    await plugin(host.bb);
+    await host.harness.runCli(["update"]);
+    expect(steps).toEqual(["fast-forward", "install", "package", "swap-and-reopen"]);
+
+    report.installedCommit = "bbbbbbb";
+    await host.harness.callRpc("status", { refresh: true });
+    expect(steps.at(-1)).toBe(`install path:${CHECKOUT}/plugins/home`);
   });
 });

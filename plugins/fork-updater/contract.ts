@@ -23,6 +23,7 @@ export const forkUpdaterHostContract = defineRpcContract({
         builtIsAncestor: z.boolean(),
         commits: z.array(commitSchema),
         changedFiles: z.array(z.string()),
+        forkPluginDirs: z.array(z.string()),
         installedCommit: z.string().nullable(),
         swapError: z.string().nullable(),
       })
@@ -44,6 +45,7 @@ export const statusSchema = z
     commits: z.array(commitSchema),
     kind: z.enum(["up-to-date", "plugins", "rebuild"]),
     reloadPluginIds: z.array(z.string()),
+    installPluginDirs: z.array(z.string()),
     checkedAt: z.number().nullable(),
     progress: z.string().nullable(),
     error: z.string().nullable(),

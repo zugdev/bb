@@ -10,9 +10,27 @@ import { forkUpdaterRpcContract, type ForkUpdaterStatus } from "./contract.js";
 export const FOOTER_ITEM_ID = "update";
 const ACCENT_BUTTON = "bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground";
 
+export function updateSummary(status: ForkUpdaterStatus): string {
+  const parts =
+    status.kind === "plugins"
+      ? status.reloadPluginIds.length === 0
+        ? []
+        : [`Reloads ${status.reloadPluginIds.join(", ")}`]
+      : ["Rebuilds and reinstalls bb.app, which quits bb"];
+  const count = status.installPluginDirs.length;
+  if (count > 0) parts.push(`installs ${count} new ${count === 1 ? "plugin" : "plugins"}: ${status.installPluginDirs.join(", ")}`);
+  const summary = parts.join(", then ");
+  const sentence = summary.charAt(0).toUpperCase() + summary.slice(1);
+  return status.kind === "plugins" ? `${sentence}, no restart` : sentence;
+}
+
 function headline(status: ForkUpdaterStatus, failure: string | null): string {
   if (failure !== null) return "Update failed";
   if (status.kind === "up-to-date") return "bb is up to date";
+  if (status.commits.length === 0) {
+    const count = status.installPluginDirs.length;
+    return `${count} new ${count === 1 ? "plugin" : "plugins"} to install`;
+  }
   return `${status.commits.length} ${status.commits.length === 1 ? "commit" : "commits"} behind main`;
 }
 
@@ -21,7 +39,8 @@ export function footerCss(pluginId: string, status: ForkUpdaterStatus | undefine
   if (status === undefined || (status.kind === "up-to-date" && status.error === null)) {
     return `[data-footer-item]:has(${button}) { display: none; }`;
   }
-  const label = status.error !== null ? "!" : status.commits.length > 0 ? String(status.commits.length) : "";
+  const count = status.commits.length || status.installPluginDirs.length;
+  const label = status.error !== null ? "!" : count > 0 ? String(count) : "";
   return `${button} { position: relative; }
 ${button}::after {
   content: ${JSON.stringify(label)};
@@ -62,11 +81,7 @@ export function UpdatePanel() {
         {headline(data, failure)}
       </div>
       {data.kind === "up-to-date" ? null : (
-        <div className="text-muted-foreground">
-          {data.kind === "plugins"
-            ? `Reloads ${data.reloadPluginIds.join(", ")}, no restart`
-            : "Rebuilds and reinstalls bb.app, which quits bb"}
-        </div>
+        <div className="text-muted-foreground">{updateSummary(data)}</div>
       )}
       {data.commits.length === 0 ? null : (
         <ul className="flex max-h-40 flex-col gap-1 overflow-auto">
