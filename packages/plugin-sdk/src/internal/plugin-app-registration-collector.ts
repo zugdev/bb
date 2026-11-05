@@ -1102,6 +1102,14 @@ export function collectPluginAppRegistrations(
         ) {
           throw new Error(`${kind}: "placement" must be "menu" or "header"`);
         }
+        if (
+          registration.experimental_headerLead !== undefined &&
+          typeof registration.experimental_headerLead !== "boolean"
+        ) {
+          throw new Error(
+            `${kind}: "experimental_headerLead" must be a boolean`,
+          );
+        }
         collected.threadActions.push({
           id,
           title: requireNonEmptyString(kind, "title", registration.title),
@@ -1110,6 +1118,9 @@ export function collectPluginAppRegistrations(
           ...requireOptionalOrder(kind, registration.order),
           ...(registration.placement !== undefined
             ? { placement: registration.placement }
+            : {}),
+          ...(registration.experimental_headerLead !== undefined
+            ? { experimental_headerLead: registration.experimental_headerLead }
             : {}),
           ...(registration.useData !== undefined
             ? { useData: registration.useData }

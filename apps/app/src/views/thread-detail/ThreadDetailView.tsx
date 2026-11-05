@@ -1,4 +1,5 @@
 import { AppPanelTabsPublisher } from "@/lib/app-panel-tabs";
+import type { ThreadHeaderActionEntry } from "@/lib/thread-actions/thread-action-registry";
 import {
   getThreadFixedTabOwnerId,
   useAppPanelController,
@@ -223,6 +224,17 @@ const EMPTY_PROJECT_THREAD_SUBSET_FILTERS =
   {} satisfies ProjectThreadSubsetFilters;
 const EMPTY_TERMINAL_SESSIONS: readonly TerminalSession[] = [];
 const THREAD_HEADER_ACTIONS_GROUP = "0_header";
+
+function toHeaderMenuItem({
+  key,
+  action,
+}: ThreadHeaderActionEntry): PluginThreadActionsInlineItem {
+  return {
+    key,
+    group: THREAD_HEADER_ACTIONS_GROUP,
+    action: { ...action, run: () => action.run() },
+  };
+}
 const THREAD_DETAIL_SCREEN_PRESENTATION = { kind: "page" } as const;
 
 type OpenFilePreviewHandler = (relativePath: string) => void;
@@ -1517,14 +1529,13 @@ function ThreadDetailViewInternal(
           inline={
             includeResponsiveActions
               ? [
+                  ...headerActions
+                    .filter((entry) => entry.lead)
+                    .map(toHeaderMenuItem),
                   ...responsiveWorkspaceActions,
-                  ...headerActions.map(
-                    ({ key, action }): PluginThreadActionsInlineItem => ({
-                      key,
-                      group: THREAD_HEADER_ACTIONS_GROUP,
-                      action: { ...action, run: () => action.run() },
-                    }),
-                  ),
+                  ...headerActions
+                    .filter((entry) => !entry.lead)
+                    .map(toHeaderMenuItem),
                 ]
               : []
           }

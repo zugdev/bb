@@ -3992,15 +3992,25 @@ as `experimental_useNavigationActions` already does, before stabilizing.
 
 ## Opening a thread in the caller's pane
 
-`BbNavigate.toThread(threadId, { experimental_inPane: true })`, called from a component rendered inside a pane, replaces that pane's thread through the pane's `navigateInPane`. When another split pane already shows the thread it navigates to the thread's route instead, so that pane is reused and the thread never shows twice. Without a pane, for example from a thread action's `item` input, it navigates as without options. Plain `toThread` in a split opens the thread beside the split, so a component inside a pane has no other way to replace its own pane.
+`BbNavigate.toThread(threadId, { experimental_inPane: true })`, called from a component rendered inside a pane, replaces that pane's thread through the pane's `navigateInPane`. When another split pane already shows the thread it focuses that pane and navigates to its route through `openThreadInSplit`, the path `split: true` takes, so that pane is reused and the thread never shows twice. Without a pane, for example from a thread action's `item` input, it navigates as without options. Plain `toThread` in a split opens the thread beside the split, so a component inside a pane has no other way to replace its own pane.
 
 Core caller: `useBbNavigate` in `apps/app/src/lib/plugin-navigation-hooks.ts`, which took the rule from the parent link `ThreadDetailHeader` used to draw. First plugin: `plugins/parent-link` (fork).
 
 **Audit before stabilizing.**
 
-1. **Focus.** When another pane shows the thread, the URL moves to it but the split layout keeps the clicked pane focused, because the click's pointerdown focuses the clicked pane first. Decide whether the option should set the focused pane itself.
-2. **Options shape.** Decide whether `split`, `experimental_tab` and `experimental_inPane` should merge into one `target` option.
-3. **Core use.** Core's own header controls don't call `useBbNavigate`; decide whether the timeline's thread links should route through this option.
+1. **Options shape.** Decide whether `split`, `experimental_tab` and `experimental_inPane` should merge into one `target` option.
+2. **Core use.** Core's own header controls don't call `useBbNavigate`; decide whether the timeline's thread links should route through this option.
+
+## `PluginThreadActionRegistration.experimental_headerLead`
+
+With `placement: "header"`, `experimental_headerLead: true` puts the action's row before the workspace's "Open workspace in …" rows when the header folds into the thread menu at compact width and in narrow split panes. Without it header actions follow those rows. It changes nothing in the wide header, where header actions stay buttons after the Open button.
+
+Core caller: `ThreadDetailView` builds the folded rows from `useThreadHeaderActionEntries`, which reads the flag into each entry's `lead`. First plugin: `plugins/parent-link` (fork), so "Go to parent" is the first row as it was before the link moved into a plugin.
+
+**Audit before stabilizing.**
+
+1. **Shape.** A boolean covers one slot before core's rows. Decide whether core's Open rows should become a group that header actions sort against with `group` and `order`, which would remove the flag.
+2. **Wide header.** Decide whether a lead action should also sit before the Open button when the header is wide.
 
 ## Provider discovery metadata
 

@@ -22,6 +22,7 @@ function sidebarThread(
 ): PluginSidebarThread {
   return {
     projectId: "proj_a",
+    experimental_lastUserMessageAt: null,
     title: null,
     titleFallback: null,
     displayTitle: overrides.id,

@@ -14,10 +14,7 @@ import {
 } from "react";
 import { Button } from "@bb/shared-ui/button";
 import { useAtomValue } from "jotai";
-import type {
-  PluginThreadActionEntry,
-  PluginThreadActionTarget,
-} from "@get-bb/plugin-sdk";
+import type { PluginThreadActionTarget } from "@get-bb/plugin-sdk";
 import { COARSE_POINTER_TOOLBAR_ACTION_BUTTON_CLASS } from "@bb/shared-ui/coarse-pointer-sizing";
 import { Icon } from "@bb/shared-ui/icon";
 import { SplitButton } from "@/components/ui/split-button.js";
@@ -40,7 +37,10 @@ import {
 import { useSidebarRename } from "@/components/sidebar/SidebarInlineRename";
 import { useThreadActions } from "@/components/thread/ThreadActionsProvider";
 import { ThreadTitle } from "@/components/thread/ThreadTitleMentions";
-import { useThreadHeaderActionEntries } from "@/lib/thread-actions/thread-action-registry";
+import {
+  useThreadHeaderActionEntries,
+  type ThreadHeaderActionEntry,
+} from "@/lib/thread-actions/thread-action-registry";
 import { SecondaryPanelHostLayoutContext } from "@/components/secondary-panel/SecondaryPanelHostLayoutContext";
 import {
   RIGHT_PANEL_TOGGLE_BUTTON_CLASS,
@@ -68,7 +68,7 @@ const NARROW_SPLIT_HEADER_MAX_WIDTH = 560;
 
 export interface ThreadDetailHeaderActionsMenuArgs {
   includeResponsiveActions: boolean;
-  headerActions: readonly PluginThreadActionEntry[];
+  headerActions: readonly ThreadHeaderActionEntry[];
   requestRename: (threadId: string) => void;
   onCloseAutoFocus: (event: Event) => void;
 }
