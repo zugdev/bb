@@ -2,8 +2,9 @@ import {
   useMemo,
   useRef,
   useState,
+  type ComponentProps,
   type PointerEvent as ReactPointerEvent,
-  type ReactNode,
+  type RefObject,
 } from "react";
 import { useAtomValue, useStore } from "jotai";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -15,8 +16,18 @@ import {
   CONTEXT_INACTIVE_TEXT_CLASS,
   CONTEXT_SELECTION_SURFACE_CLASS,
 } from "@bb/shared-ui/context-selection";
+import { OverflowFade } from "@bb/shared-ui/overflow-fade";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@bb/shared-ui/tooltip";
 import { useThread } from "@/hooks/queries/thread-queries";
-import { useSidebarNavigation } from "@/hooks/queries/sidebar-navigation-query";
+import {
+  useProjectDisplayName,
+  useSidebarNavigation,
+} from "@/hooks/queries/sidebar-navigation-query";
+import { useTabStripOverflow } from "@/components/ui/use-tab-strip-overflow";
 import { ProjectSelector } from "@/components/pickers/ProjectSelector";
 import {
   useAppCommandHandler,
@@ -25,13 +36,16 @@ import {
 } from "@/components/commands/AppCommandProvider";
 import { AppCommandShortcutHint } from "@/components/commands/AppCommandShortcutHint";
 import { HOME_ROUTE_PATH } from "@/lib/route-paths";
+import type { AppShortcutPresentation } from "@/lib/app-keybindings";
 import {
   useIsSidebarFramed,
   useIsSidebarShowing,
 } from "@/components/ui/sidebar.js";
 import { useIsCompactViewport } from "@bb/shared-ui/hooks/use-compact-viewport";
+import { useUsesSwipeChrome } from "@/components/layout/useUsesSwipeChrome";
 import {
   getBbDesktopInfo,
+  MACOS_APP_REGION_NO_DRAG_CLASS,
   MACOS_TITLE_BAR_COLLAPSED_SIDEBAR_RESERVE_CLASS,
   MACOS_TITLE_BAR_ROW_CLASS,
   MACOS_WINDOW_DRAG_CLASS,
@@ -51,7 +65,7 @@ import {
   useThreadEntriesById,
 } from "@/components/thread/ThreadStatusDot";
 import { homeThreadDot } from "@/views/home-overview";
-import type { SplitLayout } from "@/lib/split-layout";
+import type { PaneContent, SplitLayout } from "@/lib/split-layout";
 import {
   closeSplitTabAtom,
   movePaneToTabAtom,
@@ -59,33 +73,52 @@ import {
   renameSplitTabAtom,
   reopenClosedSplitItemAtom,
   selectSplitTabAtom,
+  sharedThreadProjectId,
   splitTabsAtom,
+  type SplitTab,
 } from "@/lib/split-layout/tabs";
 import { focusedPaneRoute } from "./splitThreadNavigation";
 
-function SplitTabTitle({
-  layout,
-  name,
-}: {
-  layout: SplitLayout | null;
-  name: string | null;
-}) {
-  const focused =
-    layout === null ? null : findPane(layout.root, layout.focusedPaneId);
+function usePaneTitle(content: PaneContent | null): string {
   const threadId =
-    focused?.content.kind === "thread" ||
-    focused?.content.kind === "thread-panel-tab"
-      ? focused.content.threadId
+    content?.kind === "thread" || content?.kind === "thread-panel-tab"
+      ? content.threadId
       : "";
   const thread = useThread(threadId);
-  const title =
-    name ??
-    (focused === null || focused.content.kind === "new-thread"
-      ? "New thread"
-      : focused.content.kind === "thread" ||
-          focused.content.kind === "thread-panel-tab"
-        ? (thread.data?.title ?? "Thread")
-        : "Extension");
+  if (content === null || content.kind === "new-thread") return "New thread";
+  if (content.kind === "thread" || content.kind === "thread-panel-tab") {
+    return thread.data?.title ?? "Thread";
+  }
+  return "Extension";
+}
+
+function PaneTitle({ content }: { content: PaneContent }) {
+  return <>{usePaneTitle(content)}</>;
+}
+
+function useSplitTabTitle(layout: SplitLayout | null, name: string | null) {
+  const focused =
+    layout === null ? null : findPane(layout.root, layout.focusedPaneId);
+  const focusedTitle = usePaneTitle(focused?.content ?? null);
+  const projectName = useProjectDisplayName(
+    sharedThreadProjectId(layout) ?? undefined,
+  );
+  if (name !== null) return { title: name, isProjectName: false };
+  if (projectName !== undefined) {
+    return { title: projectName, isProjectName: true };
+  }
+  return { title: focusedTitle, isProjectName: false };
+}
+
+function SplitTabTitle({
+  layout,
+  title,
+  showsExtraPanes,
+}: {
+  layout: SplitLayout | null;
+  title: string;
+  showsExtraPanes: boolean;
+}) {
   const extraPanes = layout === null ? 0 : countPanes(layout.root) - 1;
   const entries = useThreadEntriesById();
   const descendants = useThreadDescendants();
@@ -104,10 +137,34 @@ function SplitTabTitle({
     <>
       <ThreadStatusDot dot={dot} />
       <span className="min-w-0 truncate">{title}</span>
-      {extraPanes > 0 ? (
+      {showsExtraPanes && extraPanes > 0 ? (
         <span className={CONTEXT_INACTIVE_TEXT_CLASS}>+{extraPanes}</span>
       ) : null}
     </>
+  );
+}
+
+function SplitTabTooltip({
+  layout,
+  title,
+}: {
+  layout: SplitLayout | null;
+  title: string;
+}) {
+  const panes = layout === null ? [] : listPanes(layout.root);
+  return (
+    <div className="flex flex-col gap-1">
+      <div className="font-medium">{title}</div>
+      {panes.length > 0 ? (
+        <ul className="flex flex-col gap-0.5 opacity-80">
+          {panes.map((pane) => (
+            <li key={pane.paneId} className="truncate">
+              <PaneTitle content={pane.content} />
+            </li>
+          ))}
+        </ul>
+      ) : null}
+    </div>
   );
 }
 
@@ -242,34 +299,129 @@ function TabShell({
   onSelect,
   noDragClassName,
   dropTabId,
+  className,
   children,
-}: {
+  ...props
+}: Omit<ComponentProps<"div">, "onSelect"> & {
   isActive: boolean;
-  onSelect: (event: ReactPointerEvent) => void;
+  onSelect: (event: ReactPointerEvent<HTMLDivElement>) => void;
   noDragClassName: string | false;
   dropTabId?: string;
-  children: ReactNode;
 }) {
   return (
     <div
+      {...props}
       role="tab"
       aria-selected={isActive}
       {...(dropTabId === undefined || isActive
         ? {}
         : { [SPLIT_TAB_DROP_ATTR]: dropTabId })}
       className={cn(
-        "group flex min-w-0 max-w-44 cursor-default items-center gap-1.5 border-r border-border px-2 text-xs select-none",
+        "group flex shrink-0 cursor-default items-center gap-1.5 border-r border-border px-2 text-xs select-none",
         noDragClassName,
         isActive
           ? CONTEXT_SELECTION_SURFACE_CLASS
           : CONTEXT_INACTIVE_TEXT_CLASS,
+        className,
       )}
       onPointerDown={(event) => {
+        props.onPointerDown?.(event);
         if (event.button === 0) onSelect(event);
       }}
     >
       {children}
     </div>
+  );
+}
+
+function SplitTabItem({
+  tab,
+  layout,
+  isActive,
+  activeTabRef,
+  command,
+  shortcut,
+  canClose,
+  isRenaming,
+  noDragClassName,
+  onSelect,
+  onRename,
+  onRenameDone,
+  onClose,
+}: {
+  tab: SplitTab;
+  layout: SplitLayout | null;
+  isActive: boolean;
+  activeTabRef: RefObject<HTMLDivElement | null>;
+  command: string | undefined;
+  shortcut: AppShortcutPresentation | null;
+  canClose: boolean;
+  isRenaming: boolean;
+  noDragClassName: string | false;
+  onSelect: (event: ReactPointerEvent<HTMLDivElement>, title: string) => void;
+  onRename: (title: string) => void;
+  onRenameDone: (name: string | null) => void;
+  onClose: () => void;
+}) {
+  const { title, isProjectName } = useSplitTabTitle(layout, tab.name);
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <TabShell
+          ref={isActive ? activeTabRef : undefined}
+          isActive={isActive}
+          noDragClassName={noDragClassName}
+          dropTabId={tab.id}
+          className="min-w-24 max-w-44"
+          onSelect={(event) => {
+            if (isRenaming) return;
+            onSelect(event, title);
+          }}
+        >
+          <div
+            className="flex min-w-0 flex-1 items-center gap-1.5"
+            onDoubleClick={() => onRename(title)}
+            onAuxClick={(event) => {
+              if (event.button === 1) onClose();
+            }}
+          >
+            {isRenaming ? (
+              <SplitTabRenameInput initialName={title} onDone={onRenameDone} />
+            ) : (
+              <SplitTabTitle
+                layout={layout}
+                title={title}
+                showsExtraPanes={!isProjectName}
+              />
+            )}
+          </div>
+          <span className="ml-auto flex shrink-0 items-center gap-1">
+            {command === undefined ? null : (
+              <AppCommandShortcutHint shortcut={shortcut} />
+            )}
+            {canClose ? (
+              <button
+                type="button"
+                aria-label="Close tab"
+                className={cn(
+                  "flex size-4 items-center justify-center rounded opacity-0 group-hover:opacity-100",
+                  CHROME_SUBTLE_ICON_BUTTON_FOREGROUND_CLASS,
+                )}
+                onPointerDown={(event) => event.stopPropagation()}
+                onClick={onClose}
+              >
+                <Icon name="CloseThreadPane" className="size-3" />
+              </button>
+            ) : null}
+          </span>
+        </TabShell>
+      </TooltipTrigger>
+      {isRenaming ? null : (
+        <TooltipContent side="bottom" align="start">
+          <SplitTabTooltip layout={layout} title={title} />
+        </TooltipContent>
+      )}
+    </Tooltip>
   );
 }
 
@@ -282,10 +434,7 @@ export function SplitTabBar() {
   const location = useLocation();
   const show = useShowSplitTabLayout();
   const isHome = location.pathname === HOME_ROUTE_PATH;
-  const [renaming, setRenaming] = useState<{
-    tabId: string;
-    title: string;
-  } | null>(null);
+  const [renamingTabId, setRenamingTabId] = useState<string | null>(null);
   const [isPickingProject, setIsPickingProject] = useState(false);
   const beginTabDrag = (event: ReactPointerEvent, label: string) => {
     const layout = store.get(splitLayoutAtom);
@@ -313,14 +462,21 @@ export function SplitTabBar() {
   const isInTitleBar = useIsSidebarFramed();
   const isSidebarShowing = useIsSidebarShowing();
   const isCompactViewport = useIsCompactViewport();
+  const hidesChromeToggles = useUsesSwipeChrome();
   const [desktopInfo] = useState(getBbDesktopInfo);
   const usesDesktopChrome = shouldUseMacosDesktopChrome(desktopInfo);
   const noDragClassName = usesDesktopChrome && MACOS_WINDOW_NO_DRAG_CLASS;
+  const { stripRef, viewportRef, contentRef, activeTabRef, overflow } =
+    useTabStripOverflow({
+      activeKey: isHome ? null : state.activeTabId,
+      contentKey: state.tabs,
+    });
   return (
     <div
       role="tablist"
       className={cn(
-        "-mx-4 -mt-4 mb-4 flex shrink-0 items-stretch overflow-x-auto md:-mx-5 md:-mt-5 md:mb-5 pr-12",
+        "-mx-4 -mt-4 mb-4 flex shrink-0 items-stretch md:-mx-5 md:-mt-5 md:mb-5",
+        !hidesChromeToggles && "pr-12",
         isInTitleBar
           ? [
               MACOS_TITLE_BAR_ROW_CLASS,
@@ -343,81 +499,68 @@ export function SplitTabBar() {
         <span>Home</span>
         <AppCommandShortcutHint shortcut={shortcuts.get(homeCommand) ?? null} />
       </TabShell>
-      {state.tabs.map((tab, index) => {
-        const isActive = !isHome && tab.id === state.activeTabId;
-        const command = SPLIT_TAB_SELECT_APP_COMMAND_IDS[index + 1];
-        return (
-          <TabShell
-            key={tab.id}
-            isActive={isActive}
-            noDragClassName={noDragClassName}
-            dropTabId={tab.id}
-            onSelect={(event) => {
-              if (renaming?.tabId === tab.id) return;
-              show(store.set(selectSplitTabAtom, tab.id));
-              beginTabDrag(event, event.currentTarget.textContent ?? "Thread");
-            }}
-          >
-            <div
-              className="flex min-w-0 flex-1 items-center gap-1.5"
-              title="Double click to rename"
-              onDoubleClick={(event) =>
-                setRenaming({
-                  tabId: tab.id,
-                  title:
-                    event.currentTarget.querySelector("span")?.textContent ??
-                    "",
-                })
-              }
-              onAuxClick={(event) => {
-                if (event.button === 1) {
-                  show(store.set(closeSplitTabAtom, tab.id));
-                }
-              }}
-            >
-              {renaming?.tabId === tab.id ? (
-                <SplitTabRenameInput
-                  initialName={renaming.title}
-                  onDone={(name) => {
-                    setRenaming(null);
+      <div ref={stripRef} className="relative flex min-w-0 items-stretch">
+        <OverflowFade
+          placement="left"
+          className={cn(
+            "z-10",
+            overflow.canScrollLeft ? "opacity-100" : "opacity-0",
+          )}
+        />
+        <OverflowFade
+          placement="right"
+          className={cn(
+            "z-10",
+            overflow.canScrollRight ? "opacity-100" : "opacity-0",
+          )}
+        />
+        <div
+          ref={viewportRef}
+          data-split-tab-scroll-viewport
+          className={cn(
+            "no-scrollbar flex min-w-0 items-stretch overflow-x-auto overflow-y-hidden",
+            usesDesktopChrome && MACOS_APP_REGION_NO_DRAG_CLASS,
+          )}
+        >
+          <div ref={contentRef} className="flex w-max items-stretch">
+            {state.tabs.map((tab, index) => {
+              const command = SPLIT_TAB_SELECT_APP_COMMAND_IDS[index + 1];
+              return (
+                <SplitTabItem
+                  key={tab.id}
+                  tab={tab}
+                  layout={
+                    tab.id === state.activeTabId ? activeLayout : tab.layout
+                  }
+                  isActive={!isHome && tab.id === state.activeTabId}
+                  activeTabRef={activeTabRef}
+                  command={command}
+                  shortcut={
+                    command === undefined
+                      ? null
+                      : (shortcuts.get(command) ?? null)
+                  }
+                  canClose={state.tabs.length > 1}
+                  isRenaming={renamingTabId === tab.id}
+                  noDragClassName={noDragClassName}
+                  onSelect={(event, title) => {
+                    show(store.set(selectSplitTabAtom, tab.id));
+                    beginTabDrag(event, title);
+                  }}
+                  onRename={() => setRenamingTabId(tab.id)}
+                  onRenameDone={(name) => {
+                    setRenamingTabId(null);
                     if (name !== null) {
                       store.set(renameSplitTabAtom, { tabId: tab.id, name });
                     }
                   }}
+                  onClose={() => show(store.set(closeSplitTabAtom, tab.id))}
                 />
-              ) : (
-                <SplitTabTitle
-                  name={tab.name}
-                  layout={
-                    tab.id === state.activeTabId ? activeLayout : tab.layout
-                  }
-                />
-              )}
-            </div>
-            <span className="ml-auto flex shrink-0 items-center gap-1">
-              {command === undefined ? null : (
-                <AppCommandShortcutHint
-                  shortcut={shortcuts.get(command) ?? null}
-                />
-              )}
-              {state.tabs.length > 1 ? (
-                <button
-                  type="button"
-                  aria-label="Close tab"
-                  className={cn(
-                    "flex size-4 items-center justify-center rounded opacity-0 group-hover:opacity-100",
-                    CHROME_SUBTLE_ICON_BUTTON_FOREGROUND_CLASS,
-                  )}
-                  onPointerDown={(event) => event.stopPropagation()}
-                  onClick={() => show(store.set(closeSplitTabAtom, tab.id))}
-                >
-                  <Icon name="CloseThreadPane" className="size-3" />
-                </button>
-              ) : null}
-            </span>
-          </TabShell>
-        );
-      })}
+              );
+            })}
+          </div>
+        </div>
+      </div>
       <button
         type="button"
         aria-label="New tab"

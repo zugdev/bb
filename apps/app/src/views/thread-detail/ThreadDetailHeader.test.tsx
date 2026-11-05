@@ -24,7 +24,12 @@ import {
   resetThreadActionRegistryForTest,
 } from "@/lib/thread-actions/thread-action-registry";
 import type { ThreadDetailHeaderActionsMenuArgs } from "./ThreadDetailHeader";
-import type { ParentThreadSection } from "./useParentThreadSection";
+import {
+  resetPluginSlotStoreForTest,
+  setPluginSlotRegistrations,
+} from "@/lib/plugin-slots";
+import { makePluginRegistrationSet } from "@/test/fixtures/plugins";
+import { resetAllCrashedPluginSlotsForTest } from "@/components/plugin/PluginSlotMount";
 import { useRenameController } from "@bb/shared-ui/inline-rename";
 import {
   RENAME_PRESENTATION_CASES,
@@ -33,17 +38,12 @@ import {
 import { RenameControllerProvider } from "@/components/sidebar/SidebarInlineRename";
 import type {
   PluginThreadActionRegistration,
+  ExperimentalThreadHeaderLeadingProps,
   PluginThreadActionTarget,
 } from "@get-bb/plugin-sdk";
 
 const mocks = vi.hoisted(() => ({
   renameThreadAsync: vi.fn(),
-  openThreadInTab: vi.fn(),
-}));
-
-vi.mock("@/lib/split-layout/tabs", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@/lib/split-layout/tabs")>()),
-  openThreadInTab: mocks.openThreadInTab,
 }));
 
 vi.mock("@/components/thread/ThreadActionsProvider", () => ({
@@ -208,38 +208,22 @@ afterEach(() => {
   viewportState.isCompactViewport = false;
   viewportState.isPointerCoarse = false;
   mocks.renameThreadAsync.mockReset();
-  mocks.openThreadInTab.mockReset();
+  resetPluginSlotStoreForTest();
+  resetAllCrashedPluginSlotsForTest();
   vi.restoreAllMocks();
   window.localStorage.clear();
   delete window.bbDesktop;
 });
 
 describe("ThreadDetailHeader", () => {
-  it("leaves the open right-panel collapse control to the panel header", () => {
-    render(
-      <PaneContext.Provider value={PANE_CONTEXT}>
-        <ThreadDetailHeader
-          actionsMenu={null}
-          isSecondaryPanelOpen
-          onToggleSecondaryPanel={vi.fn()}
-          thread={THREAD_TARGET}
-          threadTitle="Panel state"
-        />
-      </PaneContext.Provider>,
-    );
-
-    expect(
-      screen.queryByRole("button", { name: "Hide right panel" }),
-    ).toBeNull();
-  });
-
-  it("keeps one right-panel toggle mounted and hides it while the panel is open", () => {
+  it("keeps the single pane right-panel toggle in the header while the panel is open", () => {
+    const onToggleSecondaryPanel = vi.fn();
     const header = (isSecondaryPanelOpen: boolean) => (
       <PaneContext.Provider value={PANE_CONTEXT}>
         <ThreadDetailHeader
           actionsMenu={null}
           isSecondaryPanelOpen={isSecondaryPanelOpen}
-          onToggleSecondaryPanel={vi.fn()}
+          onToggleSecondaryPanel={onToggleSecondaryPanel}
           thread={THREAD_TARGET}
           threadTitle="Panel state"
         />
@@ -247,23 +231,22 @@ describe("ThreadDetailHeader", () => {
     );
     const view = render(header(false));
     const toggle = screen.getByRole("button", { name: "Show right panel" });
-    expect(toggle.hasAttribute("inert")).toBe(false);
+    expect(toggle.closest("[data-thread-header-pane-actions]")).not.toBeNull();
 
     view.rerender(header(true));
 
     expect(toggle.isConnected).toBe(true);
-    expect(toggle.classList.contains("hidden")).toBe(true);
-    expect(toggle.hasAttribute("inert")).toBe(true);
-    expect(toggle.getAttribute("aria-label")).toBe("Show right panel");
-
-    view.rerender(header(false));
-
-    expect(toggle.isConnected).toBe(true);
     expect(toggle.classList.contains("hidden")).toBe(false);
     expect(toggle.hasAttribute("inert")).toBe(false);
+    expect(toggle.getAttribute("aria-label")).toBe("Hide right panel");
+    expect(toggle.getAttribute("aria-expanded")).toBe("true");
+
+    fireEvent.click(toggle);
+
+    expect(onToggleSecondaryPanel).toHaveBeenCalledOnce();
   });
 
-  it("retains the compact trigger while the open shelf hides page actions", () => {
+  it("hides the right panel toggle on compact viewports", () => {
     viewportState.isCompactViewport = true;
 
     render(
@@ -279,15 +262,14 @@ describe("ThreadDetailHeader", () => {
     );
 
     const trigger = screen.getByRole("button", {
-      name: "Hide right panel",
+      name: "Show right panel",
+      hidden: true,
     });
-    expect(trigger.closest("[data-thread-header-pane-actions]")).not.toBeNull();
+    expect(trigger.classList.contains("hidden")).toBe(true);
+    expect(trigger.hasAttribute("inert")).toBe(true);
   });
 
-  it.each([
-    { expectedIcon: "PanelRight", isCompactViewport: true },
-    { expectedIcon: "PanelRight", isCompactViewport: false },
-  ])(
+  it.each([{ expectedIcon: "PanelRight", isCompactViewport: false }])(
     "shows the $expectedIcon glyph on the right-panel trigger",
     ({ expectedIcon, isCompactViewport }) => {
       viewportState.isCompactViewport = isCompactViewport;
@@ -978,76 +960,65 @@ describe("ThreadDetailHeader", () => {
     },
   );
 
-  describe("parent thread link", () => {
-    const PARENT_TARGET = { projectId: "proj_header", threadId: "thr_parent" };
-    const PARENT_THREAD: ParentThreadSection = {
-      parentThreadTitle: "Orchestrator",
-      href: "/projects/proj_header/threads/thr_parent",
-      relationship: "parent",
-      target: PARENT_TARGET,
-      isLoaded: true,
-    };
-
-    function renderWithParent(
-      parentThread: ParentThreadSection,
-      navigateInPane = vi.fn(),
+  describe("plugin leading slot", () => {
+    function registerLeading(
+      component: (props: ExperimentalThreadHeaderLeadingProps) => ReactNode,
     ) {
+      setPluginSlotRegistrations(
+        "leading-plugin",
+        makePluginRegistrationSet({
+          threadHeaderLeadings: [{ id: "breadcrumb", component }],
+        }),
+      );
+    }
+
+    function renderHeader() {
       render(
         <MemoryRouter>
-          <PaneContext.Provider value={{ ...PANE_CONTEXT, navigateInPane }}>
+          <PaneContext.Provider value={PANE_CONTEXT}>
             <ThreadDetailHeader
               actionsMenu={null}
               isSecondaryPanelOpen={false}
               onToggleSecondaryPanel={vi.fn()}
-              parentThread={parentThread}
               thread={THREAD_TARGET}
               threadTitle="Child"
             />
           </PaneContext.Provider>
         </MemoryRouter>,
       );
-      return navigateInPane;
     }
 
-    it("opens the parent in the same pane on click", () => {
-      const navigateInPane = renderWithParent(PARENT_THREAD);
+    it.each([
+      { isCompactViewport: false, isNarrow: "false" },
+      { isCompactViewport: true, isNarrow: "true" },
+    ])(
+      "renders before the title with isNarrow $isNarrow when compact is $isCompactViewport",
+      ({ isCompactViewport, isNarrow }) => {
+        viewportState.isCompactViewport = isCompactViewport;
+        registerLeading((props) => (
+          <span data-testid="leading">
+            {props.threadId}:{String(props.isNarrow)}
+          </span>
+        ));
+        renderHeader();
 
-      fireEvent.click(screen.getByRole("link", { name: /Orchestrator/ }));
-
-      expect(navigateInPane).toHaveBeenCalledWith(PARENT_TARGET);
-      expect(mocks.openThreadInTab).not.toHaveBeenCalled();
-    });
-
-    it.each([{ metaKey: true }, { ctrlKey: true }])(
-      "opens the parent in a new tab on %o click",
-      (modifier) => {
-        const navigateInPane = renderWithParent(PARENT_THREAD);
-
-        fireEvent.click(
-          screen.getByRole("link", { name: /Orchestrator/ }),
-          modifier,
-        );
-
-        expect(mocks.openThreadInTab).toHaveBeenCalledWith(
-          expect.anything(),
-          expect.any(Function),
-          PARENT_TARGET,
-        );
-        expect(navigateInPane).not.toHaveBeenCalled();
+        const leading = screen.getByTestId("leading");
+        expect(leading.textContent).toBe(`${THREAD_ID}:${isNarrow}`);
+        expect(
+          leading.compareDocumentPosition(screen.getByText("Child")) &
+            Node.DOCUMENT_POSITION_FOLLOWING,
+        ).toBeTruthy();
       },
     );
 
-    it("waits for the parent thread to load", () => {
-      renderWithParent({ ...PARENT_THREAD, isLoaded: false });
+    it("keeps the title when the slot component crashes", () => {
+      vi.spyOn(console, "error").mockImplementation(() => {});
+      registerLeading(() => {
+        throw new Error("boom");
+      });
+      renderHeader();
 
-      expect(screen.queryByRole("link")).toBeNull();
-    });
-
-    it("leaves the parent link to the thread menu at compact width", () => {
-      viewportState.isCompactViewport = true;
-      renderWithParent(PARENT_THREAD);
-
-      expect(screen.queryByRole("link")).toBeNull();
+      expect(screen.getByText("Child")).not.toBeNull();
     });
   });
 });

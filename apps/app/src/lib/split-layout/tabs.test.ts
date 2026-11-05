@@ -17,6 +17,7 @@ import {
   reopenClosedSplitItemAtom,
   seedSplitComposeProjectAtom,
   selectSplitTabAtom,
+  sharedThreadProjectId,
   splitTabsAtom,
 } from "./tabs";
 import type { SplitLayout } from "./types";
@@ -287,5 +288,32 @@ describe("split tabs", () => {
       [null, null],
       ["p2", "API"],
     ]);
+  });
+});
+
+describe("sharedThreadProjectId", () => {
+  const withRightPane = (
+    content: Parameters<typeof splitPane>[3],
+  ): SplitLayout => splitPane(threadLayout("a"), "pane-1", "right", content);
+
+  it("names a tab of two or more threads from one project after it", () => {
+    expect(
+      sharedThreadProjectId(
+        withRightPane({ kind: "thread", projectId: "p1", threadId: "b" }),
+      ),
+    ).toBe("p1");
+  });
+
+  it("keeps the thread rule for single panes, mixed projects and non-thread panes", () => {
+    expect(sharedThreadProjectId(null)).toBeNull();
+    expect(sharedThreadProjectId(threadLayout("a"))).toBeNull();
+    expect(
+      sharedThreadProjectId(
+        withRightPane({ kind: "thread", projectId: "p2", threadId: "b" }),
+      ),
+    ).toBeNull();
+    expect(
+      sharedThreadProjectId(withRightPane({ kind: "new-thread" })),
+    ).toBeNull();
   });
 });

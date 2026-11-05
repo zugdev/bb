@@ -25,6 +25,9 @@ import { lookupCachedThread } from "@/lib/cached-thread";
 import { useSetRootComposeProjectId } from "@/lib/root-compose-selection";
 import { openThreadInSplit } from "@/lib/split-layout/openThreadInSplit";
 import { openThreadInTab } from "@/lib/split-layout/tabs";
+import { findPaneByThread } from "@/lib/split-layout";
+import { splitLayoutAtom } from "@/lib/split-layout/atoms";
+import { useOptionalPaneContext } from "@/views/thread-detail/PaneContext";
 import { useAppNavigationHost } from "@/lib/app-navigation-host";
 import {
   normalizeExperimentalFileOpenOptions,
@@ -66,6 +69,7 @@ export function useBbNavigate(): BbNavigate {
   const queryClient = useQueryClient();
   const isCompact = useIsCompactViewport();
   const setRootComposeProjectId = useSetRootComposeProjectId();
+  const pane = useOptionalPaneContext();
   const toThread = useCallback<BbNavigate["toThread"]>(
     (threadId, options) => {
       onNavigate?.();
@@ -85,6 +89,16 @@ export function useBbNavigate(): BbNavigate {
           });
           return;
         }
+        const layout = store.get(splitLayoutAtom);
+        if (
+          options?.experimental_inPane &&
+          pane !== null &&
+          (layout === null ||
+            findPaneByThread(layout.root, projectId, threadId) === null)
+        ) {
+          pane.navigateInPane({ projectId, threadId });
+          return;
+        }
         void navigate(getThreadRoutePath({ projectId, threadId }));
       };
       const cached = lookupCachedThread(queryClient, threadId);
@@ -97,7 +111,7 @@ export function useBbNavigate(): BbNavigate {
         .then((thread) => open(thread.projectId))
         .catch(() => navigate(`/threads/${threadId}`));
     },
-    [isCompact, navigate, onNavigate, queryClient, store],
+    [isCompact, navigate, onNavigate, pane, queryClient, store],
   );
   const toProject = useCallback(
     (projectId: string) => {

@@ -11,6 +11,7 @@ const desktopHidden = {
   ownsWindowTopLeft: true,
   reserveMacosTrafficLights: false,
   sidebarKeepsCollapsedRail: false,
+  usesDesktopChrome: false,
 };
 
 describe("resolveWindowTopLeftReserveClassName", () => {
@@ -40,11 +41,17 @@ describe("resolveWindowTopLeftReserveClassName", () => {
       expected: MACOS_COLLAPSED_TOP_LEFT_RESERVE_CLASS,
     },
     {
-      name: "still reserves the trigger slot on compact viewports while the drawer shows",
+      name: "reserves nothing on compact web viewports, where swipes replace the trigger",
+      input: { ...desktopHidden, isCompactViewport: true },
+      expected: null,
+    },
+    {
+      name: "still reserves the trigger slot in a compact desktop window while the drawer shows",
       input: {
         ...desktopHidden,
         isCompactViewport: true,
         isSidebarShowing: true,
+        usesDesktopChrome: true,
       },
       expected: BROWSER_COLLAPSED_HEADER_RESERVE_CLASS,
     },

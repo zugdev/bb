@@ -46,6 +46,7 @@ import {
   PANEL_RESIZE_HIT_TARGET_CLASS,
 } from "@/components/secondary-panel/panelTransitionTokens";
 import { MACOS_APP_REGION_NO_DRAG_CLASS } from "@/lib/bb-desktop";
+import { useUsesSwipeChrome } from "@/components/layout/useUsesSwipeChrome";
 import { useRootComposePinnedPanelToggleBoxClassName } from "@/views/RootComposeSecondaryContent";
 import { useIsSidebarFramed } from "@/components/ui/sidebar.js";
 import { PluginComposerHostProvider } from "@/components/plugin/plugin-composer-host";
@@ -155,6 +156,7 @@ export function SplitWorkspaceSecondaryPanelHost({
     return true;
   });
   const isSidebarFramed = useIsSidebarFramed();
+  const hidesChromeToggles = useUsesSwipeChrome();
   const pageToggleBoxClassName = useRootComposePinnedPanelToggleBoxClassName();
 
   const setPanelWidthPercent = useSetAtom(widthPercentAtom);
@@ -188,7 +190,8 @@ export function SplitWorkspaceSecondaryPanelHost({
 
   const toggleLabel = isOpen ? "Hide right panel" : "Show right panel";
   const toggleIconName = RIGHT_PANEL_TOGGLE_ICON_NAME;
-  const showsCornerToggle = !isPaneMaximized && model === null;
+  const showsCornerToggle =
+    !isPaneMaximized && model === null && !hidesChromeToggles;
   const pinsCornerToggle = showsCornerToggle && !isOpen;
   const hostLayout = useMemo<SecondaryPanelHostLayout>(
     () => ({ isOpen, isSuppressed: isPaneMaximized, pinsCornerToggle }),

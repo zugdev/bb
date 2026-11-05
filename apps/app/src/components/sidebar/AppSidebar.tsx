@@ -31,7 +31,11 @@ import {
 } from "@/components/plugin/PluginSidebarFooterItems";
 import { SidebarPluginAttentionGlyph } from "./SidebarPluginAttentionGlyph";
 import { SidebarUpdatesBadge } from "./SidebarUpdatesBadge";
-import { SidebarResizeHandle, SidebarTopReserveRow } from "./SidebarChrome";
+import {
+  SidebarResizeHandle,
+  SidebarTitleBarSlot,
+  SidebarTopReserveRow,
+} from "./SidebarChrome";
 import { SIDEBAR_FOOTER_ACTION_CLASS } from "@bb/shared-ui/sidebar-row-classes";
 import { getRootComposeRoutePath, getThreadRoutePath } from "@/lib/route-paths";
 import { openUrlInExternalBrowser } from "@/lib/url-open-routing";
@@ -327,17 +331,22 @@ export function AppSidebar({
     </SidebarFooter>
   );
 
+  const header =
+    navigation.kind === "plugin" &&
+    navigation.slot.headerComponent !== undefined ? (
+      <SidebarNavigationHeader resolved={navigation} />
+    ) : undefined;
+  const isHeaderInTitleBar = isFramed && placement === "list";
+
   const body = (
     <>
       <SidebarTopReserveRow
         testId="app-sidebar-top-reserve-row"
-        headerSlot={
-          navigation.kind === "plugin" &&
-          navigation.slot.headerComponent !== undefined ? (
-            <SidebarNavigationHeader resolved={navigation} />
-          ) : undefined
-        }
+        headerSlot={isHeaderInTitleBar ? undefined : header}
       />
+      {isHeaderInTitleBar && open && !isBodyHidden && header ? (
+        <SidebarTitleBarSlot>{header}</SidebarTitleBarSlot>
+      ) : null}
       {placement === "list" ? navigationRegion("shrink-0") : null}
       <SidebarContent>
         <ThreadActionSurfaceVisibility visible={isThreadListVisible}>
@@ -409,7 +418,9 @@ export function AppSidebar({
                 (isBodyHidden || placement === "list") && "row-span-2",
                 isFramed &&
                   "[clip-path:inset(calc(var(--bb-window-title-bar-height)*-1)_-6px_0_0)] before:pointer-events-none before:absolute before:right-0 before:bottom-full before:-left-px before:h-(--bb-window-title-bar-height) before:border-l before:border-border before:bg-sidebar",
-                isFramed && placement === "list" && "border-l-0 before:border-l-0",
+                isFramed &&
+                  placement === "list" &&
+                  "border-l-0 before:border-l-0",
               )}
             >
               <div

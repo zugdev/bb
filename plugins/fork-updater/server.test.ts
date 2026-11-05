@@ -4,7 +4,13 @@ import plugin from "./server.js";
 
 const CHECKOUT = "/Users/gus/prog/bb/.claude/worktrees/trunk";
 
+interface SwapReport {
+  installedCommit: string | null;
+  swapError: string | null;
+}
+
 function setup(changedFiles: string[], failStep: string | null = null) {
+  const report: SwapReport = { installedCommit: null, swapError: null };
   const steps: string[] = [];
   const reload = vi.fn(async () => ({}));
   const host = createFakePluginHost({
@@ -15,6 +21,7 @@ function setup(changedFiles: string[], failStep: string | null = null) {
         list: async () => ({
           plugins: [
             { id: "assistant", source: `path:${CHECKOUT}/plugins/assistant`, rootDir: `${CHECKOUT}/plugins/assistant` },
+            { id: "fork-updater", source: `path:${CHECKOUT}/plugins/fork-updater`, rootDir: `${CHECKOUT}/plugins/fork-updater` },
           ],
         }),
         reload,
@@ -27,6 +34,7 @@ function setup(changedFiles: string[], failStep: string | null = null) {
           builtIsAncestor: true,
           commits: [{ sha: "bbbbbbb", subject: "Change things" }],
           changedFiles,
+          ...report,
         };
       }
       const step = String(Reflect.get(input as object, "step"));
@@ -35,7 +43,7 @@ function setup(changedFiles: string[], failStep: string | null = null) {
       return { headCommit: "bbbbbbb" };
     },
   });
-  return { host, steps, reload };
+  return { host, steps, reload, report };
 }
 
 describe("fork updater", () => {
@@ -59,13 +67,62 @@ describe("fork updater", () => {
     expect(await host.bb.storage.kv.get("built-commit")).toBe("bbbbbbb");
   });
 
-  it("rebuilds, records the new commit, then swaps the app", async () => {
-    const { host, steps, reload } = setup(["pnpm-lock.yaml"]);
+  it("returns up to date before reloading itself", async () => {
+    vi.useFakeTimers();
+    try {
+      const { host, reload } = setup(["plugins/fork-updater/server.ts", "plugins/assistant/app.tsx"]);
+      await plugin(host.bb);
+      const result = await host.harness.runCli(["update", "--json"]);
+      expect(JSON.parse(result.stdout)).toMatchObject({ builtCommit: "bbbbbbb", kind: "up-to-date", commits: [] });
+      expect(reload.mock.calls).toEqual([[{ pluginId: "assistant" }]]);
+      await vi.runAllTimersAsync();
+      expect(reload.mock.calls).toEqual([[{ pluginId: "assistant" }], [{ pluginId: "fork-updater" }]]);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("fast forwards and reports up to date when only docs changed", async () => {
+    const { host, steps, reload } = setup(["docs/fork-roadmap.md", "README.md", ".github/workflows/ci.yml"]);
+    await plugin(host.bb);
+    const result = await host.harness.runCli(["status", "--json"]);
+    expect(JSON.parse(result.stdout)).toMatchObject({ builtCommit: "bbbbbbb", kind: "up-to-date", commits: [] });
+    expect(steps).toEqual(["fast-forward"]);
+    expect(reload).not.toHaveBeenCalled();
+  });
+
+  it("rebuilds and swaps without recording the commit until the swap reports it installed", async () => {
+    const { host, steps, reload, report } = setup(["pnpm-lock.yaml"]);
     await plugin(host.bb);
     await host.harness.runCli(["update"]);
-    expect(steps).toEqual(["fast-forward", "install", "package", "swap"]);
+    expect(steps).toEqual(["fast-forward", "install", "package", "swap-and-reopen"]);
     expect(reload).not.toHaveBeenCalled();
+    expect(await host.bb.storage.kv.get("built-commit")).toBe("5008564189");
+
+    report.installedCommit = "bbbbbbb";
+    await host.harness.callRpc("status", { refresh: true });
     expect(await host.bb.storage.kv.get("built-commit")).toBe("bbbbbbb");
+  });
+
+  it("swaps without reopening when asked", async () => {
+    const { host, steps } = setup(["pnpm-lock.yaml"]);
+    await plugin(host.bb);
+    await host.harness.runCli(["update", "--no-reopen"]);
+    expect(steps).toEqual(["fast-forward", "install", "package", "swap"]);
+  });
+
+  it("keeps showing a failed swap until the next update starts", async () => {
+    const { host, steps, report } = setup(["pnpm-lock.yaml"]);
+    await plugin(host.bb);
+    report.swapError = "the new bb.app did not start after the swap";
+    await host.harness.callRpc("status", { refresh: true });
+    report.swapError = null;
+    const status = await host.harness.callRpc("status", { refresh: true });
+    expect(status).toMatchObject({ kind: "rebuild", progress: null, error: expect.stringContaining("did not start") });
+
+    await host.harness.callRpc("update", { reopen: true });
+    await vi.waitFor(() => expect(steps).toContain("swap-and-reopen"));
+    expect(await host.harness.callRpc("status", { refresh: false })).toMatchObject({ error: null });
   });
 
   it("stops and reports the error when the checkout is dirty", async () => {

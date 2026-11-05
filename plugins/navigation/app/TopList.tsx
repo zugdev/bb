@@ -13,7 +13,10 @@ import {
   type ExperimentalSidebarNavigationProps,
 } from "@get-bb/plugin-sdk/app";
 import { Button } from "@/components/ui/button";
-import { COARSE_POINTER_ICON_SIZE_CLASS } from "@/components/ui/coarse-pointer-sizing";
+import {
+  COARSE_POINTER_HEADER_ICON_BUTTON_CLASS,
+  COARSE_POINTER_ICON_SIZE_CLASS,
+} from "@/components/ui/coarse-pointer-sizing";
 import { Icon } from "@/components/ui/icon";
 import { OverflowFade } from "@/components/ui/overflow-fade";
 import { ShortcutPill } from "@/components/ui/shortcut-pill";
@@ -28,6 +31,12 @@ import {
   SIDEBAR_CONTROL_STATE_CLASS,
 } from "@/components/ui/sidebar-row-classes";
 import { SplitPaneMiniMap } from "@/components/ui/split-pane-mini-map";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import {
   hiddenNavigationBadgeLabels,
@@ -226,16 +235,73 @@ function useScrollOverflow(itemCount: number) {
   return [ref, overflow] as const;
 }
 
+const HeaderMoreButton = forwardRef<
+  HTMLButtonElement,
+  ComponentProps<typeof Button> & { label: string }
+>(({ label, className, ...props }, ref) => (
+  <Tooltip>
+    <TooltipTrigger asChild>
+      <Button
+        ref={ref}
+        type="button"
+        variant="ghost"
+        size="icon"
+        aria-label={label}
+        className={cn(
+          COARSE_POINTER_HEADER_ICON_BUTTON_CLASS,
+          "relative shrink-0 text-muted-foreground ring-sidebar-ring hover:bg-sidebar-accent hover:text-sidebar-foreground focus-visible:ring-2 data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-foreground",
+          className,
+        )}
+        {...props}
+      />
+    </TooltipTrigger>
+    <TooltipContent className="px-1.5 py-1">More</TooltipContent>
+  </Tooltip>
+));
+HeaderMoreButton.displayName = "HeaderMoreButton";
+
+export function TopListMoreButton() {
+  const { items } = experimental_useSidebarNavigation();
+  const hidden = items.filter((item) => !item.isVisible);
+  if (hidden.length === 0) return null;
+  const hiddenBadgeLabels = hiddenNavigationBadgeLabels(hidden);
+  const hiddenBadgeTone = strongestNavigationBadgeTone(
+    hidden.map((item) => item.badge),
+  );
+  const label =
+    hiddenBadgeLabels.length > 0
+      ? `More, ${hiddenBadgeLabels.join(", ")}`
+      : "More";
+
+  return (
+    <TooltipProvider delayDuration={300}>
+      <SidebarNavigationMoreMenu
+        trigger={
+          <HeaderMoreButton label={label}>
+            <Icon name="MoreHorizontal" aria-hidden="true" />
+            {hiddenBadgeTone !== null ? (
+              <NavigationBadgeMark
+                badge={{ tone: hiddenBadgeTone }}
+                className="pointer-events-none absolute top-0.5 right-0.5"
+              />
+            ) : null}
+          </HeaderMoreButton>
+        }
+        hidden={hidden}
+        surface="sidebar"
+        side="bottom"
+        sideOffset={MORE_MENU_SIDE_OFFSET}
+        testId="sidebar-navigation-more-menu"
+      />
+    </TooltipProvider>
+  );
+}
+
 export function TopList({
   isCompactViewport,
 }: ExperimentalSidebarNavigationProps) {
   const { items } = experimental_useSidebarNavigation();
   const visible = items.filter((item) => item.isVisible);
-  const hidden = items.filter((item) => !item.isVisible);
-  const hiddenBadgeLabels = hiddenNavigationBadgeLabels(hidden);
-  const hiddenBadgeTone = strongestNavigationBadgeTone(
-    hidden.map((item) => item.badge),
-  );
   const [destinationsRef, destinationsOverflow] = useScrollOverflow(
     visible.length,
   );
@@ -268,33 +334,6 @@ export function TopList({
               <OverflowFade placement="below" inset tone="sidebar" />
             ) : null}
           </div>
-        ) : null}
-        {hidden.length > 0 ? (
-          <SidebarNavigationMoreMenu
-            trigger={
-              <ListRowButton
-                aria-label={
-                  hiddenBadgeLabels.length > 0
-                    ? `More, ${hiddenBadgeLabels.join(", ")}`
-                    : undefined
-                }
-              >
-                <Icon name="MoreHorizontal" aria-hidden="true" />
-                <span className="min-w-0 flex-1 truncate text-left">More</span>
-                {hiddenBadgeTone !== null ? (
-                  <NavigationBadgeMark
-                    badge={{ tone: hiddenBadgeTone }}
-                    className="mr-1.5"
-                  />
-                ) : null}
-              </ListRowButton>
-            }
-            hidden={hidden}
-            surface="sidebar"
-            side="right"
-            sideOffset={MORE_MENU_SIDE_OFFSET}
-            testId="sidebar-navigation-more-menu"
-          />
         ) : null}
       </div>
       <div

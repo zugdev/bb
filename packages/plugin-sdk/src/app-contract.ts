@@ -873,6 +873,30 @@ export interface ExperimentalAppOverlayRegistration {
   component: ComponentType<ExperimentalAppOverlayProps>;
 }
 
+/** Props passed to an `experimental_threadHeaderLeading` component. */
+export interface ExperimentalThreadHeaderLeadingProps {
+  /** The thread whose header renders the component. */
+  threadId: string;
+  /**
+   * True at compact width and in split panes narrower than 560px, where the
+   * header folds its buttons into the thread menu. Header actions show in
+   * that menu only while this is true.
+   */
+  isNarrow: boolean;
+}
+
+/**
+ * Render a component in an open thread's header, before the thread title.
+ * Every header renders it, including each split pane's. bb supplies no
+ * chrome; return null to render nothing. Registrations are additive and a
+ * crash hides only that component.
+ */
+export interface ExperimentalThreadHeaderLeadingRegistration {
+  /** Unique within the plugin; letters, digits, `-`, `_`. */
+  id: string;
+  component: ComponentType<ExperimentalThreadHeaderLeadingProps>;
+}
+
 /**
  * A name the host resolves to a glyph, in this order: a name any plugin
  * registered with `app.experimental_icons.register()`, then a built-in BB icon
@@ -2624,8 +2648,11 @@ export interface ExperimentalSidebarNavigationRegistration {
   component: ComponentType<ExperimentalSidebarNavigationProps>;
   /**
    * Rendered in the sidebar's header row while this navigation is active,
-   * between the sidebar toggle and bb's back and forward buttons. Content is
-   * clipped to the row, so it cannot move the thread list or bb's controls.
+   * between the sidebar toggle and bb's back and forward buttons. With the
+   * `list` placement on wide macOS windows it renders in the window title
+   * bar after the sidebar toggle, and hides while the sidebar is collapsed.
+   * Content is clipped to the row, so it cannot move the thread list or bb's
+   * controls.
    * On macOS the empty space keeps dragging the window; buttons, links, and
    * inputs do not. A crashing header is replaced by the header of the
    * bundled Navigation plugin's provider for the same placement.
@@ -3782,6 +3809,14 @@ export interface PluginAppSlots {
    */
   experimental_appOverlay(
     registration: ExperimentalAppOverlayRegistration,
+  ): void;
+  /**
+   * Render a component before the thread title in the thread header (see
+   * {@link ExperimentalThreadHeaderLeadingRegistration}). Experimental: see
+   * docs/api_to_audit.md.
+   */
+  experimental_threadHeaderLeading(
+    registration: ExperimentalThreadHeaderLeadingRegistration,
   ): void;
   navPanel(registration: PluginNavPanelRegistration): void;
   /** Register a context-scoped tab. Experimental: see docs/api_to_audit.md. */
@@ -5252,10 +5287,18 @@ export interface BbNavigate {
    * `experimental_tab: true` opens it in a new pane tab, or focuses the tab
    * that already shows it, and falls back to plain navigation where tabs are
    * off. It takes precedence over `split`.
+   * `experimental_inPane: true` from a component rendered inside a pane, such
+   * as an `experimental_threadHeaderLeading` component, replaces that pane's
+   * thread, or focuses the split pane that already shows the thread. Outside
+   * a pane it navigates as without options.
    */
   toThread(
     threadId: string,
-    options?: { split?: boolean; experimental_tab?: boolean },
+    options?: {
+      split?: boolean;
+      experimental_tab?: boolean;
+      experimental_inPane?: boolean;
+    },
   ): void;
   toProject(projectId: string): void;
   /**

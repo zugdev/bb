@@ -11,8 +11,16 @@ import {
   resetPluginFrontendBootStateForTest,
 } from "@/lib/plugin-frontend-boot-state";
 import { resetPluginSlotStoreForTest } from "@/lib/plugin-slots";
+import {
+  pluginNavPanelOrderAtom,
+  pluginNavVisiblePanelKeysAtom,
+} from "@/components/plugin/pluginNavSidebarAtoms";
 import { registerNavigationPlugin } from "@/test/fixtures/navigation-plugin";
 import { AppSidebar } from "./AppSidebar";
+import {
+  SidebarTitleBarSlotProvider,
+  SidebarTitleBarSlotTarget,
+} from "./SidebarChrome";
 import {
   sidebarNavigationProviderAtom,
   useResolvedSidebarNavigation,
@@ -84,16 +92,21 @@ function Harness() {
   );
 }
 
-function renderSidebar(preference: string, framed = false) {
+function renderSidebar(preference: string, framed = false, open = true) {
   const store = createStore();
   store.set(sidebarNavigationProviderAtom, preference);
+  store.set(pluginNavPanelOrderAtom, ["__bb__/new-thread", "__bb__/skills"]);
+  store.set(pluginNavVisiblePanelKeysAtom, ["__bb__/new-thread"]);
   render(
     <Provider store={store}>
       <MemoryRouter initialEntries={["/"]}>
         <CompactViewportOverrideProvider isCompactViewport={false}>
           <TooltipProvider>
-            <SidebarProvider framed={framed}>
-              <Harness />
+            <SidebarProvider framed={framed} open={open}>
+              <SidebarTitleBarSlotProvider>
+                <SidebarTitleBarSlotTarget />
+                <Harness />
+              </SidebarTitleBarSlotProvider>
             </SidebarProvider>
           </TooltipProvider>
         </CompactViewportOverrideProvider>
@@ -145,15 +158,46 @@ afterEach(() => {
 });
 
 describe("AppSidebar", () => {
-  it("uses only the small top inset when framed navigation has no header controls", () => {
+  it("puts the framed list header in the window title bar and keeps the small top inset", () => {
     renderSidebar("navigation/top-list", true);
+
+    const reserveRow = screen.getByTestId("app-sidebar-top-reserve-row");
+    expect(reserveRow.classList.contains("h-2")).toBe(true);
+    const more = screen.getByRole("button", { name: "More" });
+    expect(screen.getByTestId("sidebar-title-bar-header").contains(more)).toBe(
+      true,
+    );
+  });
+
+  it("hides the framed list header while the sidebar is collapsed", () => {
+    renderSidebar("navigation/top-list", true, false);
+
+    expect(screen.queryByTestId("sidebar-header-slot")).toBeNull();
+  });
+
+  it("puts the list header in the sidebar's own header row when the sidebar is not framed", () => {
+    renderSidebar("navigation/top-list");
+
+    const more = screen.getByRole("button", { name: "More" });
+    expect(
+      screen.getByTestId("app-sidebar-top-reserve-row").contains(more),
+    ).toBe(true);
+    expect(
+      screen.getByTestId("sidebar-title-bar-header").childElementCount,
+    ).toBe(0);
+  });
+
+  it("keeps the framed rail header in the sidebar's own header row", () => {
+    renderSidebar("navigation/rail", true);
 
     expect(
       screen
         .getByTestId("app-sidebar-top-reserve-row")
-        .classList.contains("h-2"),
+        .contains(screen.getByTestId("sidebar-header-slot")),
     ).toBe(true);
-    expect(screen.queryByTestId("sidebar-header-slot")).toBeNull();
+    expect(
+      screen.getByTestId("sidebar-title-bar-header").childElementCount,
+    ).toBe(0);
   });
 
   it.each([

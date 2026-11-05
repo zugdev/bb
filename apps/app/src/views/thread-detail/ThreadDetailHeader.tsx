@@ -4,7 +4,6 @@ import {
   useThreadDot,
 } from "@/components/thread/ThreadStatusDot";
 import {
-  type MouseEvent as ReactMouseEvent,
   useCallback,
   useContext,
   useLayoutEffect,
@@ -13,7 +12,6 @@ import {
   type PointerEvent as ReactPointerEvent,
   type ReactNode,
 } from "react";
-import { createPortal } from "react-dom";
 import { Button } from "@bb/shared-ui/button";
 import { useAtomValue } from "jotai";
 import type {
@@ -33,6 +31,7 @@ import {
   MACOS_WINDOW_NO_DRAG_CLASS,
   shouldUseMacosDesktopChrome,
 } from "@/lib/bb-desktop";
+import { useUsesSwipeChrome } from "@/components/layout/useUsesSwipeChrome";
 import { cn } from "@bb/shared-ui/lib/utils";
 import {
   useAppCommandHandler,
@@ -56,14 +55,10 @@ import {
   CONTEXT_INACTIVE_TEXT_CLASS,
   CONTEXT_SELECTION_SURFACE_CLASS,
 } from "@bb/shared-ui/context-selection";
-import { useRootComposePinnedPanelToggleBoxClassName } from "@/views/RootComposeSecondaryContent";
 import { usePaneContext } from "./PaneContext";
 import { PaneMaximizeButton } from "./PaneMaximizeButton";
 import { PaneDragHandle } from "./PaneDragHandle";
-import {
-  useOpenParentThread,
-  type ParentThreadSection,
-} from "./useParentThreadSection";
+import { PluginThreadHeaderLeading } from "@/components/plugin/PluginThreadHeaderLeading";
 
 const THREAD_HEADER_ACTION_BUTTON_CLASS = cn(
   COARSE_POINTER_TOOLBAR_ACTION_BUTTON_CLASS,
@@ -84,7 +79,6 @@ interface ThreadDetailHeaderProps {
   isSecondaryPanelOpen: boolean;
   onClosePane?: () => void;
   onToggleSecondaryPanel: () => void;
-  parentThread?: ParentThreadSection | null;
   pluginActions?: ReactNode;
   thread: PluginThreadActionTarget;
   threadTitle: string;
@@ -95,13 +89,13 @@ export function ThreadDetailHeader({
   isSecondaryPanelOpen,
   onClosePane,
   onToggleSecondaryPanel,
-  parentThread = null,
   pluginActions,
   thread,
   threadTitle,
   contextCardButton,
 }: ThreadDetailHeaderProps) {
   const isCompactViewport = useIsCompactViewport();
+  const hidesChromeToggles = useUsesSwipeChrome();
   const threadId = thread.id;
   const threadDot = useThreadDot(threadId);
   const headerActions = useThreadHeaderActionEntries(thread);
@@ -133,11 +127,9 @@ export function ThreadDetailHeader({
   const {
     beginPaneDrag,
     isFocused,
-    isSplitPane,
     reservesWindowPanelToggle,
     secondaryPanelHost,
   } = usePaneContext();
-  const pageToggleBoxClassName = useRootComposePinnedPanelToggleBoxClassName();
   useAppCommandHandler("thread.rename", () => {
     if (!isFocused) return false;
     startEditing();
@@ -185,10 +177,9 @@ export function ThreadDetailHeader({
   };
   const rightPanelIconName = RIGHT_PANEL_TOGGLE_ICON_NAME;
   const isHostedSplitPane = secondaryPanelHost !== null;
-  const pinsToggleToPage = !isSplitPane && !isCompactViewport;
-  const showRightPanelToggle = isHostedSplitPane
-    ? hostLayout?.isSuppressed !== true
-    : !isSecondaryPanelOpen || isCompactViewport;
+  const showRightPanelToggle =
+    !hidesChromeToggles &&
+    (isHostedSplitPane ? hostLayout?.isSuppressed !== true : true);
   const isRightPanelOpen = isHostedSplitPane
     ? isFocused && isWindowPanelOpen
     : isSecondaryPanelOpen;
@@ -243,12 +234,11 @@ export function ThreadDetailHeader({
 
   const center = (
     <>
-      {parentThread?.isLoaded && !usesResponsiveActionOverflow ? (
-        <ThreadParentLink
-          parentThread={parentThread}
-          usesDesktopChrome={usesDesktopChrome}
-        />
-      ) : null}
+      <PluginThreadHeaderLeading
+        threadId={threadId}
+        isNarrow={usesResponsiveActionOverflow}
+        className={cn(usesDesktopChrome && MACOS_WINDOW_NO_DRAG_CLASS)}
+      />
       <div
         data-pane-header-focus-tab={
           isSplitPaneHeader && isFocused ? "" : undefined
@@ -364,21 +354,10 @@ export function ThreadDetailHeader({
           </Button>
         ) : null}
         {contextCardButton}
-        {pinsToggleToPage
-          ? createPortal(
-              <div
-                className={cn(
-                  pageToggleBoxClassName,
-                  "z-40",
-                  usesDesktopChrome && MACOS_WINDOW_NO_DRAG_CLASS,
-                )}
-              >
-                {rightPanelToggle}
-              </div>,
-              document.body,
-            )
-          : rightPanelToggle}
-        {reservesWindowPanelToggle && !isWindowPanelOpen ? (
+        {rightPanelToggle}
+        {reservesWindowPanelToggle &&
+        !isWindowPanelOpen &&
+        !hidesChromeToggles ? (
           <span aria-hidden className={HEADER_ICON_BUTTON_CLASS} />
         ) : null}
       </div>
@@ -394,43 +373,5 @@ export function ThreadDetailHeader({
       ownsWindowTopLeft={false}
       className={cn(beginPaneDrag && "z-[21]")}
     />
-  );
-}
-
-function ThreadParentLink({
-  parentThread,
-  usesDesktopChrome,
-}: {
-  parentThread: ParentThreadSection;
-  usesDesktopChrome: boolean;
-}) {
-  const openParentThread = useOpenParentThread();
-  const label =
-    parentThread.relationship === "fork" ? "Forked from" : "Parent thread";
-  const handleClick = (event: ReactMouseEvent<HTMLAnchorElement>) => {
-    if (event.button !== 0 || event.shiftKey || event.altKey) return;
-    event.preventDefault();
-    openParentThread(parentThread, event.metaKey || event.ctrlKey);
-  };
-  return (
-    <a
-      href={parentThread.href}
-      data-thread-header-parent-link=""
-      title={`${label}: ${parentThread.parentThreadTitle}`}
-      onClick={handleClick}
-      className={cn(
-        "mr-1 flex min-w-0 max-w-48 shrink items-center gap-1 rounded-md px-1.5 py-0.5 text-sm text-muted-foreground hover:bg-state-hover hover:text-foreground",
-        usesDesktopChrome && MACOS_WINDOW_NO_DRAG_CLASS,
-      )}
-    >
-      <span aria-hidden>↑</span>
-      <span className="sr-only">{label}: </span>
-      <span className="min-w-0 truncate">
-        <ThreadTitle title={parentThread.parentThreadTitle} />
-      </span>
-      <span aria-hidden className="ml-1 text-muted-foreground/60">
-        /
-      </span>
-    </a>
   );
 }

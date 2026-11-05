@@ -1,6 +1,6 @@
 import { definePluginApp } from "@get-bb/plugin-sdk/app";
 import { Rail, RailNewThreadButton } from "./app/Rail.js";
-import { TopList } from "./app/TopList.js";
+import { TopList, TopListMoreButton } from "./app/TopList.js";
 
 export default definePluginApp((app) => {
   app.slots.experimental_sidebarNavigation({
@@ -17,5 +17,6 @@ export default definePluginApp((app) => {
     description: "Labeled rows above the thread list",
     placement: "list",
     component: TopList,
+    headerComponent: TopListMoreButton,
   });
 });

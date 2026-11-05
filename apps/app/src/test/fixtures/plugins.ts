@@ -25,6 +25,7 @@ export function makePluginRegistrationSet(
     homepageSections: [],
     settingsSections: [],
     appOverlays: [],
+    threadHeaderLeadings: [],
     navPanels: [],
     threadPanelActions: [],
     newThreadPanelActions: [],

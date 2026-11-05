@@ -19,6 +19,8 @@ const topList = app.experimentalSidebarNavigations.find(
 if (!rail || !topList) throw new Error("navigation providers not registered");
 const RailHeader = rail.headerComponent;
 if (!RailHeader) throw new Error("Rail registers no header");
+const TopListHeader = topList.headerComponent;
+if (!TopListHeader) throw new Error("Top list registers no header");
 
 function hostItem(
   id: string,
@@ -309,22 +311,53 @@ describe("Top list", () => {
     ).toBeNull();
   });
 
-  it("shows More only when something is hidden, and activates hidden items from it", async () => {
-    renderTopList([NEW_THREAD, PLUGINS]);
-    expect(screen.queryByRole("button", { name: "More" })).toBeNull();
+  function renderTopListHeader(
+    items: readonly ExperimentalSidebarNavigationItem[],
+  ) {
+    return renderSlot(
+      { component: TopListHeader! },
+      { width: 200, controlSize: 28, isCompactViewport: false },
+      { sidebarNavigation: { items } },
+    );
+  }
+
+  it("leaves More to the header, which shows it only when something is hidden", () => {
+    renderTopList([NEW_THREAD, SEARCH, PLUGINS]);
+    expect(screen.queryByRole("button", { name: /^More/ })).toBeNull();
     cleanup();
 
-    const view = renderTopList([NEW_THREAD, SEARCH, PLUGINS]);
-    fireEvent.keyDown(screen.getByRole("button", { name: "More" }), {
-      key: "Enter",
-    });
+    renderTopListHeader([NEW_THREAD, PLUGINS]);
+    expect(screen.queryByRole("button", { name: /^More/ })).toBeNull();
+  });
+
+  it("opens More from the keyboard and activates hidden items or Customize from it", async () => {
+    const view = renderTopListHeader([NEW_THREAD, SEARCH, PLUGINS]);
+    const more = screen.getByRole("button", { name: "More" });
+
+    fireEvent.keyDown(more, { key: "Enter" });
     fireEvent.click(
       await screen.findByRole("menuitem", { name: "Search threads" }),
+    );
+    fireEvent.keyDown(more, { key: "Enter" });
+    fireEvent.click(
+      await screen.findByRole("menuitem", { name: "Customize navigation" }),
     );
 
     expect(view.inspection.sidebarNavigationCalls).toEqual([
       { method: "activate", itemId: SEARCH.id, target: "current" },
+      { method: "openCustomize" },
     ]);
+  });
+
+  it("names the hidden badges on the header More button", () => {
+    renderTopListHeader([
+      NEW_THREAD,
+      withBadge(DOCS, { count: 2, label: "2 drafts" }, { isVisible: false }),
+    ]);
+
+    expect(
+      screen.getByRole("button", { name: "More, Docs: 2 drafts" }),
+    ).toBeDefined();
   });
 
   it("draws list counts up to 99+ and text badges as text", () => {
