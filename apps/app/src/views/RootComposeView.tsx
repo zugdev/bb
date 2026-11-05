@@ -8,9 +8,9 @@ import {
   DEFAULT_THREAD_CREATION_PLACEMENT,
 } from "@/lib/thread-creation-placement";
 import { useRootComposePlacement } from "@/lib/root-compose-selection";
-import { useAtomValue, useStore } from "jotai";
+import { useAtomValue } from "jotai";
 import { splitLayoutAtom } from "@/lib/split-layout/atoms";
-import { openThreadInTab, splitTabsAtom } from "@/lib/split-layout/tabs";
+import { splitTabsAtom } from "@/lib/split-layout/tabs";
 import { findPaneByContent } from "@/lib/split-layout";
 import type { PromptDraftScope } from "@/hooks/usePromptDraftStorage";
 import { useInitialPromptDraft } from "@/components/promptbox/mentions/initial-prompt-draft";
@@ -125,7 +125,6 @@ import { UrlOpenRoutingProvider } from "@/lib/url-open-routing";
 import { AppNavigationHostProvider } from "@/lib/app-navigation-host";
 import { useAppPanelController } from "@/lib/app-fixed-tab-navigation";
 import { useRootComposeProjectId } from "@/lib/root-compose-selection";
-import { RootComposeOverview } from "./RootComposeOverview";
 import {
   RootComposeSecondaryContent,
   useRootComposePinnedPanelToggleBoxClassName,
@@ -495,7 +494,6 @@ function RootComposeSurface({
   const isFocusedPane = paneContext?.isFocused ?? true;
   const location = useLocation();
   const navigate = useNavigate();
-  const store = useStore();
   const [, setPlacement] = useRootComposePlacement();
   const isPointerCoarse = usePointerCoarse();
   const quickCreateProject = useQuickCreateProjectController();
@@ -503,7 +501,6 @@ function RootComposeSurface({
     projectId,
     isProjectless,
     projects,
-    projectOptions,
     changeProject,
     sidebarNavigation,
     sidebarNavigationError,
@@ -1419,28 +1416,12 @@ function RootComposeSurface({
     disabled: !quickCreateProject.isAvailable || quickCreateProject.isCreating,
     isCreating: quickCreateProject.isCreating,
   };
-  const overview = (
-    <RootComposeOverview
-      sidebarNavigation={sidebarNavigation}
-      projectNamesById={mobileRecentProjectNamesById}
-      isFocusedPane={isFocusedPane}
-      project={{
-        options: projectOptions,
-        value: isProjectless ? null : projectId,
-        onChange: (nextProjectId) => void changeProject(nextProjectId),
-        createProject,
-        disabled: isSubmitting,
-      }}
-      onOpenThread={(thread, { newTab }) => {
-        const ref = { projectId: thread.projectId, threadId: thread.id };
-        if (newTab && !isCompactViewport) {
-          openThreadInTab(store, navigate, ref);
-          return;
-        }
-        paneContext?.navigateInPane(ref);
-      }}
-    />
-  );
+  const homepageSectionProject = {
+    projectId: isProjectless ? null : projectId,
+    experimental_setProjectId: isSubmitting
+      ? null
+      : (nextProjectId: string | null) => void changeProject(nextProjectId),
+  };
 
   const promptBox = renderPromptBox({
     id: "root-compose-prompt",
@@ -1491,7 +1472,7 @@ function RootComposeSurface({
                   ROOT_COMPOSE_SIDEBAR_ACTION_ALIGNED_TOP_PADDING_CLASS
                 }
                 isCompactHomeLayout={isCompactViewport}
-                overview={overview}
+                homepageSectionProject={homepageSectionProject}
                 compactScrollContent={
                   <RootComposeMobileRecents
                     highlightedThreadId={lastCreatedThreadId}

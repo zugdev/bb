@@ -365,7 +365,7 @@ const _assertAllContentScriptRegistrationFieldsListed: MissingContentScriptRegis
 void _assertAllContentScriptRegistrationFieldsListed;
 
 const FRONTEND_SLOT_PROP_FIELDS = {
-  homepageSection: ["projectId"],
+  homepageSection: ["projectId", "experimental_setProjectId"],
   settingsSection: [],
   experimental_appOverlay: [],
   navPanel: ["subPath"],

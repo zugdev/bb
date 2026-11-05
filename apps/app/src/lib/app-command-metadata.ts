@@ -320,11 +320,6 @@ export const APP_COMMAND_GROUPS: readonly AppCommandGroup[] = [
         "Focus the active composer's input and move the caret to the end.",
       ),
       command(
-        "composer.cycleProject",
-        "Cycle new thread project",
-        "On the New thread screen, select the next of No project and the recent project shortcuts.",
-      ),
-      command(
         "modelPicker.toggle",
         "Toggle model picker",
         "Open or close the focused composer's model picker.",

@@ -240,6 +240,53 @@ Stabilization requires verifying placement isolation, plugin
 disable/uninstall, loading and failure states, and pairing lifecycle on
 Mobile.
 
+## `PluginHomepageSectionProps.experimental_setProjectId` and `PluginHomepageSectionRegistration.experimental_placement`
+
+On the New thread screen a homepage section gets `projectId`, the composer's selected project (null for No project), and `experimental_setProjectId(projectId | null)`, which selects a project through the composer's own `changeProject`. That is the path the composer's footer project picker takes, so it copies draft attachments and refuses while uploads run the same way. `experimental_setProjectId` is null on Home and while the composer is submitting. `experimental_placement: "lead"` renders a section before all other sections on the New thread screen, without the host heading, and keeps it off Home.
+
+**Core callers.** `RootComposeSurface` (`apps/app/src/views/RootComposeView.tsx`) builds the section project from `changeProject` and `isSubmitting`. `PluginHomepageSections` and `HomeView` render lead and titled sections. The home plugin's New thread overview is the only lead section.
+
+Docs: `frontend-core-slots.md`.
+
+**Audit before stabilizing.**
+
+1. **Ordering.** Several lead sections render in registration order. Decide whether lead needs an order key once a second plugin uses it.
+2. **Home.** Decide whether Home should pass a project setter that opens a New thread tab in that project.
+
+## `PluginSidebarThread.experimental_lastUserMessageAt`
+
+When the user last sent the thread a message, in epoch milliseconds; null before the first. It reads `threads.lastUserMessageAt` (migration 0150) through `toPluginSidebarThread`.
+
+**Core callers.** `HomeView` and `home-overview.ts` sort Home's project sections by the same column on `ThreadListEntry`. The home plugin sorts the New thread overview's latest threads and recent project chips with it.
+
+Docs: `frontend-registration.md`.
+
+**Audit before stabilizing.** Stabilize together with the `threads.lastUserMessageAt` column if upstream takes it.
+
+## `experimental_ProjectPicker` (`@get-bb/plugin-sdk/app`)
+
+bb's `ProjectSelector` with the New thread composer's project list, No project, search and Add project, taking `{ value, onChange, disabled }`. The host fills the list from the sidebar navigation query, shows loading until it arrives, and wires Add project to the quick create dialog.
+
+**Core callers.** `ProjectSelector` (`apps/app/src/components/pickers/ProjectSelector.tsx`) is the component behind it and the composer's footer project picker. The home plugin renders it in the New thread overview.
+
+Docs: `frontend-core-slots.md`.
+
+**Audit before stabilizing.**
+
+1. **Variant.** It always renders the outline variant. Decide whether plugins need the ghost variant the composer footer uses.
+
+## `experimental_useCommandShortcut` (`@get-bb/plugin-sdk/app`)
+
+Returns `{ label, ariaKeyshortcuts }` for one of the calling plugin's command ids, following the user's rebinding, or null when unbound. It reads `plugin:<plugin-id>/<command-id>` from bb's command table through `useAppCommandShortcut`.
+
+**Core callers.** `useAppCommandShortcut` (`apps/app/src/components/commands/AppCommandProvider.tsx`) labels bb's own commands in the composer, the palette and Home. The home plugin labels its Alt+O project cycle command with it.
+
+Docs: `frontend-core-slots.md`.
+
+**Audit before stabilizing.**
+
+1. **Scope.** It only reads the calling plugin's commands. Decide whether plugins should read bb's own command shortcuts too.
+
 ## `app.slots.experimental_messageMetadata` (`@get-bb/plugin-sdk/app`)
 
 Requires SDK 0.6.98.

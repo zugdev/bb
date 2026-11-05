@@ -78,6 +78,8 @@ import {
   type ExperimentalVoiceRecordingBarProps,
   type ExperimentalFailedVoiceRecordingsProps,
   type ExperimentalShortcutHintProps,
+  type ExperimentalProjectPickerProps,
+  type ExperimentalShortcutPresentation,
   type ExperimentalImageLightboxProps,
   type ExperimentalPromptMentionIconProps,
   type ExperimentalPromptMentionClipboardPill,
@@ -376,6 +378,7 @@ interface SlotEnv {
   threadContextKind: ExperimentalThreadContextKind;
   sidebarRowStatuses: ReadonlyMap<string, PluginSidebarThreadRowStatus>;
   sidebarShortcuts: ReadonlyMap<string, PluginSidebarThreadShortcut>;
+  commandShortcuts: ReadonlyMap<string, ExperimentalShortcutPresentation>;
   sidebarSplitLayout: PluginSidebarSplitLayout | null;
   composerRenderer: ExperimentalComposerRendererApi | null;
   environmentProviders: PluginEnvironmentProvidersState;
@@ -1380,6 +1383,31 @@ function TestShortcutHint({
   );
 }
 
+function TestProjectPicker({
+  value,
+  onChange,
+  disabled,
+}: ExperimentalProjectPickerProps) {
+  const { projects } = useSlotEnv("experimental_ProjectPicker").sidebarThreads;
+  return (
+    <select
+      aria-label="Project"
+      disabled={disabled}
+      value={value ?? ""}
+      onChange={(event) => onChange(event.target.value || null)}
+    >
+      <option value="">No project</option>
+      {projects
+        .filter((project) => !project.isPersonal)
+        .map((project) => (
+          <option key={project.id} value={project.id}>
+            {project.name}
+          </option>
+        ))}
+    </select>
+  );
+}
+
 function TestImageLightbox({
   imageSrc,
   imageAlt,
@@ -1802,6 +1830,15 @@ const testPluginSdkApp = {
   experimental_VoiceRecordingBar: TestVoiceRecordingBar,
   experimental_FailedVoiceRecordings: TestFailedVoiceRecordings,
   experimental_ShortcutHint: TestShortcutHint,
+  experimental_useCommandShortcut(
+    id: string,
+  ): ExperimentalShortcutPresentation | null {
+    return (
+      useSlotEnv("experimental_useCommandShortcut").commandShortcuts.get(id) ??
+      null
+    );
+  },
+  experimental_ProjectPicker: TestProjectPicker,
   experimental_ImageLightbox: TestImageLightbox,
   experimental_PromptMentionIcon: TestPromptMentionIcon,
   experimental_describePromptMention(
@@ -2377,6 +2414,11 @@ export interface RenderSlotOptions<
    * null.
    */
   sidebarShortcuts?: Record<string, PluginSidebarThreadShortcut>;
+  /**
+   * Shortcuts `experimental_useCommandShortcut()` reports, keyed by this
+   * plugin's command id. Omitted → every command reports null.
+   */
+  commandShortcuts?: Record<string, ExperimentalShortcutPresentation>;
   /** The split layout `useSidebarSplitLayout()` reports. Omitted → null. */
   sidebarSplitLayout?: PluginSidebarSplitLayout;
   /**
@@ -2928,6 +2970,9 @@ export function renderSlot<
   const sidebarShortcuts = new Map(
     Object.entries(options.sidebarShortcuts ?? {}),
   );
+  const commandShortcuts = new Map(
+    Object.entries(options.commandShortcuts ?? {}),
+  );
   const sidebarThreads: PluginSidebarThreadsState = {
     experimental_archived:
       options.sidebarThreads?.experimental_archived ?? null,
@@ -3365,6 +3410,7 @@ export function renderSlot<
     threadContextKind: options.threadContextKind ?? "banner",
     sidebarRowStatuses,
     sidebarShortcuts,
+    commandShortcuts,
     sidebarSplitLayout: options.sidebarSplitLayout ?? null,
     composerRenderer: options.composerRenderer ?? null,
     environmentProviders,

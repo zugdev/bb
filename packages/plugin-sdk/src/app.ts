@@ -241,6 +241,12 @@ export const experimental_FailedVoiceRecordings = runtimeComponent(
 export const experimental_ShortcutHint = runtimeComponent(
   "experimental_ShortcutHint",
 );
+export const experimental_useCommandShortcut = runtimeFunction(
+  "experimental_useCommandShortcut",
+);
+export const experimental_ProjectPicker = runtimeComponent(
+  "experimental_ProjectPicker",
+);
 export const experimental_ImageLightbox = runtimeComponent(
   "experimental_ImageLightbox",
 );

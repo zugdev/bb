@@ -849,10 +849,18 @@ export const SURFACE_GROUPS: SurfaceGroup[] = [
         bullets: [
           "Show shortcuts, pinned work, or recent activity before any thread exists",
           "Span the full width below the composer on desktop",
+          "Pick the composer's project with bb's own project picker",
+          "Lead the New thread screen above other sections, without a heading",
         ],
         apiSymbols: [
           "PluginHomepageSectionRegistration",
+          "PluginHomepageSectionRegistration.experimental_placement",
           "PluginHomepageSectionProps",
+          "PluginHomepageSectionProps.experimental_setProjectId",
+          "experimental_ProjectPicker",
+          "ExperimentalProjectPickerProps",
+          "experimental_useCommandShortcut",
+          "PluginSidebarThread.experimental_lastUserMessageAt",
         ],
       },
       {

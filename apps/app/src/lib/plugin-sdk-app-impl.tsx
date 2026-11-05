@@ -31,6 +31,10 @@ import { VoiceInputButton } from "@/components/promptbox/VoiceInputButton";
 import { VoiceRecordingBar } from "@/components/promptbox/VoiceRecordingBar";
 import { FailedVoiceRecordings } from "@/components/promptbox/FailedVoiceRecordings";
 import { AppCommandShortcutHint } from "@/components/commands/AppCommandShortcutHint";
+import {
+  PluginProjectPicker,
+  usePluginCommandShortcut,
+} from "@/components/plugin/plugin-project-picker";
 import { ImageLightbox } from "@/components/ui/image-lightbox";
 import { ComposerMentionIcon } from "@/components/promptbox/mentions/PromptMentionIcon";
 import {
@@ -182,6 +186,8 @@ export const pluginSdkAppImplementation = {
   experimental_VoiceRecordingBar: VoiceRecordingBar,
   experimental_FailedVoiceRecordings: FailedVoiceRecordings,
   experimental_ShortcutHint: AppCommandShortcutHint,
+  experimental_useCommandShortcut: usePluginCommandShortcut,
+  experimental_ProjectPicker: PluginProjectPicker,
   experimental_ImageLightbox: ImageLightbox,
   experimental_PromptMentionIcon: ComposerMentionIcon,
   experimental_describePromptMention: describePromptMention,
