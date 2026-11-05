@@ -458,6 +458,53 @@ describe("ThreadDetailHeader", () => {
     );
   });
 
+  it("marks experimental_headerLead actions for the top of the folded menu", () => {
+    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockReturnValue({
+      bottom: 40,
+      height: 40,
+      left: 0,
+      right: 360,
+      top: 0,
+      width: 360,
+      x: 0,
+      y: 0,
+      toJSON: () => ({}),
+    });
+
+    render(
+      <>
+        <HeaderActionCollectors
+          registrations={[
+            headerAction("Ship", 1, false, vi.fn()),
+            {
+              ...headerAction("Parent", 2, false, vi.fn()),
+              experimental_headerLead: true,
+            },
+          ]}
+        />
+        <PaneContext.Provider
+          value={{ ...PANE_CONTEXT, isSplitPane: true, beginPaneDrag: vi.fn() }}
+        >
+          <ThreadDetailHeader
+            actionsMenu={({ headerActions }) =>
+              headerActions.map(({ key, action, lead }) => (
+                <span key={key}>{`${action.label}: ${lead}`}</span>
+              ))
+            }
+            isSecondaryPanelOpen={false}
+            onClosePane={vi.fn()}
+            onToggleSecondaryPanel={vi.fn()}
+            thread={THREAD_TARGET}
+            threadTitle="Narrow split"
+          />
+        </PaneContext.Provider>
+      </>,
+    );
+
+    expect(screen.getByText("Ship: false")).not.toBeNull();
+    expect(screen.getByText("Parent: true")).not.toBeNull();
+  });
+
   it("keeps responsive controls inline and out of the menu for wide split panes", () => {
     vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockReturnValue({
       bottom: 40,

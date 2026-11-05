@@ -86,6 +86,7 @@ export default definePluginApp((app) => {
     icon: "ChevronLeft",
     group: "0_parent-link",
     placement: "header",
+    experimental_headerLead: true,
     useData: useMenuData,
     item: ({ thread, data }) => {
       const headerNavigate = data.narrowHeaders.get(thread.id);

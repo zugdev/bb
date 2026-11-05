@@ -96,6 +96,7 @@ function renderInPane({
   return {
     navigateInPane,
     location: screen.getByTestId("location").textContent,
+    focusedPaneId: store.get(splitLayoutAtom)?.focusedPaneId,
   };
 }
 
@@ -114,14 +115,15 @@ describe("useBbNavigate().toThread experimental_inPane", () => {
     expect(location).toBe("/projects/proj_nav/threads/thr_child");
   });
 
-  it("routes to the pane that already shows the thread", () => {
-    const { navigateInPane, location } = renderInPane({
+  it("focuses the pane that already shows the thread", () => {
+    const { navigateInPane, location, focusedPaneId } = renderInPane({
       inPane: true,
       parentPaneOpen: true,
     });
 
     expect(navigateInPane).not.toHaveBeenCalled();
     expect(location).toBe("/projects/proj_nav/threads/thr_parent");
+    expect(focusedPaneId).toBe("pane-2");
   });
 
   it("leaves the pane alone without the option", () => {

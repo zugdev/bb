@@ -80,7 +80,12 @@ export function useBbNavigate(): BbNavigate {
           openThreadInTab(store, navigate, { projectId, threadId });
           return;
         }
-        if (options?.split) {
+        const layout = store.get(splitLayoutAtom);
+        const shownInPane =
+          layout !== null &&
+          findPaneByThread(layout.root, projectId, threadId) !== null;
+        const inPane = options?.experimental_inPane === true && pane !== null;
+        if (options?.split || (inPane && shownInPane)) {
           openThreadInSplit({
             store,
             navigate,
@@ -90,13 +95,7 @@ export function useBbNavigate(): BbNavigate {
           });
           return;
         }
-        const layout = store.get(splitLayoutAtom);
-        if (
-          options?.experimental_inPane &&
-          pane !== null &&
-          (layout === null ||
-            findPaneByThread(layout.root, projectId, threadId) === null)
-        ) {
+        if (inPane) {
           pane.navigateInPane({ projectId, threadId });
           return;
         }

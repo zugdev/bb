@@ -2390,6 +2390,12 @@ export interface PluginThreadActionRegistration<Data = undefined> {
   order?: number;
   /** Where the action shows; defaults to `"menu"`. */
   placement?: PluginThreadActionPlacement;
+  /**
+   * With `placement: "header"`, puts the action's row before the workspace's
+   * Open rows when the header folds into the thread menu. Experimental: see
+   * docs/api_to_audit.md.
+   */
+  experimental_headerLead?: boolean;
   useData?(input: PluginThreadActionDataInput): Data;
   item(input: PluginThreadActionItemInput<Data>): PluginThreadAction | null;
   /**
@@ -2413,7 +2419,8 @@ export interface PluginThreadActionRegistration<Data = undefined> {
  *   with the action's `label`, after the workspace's Open button. Several
  *   header actions share one split button, the first as its main action. At
  *   compact width and in narrow split panes the buttons fold into the
- *   header's thread menu as rows at its top, after Open. `group` and `order`
+ *   header's thread menu as rows at its top, after Open, or before Open with
+ *   `experimental_headerLead`. `group` and `order`
  *   sort header actions among themselves. Header actions never appear in
  *   other menus, selection menus, `experimental_useThreadActions`, or the
  *   quick-action picker, and an action that returns `choices` is left out

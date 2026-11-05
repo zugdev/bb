@@ -1694,7 +1694,7 @@ describe("ThreadRow", () => {
     expect(renderedIndicators()).toEqual(["working-draft"]);
   });
 
-  it("ignores hidden child activity once the parent is expanded", () => {
+  it("rolls hidden child workflow activity up into an expanded parent", () => {
     renderThreadRow({
       thread: createThread({ lastReadAt: 1, latestAttentionAt: 1 }),
       options: {
@@ -1714,7 +1714,7 @@ describe("ThreadRow", () => {
       },
     });
 
-    expect(renderedIndicators()).toEqual([]);
+    expect(renderedIndicators()).toEqual(["workflow"]);
   });
 
   it("shows unread success for an already-unread successful thread on initial load", () => {

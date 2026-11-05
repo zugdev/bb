@@ -100,7 +100,7 @@ describe("collectPluginAppRegistrations — experimental_threadAction", () => {
     ]);
   });
 
-  it("keeps a header placement", () => {
+  it("keeps a header placement and experimental_headerLead", () => {
     const definition = definePluginApp((app) => {
       app.slots.experimental_threadAction({
         id: "commit",
@@ -108,12 +108,13 @@ describe("collectPluginAppRegistrations — experimental_threadAction", () => {
         icon: "GitBranch",
         group: "git",
         placement: "header",
+        experimental_headerLead: true,
         item,
       });
     });
-    expect(
-      collectPluginAppRegistrations(definition).threadActions[0]?.placement,
-    ).toBe("header");
+    const [action] = collectPluginAppRegistrations(definition).threadActions;
+    expect(action?.placement).toBe("header");
+    expect(action?.experimental_headerLead).toBe(true);
   });
 
   it("rejects two thread actions with the same id", () => {

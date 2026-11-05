@@ -4,6 +4,7 @@ import {
   useContext,
   useEffect,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
   useSyncExternalStore,
@@ -553,10 +554,25 @@ export function useThreadActionEntries(
   return useThreadEntries(thread, options, "menu");
 }
 
+export interface ThreadHeaderActionEntry extends PluginThreadActionEntry {
+  lead: boolean;
+}
+
 export function useThreadHeaderActionEntries(
   thread: PluginThreadActionTarget,
-): readonly PluginThreadActionEntry[] {
-  return useThreadEntries(thread, undefined, "header");
+): readonly ThreadHeaderActionEntry[] {
+  const entries = useThreadEntries(thread, undefined, "header");
+  const { records } = useSyncExternalStore(subscribe, getSnapshot);
+  return useMemo(
+    () =>
+      entries.map((entry) => ({
+        ...entry,
+        lead:
+          records.find((record) => record.key === entry.key)?.registration
+            .experimental_headerLead === true,
+      })),
+    [entries, records],
+  );
 }
 
 export function useThreadBulkActionEntries(
