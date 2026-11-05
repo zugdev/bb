@@ -60,6 +60,8 @@ Read the installed SDK declarations for the exact current signatures.
 - `experimental_VoiceRecordingBar`
 - `experimental_FailedVoiceRecordings`
 - `experimental_ShortcutHint`
+- `experimental_useCommandShortcut`
+- `experimental_ProjectPicker`
 - `experimental_ImageLightbox`
 - `experimental_PromptMentionIcon`
 - `experimental_describePromptMention`
@@ -363,6 +365,7 @@ Read the installed SDK declarations for the exact current signatures.
 - `ExperimentalVoiceRecordingBarProps`
 - `ExperimentalFailedVoiceRecordingsProps`
 - `ExperimentalShortcutHintProps`
+- `ExperimentalProjectPickerProps`
 - `ExperimentalImageLightboxProps`
 - `ExperimentalPromptMentionIconProps`
 - `ExperimentalPromptMentionPresentation`

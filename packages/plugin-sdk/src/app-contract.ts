@@ -62,6 +62,13 @@ import type { PluginMentionTrigger } from "./backend-contract.js";
 export interface PluginHomepageSectionProps {
   /** Project in view on the compose surface; null when none is selected. */
   projectId: string | null;
+  /**
+   * Select a project in the New thread composer, the same change its project
+   * picker makes; null selects No project. Null where the section can't
+   * change the project: on Home, and while the composer is submitting.
+   * Experimental: see docs/api_to_audit.md.
+   */
+  experimental_setProjectId: ((projectId: string | null) => void) | null;
 }
 
 /**
@@ -826,6 +833,13 @@ export interface PluginHomepageSectionRegistration {
   id: string;
   title: string;
   component: ComponentType<PluginHomepageSectionProps>;
+  /**
+   * `"lead"` renders the section first on the New thread screen, before
+   * other sections and without the host's heading, and leaves it off Home.
+   * Omitted renders a titled section in registration order on both.
+   * Experimental: see docs/api_to_audit.md.
+   */
+  experimental_placement?: "lead";
 }
 
 export interface PluginSettingsSectionRegistration {
@@ -1434,6 +1448,11 @@ export interface PluginSidebarThread {
   updatedAt: number;
   lastReadAt: number | null;
   latestAttentionAt: number;
+  /**
+   * When the user last sent this thread a message; null before the first.
+   * Experimental: see docs/api_to_audit.md.
+   */
+  experimental_lastUserMessageAt: number | null;
 }
 
 /** One project in the sidebar's live view. */
@@ -3287,6 +3306,14 @@ export interface ExperimentalFailedVoiceRecordingsProps {
 export interface ExperimentalShortcutHintProps {
   shortcut: ExperimentalShortcutPresentation | null;
   className?: string;
+}
+
+/** Props of `experimental_ProjectPicker`. */
+export interface ExperimentalProjectPickerProps {
+  /** The selected project; null shows No project. */
+  value: string | null;
+  onChange(projectId: string | null): void;
+  disabled: boolean;
 }
 
 /** Props of `experimental_ImageLightbox`. */
@@ -6069,6 +6096,20 @@ export interface PluginSdkApp {
   experimental_VoiceRecordingBar: ComponentType<ExperimentalVoiceRecordingBarProps>;
   experimental_FailedVoiceRecordings: ComponentType<ExperimentalFailedVoiceRecordingsProps>;
   experimental_ShortcutHint: ComponentType<ExperimentalShortcutHintProps>;
+  /**
+   * The shortcut bound to one of this plugin's commands (`id` as registered
+   * through `app.commands.register` or `composer.experimental_registerCommand`),
+   * following the user's rebinding; null when unbound. Experimental: see
+   * docs/api_to_audit.md.
+   */
+  experimental_useCommandShortcut(
+    id: string,
+  ): ExperimentalShortcutPresentation | null;
+  /**
+   * bb's project picker: the New thread composer's project list with No
+   * project, search and Add project. Experimental: see docs/api_to_audit.md.
+   */
+  experimental_ProjectPicker: ComponentType<ExperimentalProjectPickerProps>;
   experimental_ImageLightbox: ComponentType<ExperimentalImageLightboxProps>;
   experimental_PromptMentionIcon: ComponentType<ExperimentalPromptMentionIconProps>;
   /**

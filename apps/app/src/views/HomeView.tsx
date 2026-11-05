@@ -25,7 +25,11 @@ import { cn } from "@bb/shared-ui/lib/utils";
 import { useSidebarNavigation } from "@/hooks/queries/sidebar-navigation-query";
 import { threadEntryMapFor } from "@/lib/sidebar-thread-entries";
 import { threadDescendantsFor } from "@/components/thread/ThreadStatusDot";
-import { PluginHomepageSection } from "@/components/plugin/PluginHomepageSections";
+import {
+  HOME_SECTION_PROJECT,
+  isLeadHomepageSection,
+  PluginHomepageSection,
+} from "@/components/plugin/PluginHomepageSections";
 import { usePluginSlots } from "@/lib/plugin-slots";
 import {
   useAppCommandRunner,
@@ -426,7 +430,9 @@ export default function HomeView() {
   const descendants = threadDescendantsFor(threadEntryMapFor(data));
   const { homepageSections } = usePluginSlots();
   const pluginSections = new Map(
-    homepageSections.map((section) => [
+    homepageSections
+      .filter((section) => !isLeadHomepageSection(section))
+      .map((section) => [
       pluginSectionId(section.pluginId, section.id),
       section,
     ]),
@@ -461,7 +467,12 @@ export default function HomeView() {
       return {
         icon: "Puzzle",
         label: pluginSection.title,
-        body: <PluginHomepageSection section={pluginSection} />,
+        body: (
+          <PluginHomepageSection
+            section={pluginSection}
+            project={HOME_SECTION_PROJECT}
+          />
+        ),
       };
     const project = projects.find((p) => projectSectionId(p.id) === id);
     if (project === undefined) return null;

@@ -27,6 +27,8 @@ const {
   UrlLink: UrlLink,
   experimental_ProviderModelPicker: ProviderModelPicker,
   experimental_PermissionModePicker: PermissionModePicker,
+  experimental_ProjectPicker: ProjectPicker,
+  experimental_useCommandShortcut,
   experimental_useAppPanel,
   experimental_useFixedTabTarget,
   ThreadChat,
@@ -569,6 +571,97 @@ describe("loadPluginApp", () => {
         }),
       ),
     ).rejects.toThrow('slots.experimental_appOverlay: duplicate id "office"');
+  });
+
+  it("captures and validates homepage section placement", async () => {
+    function Section() {
+      return <div>section</div>;
+    }
+    const captured = await loadPluginApp(
+      definePluginApp((builder) => {
+        builder.slots.homepageSection({
+          id: "lead",
+          title: "Lead",
+          component: Section,
+          experimental_placement: "lead",
+        });
+        builder.slots.homepageSection({
+          id: "titled",
+          title: "Titled",
+          component: Section,
+        });
+      }),
+    );
+    expect(
+      captured.homepageSections.map(
+        (section) => section.experimental_placement,
+      ),
+    ).toEqual(["lead", undefined]);
+    await expect(
+      loadPluginApp(
+        definePluginApp((builder) => {
+          builder.slots.homepageSection({
+            id: "top",
+            title: "Top",
+            component: Section,
+            experimental_placement: "top" as "lead",
+          });
+        }),
+      ),
+    ).rejects.toThrow(
+      'slots.homepageSection: experimental_placement must be "lead"',
+    );
+  });
+
+  it("renders the project picker over the sidebar projects and reports command shortcuts", async () => {
+    const onChange = vi.fn();
+    function Section() {
+      const shortcut = experimental_useCommandShortcut("cycle");
+      return (
+        <div>
+          <ProjectPicker value="proj_web" onChange={onChange} disabled={false} />
+          <span>{shortcut?.label ?? "unbound"}</span>
+          <span>{experimental_useCommandShortcut("other")?.label ?? "none"}</span>
+        </div>
+      );
+    }
+    const slot = renderSlot(
+      { component: Section },
+      {},
+      {
+        sidebarThreads: {
+          projects: [
+            {
+              id: "proj_personal",
+              name: "Personal",
+              isPersonal: true,
+              href: "/",
+              settingsHref: "/settings",
+            },
+            {
+              id: "proj_web",
+              name: "Web",
+              isPersonal: false,
+              href: "/projects/proj_web",
+              settingsHref: "/settings/projects/proj_web",
+            },
+          ],
+        },
+        commandShortcuts: {
+          cycle: { label: "⌥ O", ariaKeyshortcuts: "Alt+O" },
+        },
+      },
+    );
+    const picker = slot.getByRole("combobox", { name: "Project" });
+    expect(
+      within(picker)
+        .getAllByRole("option")
+        .map((option) => option.textContent),
+    ).toEqual(["No project", "Web"]);
+    fireEvent.change(picker, { target: { value: "" } });
+    expect(onChange).toHaveBeenCalledWith(null);
+    expect(slot.getByText("⌥ O")).toBeTruthy();
+    expect(slot.getByText("none")).toBeTruthy();
   });
 
   it("captures and validates New thread panel action registrations", async () => {
@@ -1795,7 +1888,7 @@ describe("renderSlot", () => {
   it("drives the shared realtime connection lifecycle", async () => {
     const slot = renderSlot(
       app.homepageSections[0]!,
-      { projectId: null },
+      { projectId: null, experimental_setProjectId: null },
       { realtimeConnectionState: "connecting" },
     );
     await slot.findByText("Realtime: connecting");

@@ -2,7 +2,10 @@ import { useState, type ComponentProps, type ReactNode } from "react";
 import { Skeleton } from "@bb/shared-ui/skeleton";
 import { COARSE_POINTER_HEADER_ICON_BUTTON_CLASS } from "@bb/shared-ui/coarse-pointer-sizing";
 import { cn } from "@bb/shared-ui/lib/utils";
-import { PluginHomepageSections } from "@/components/plugin/PluginHomepageSections";
+import {
+  PluginHomepageSections,
+  type HomepageSectionProject,
+} from "@/components/plugin/PluginHomepageSections";
 import { usePluginComposerHost } from "@/components/plugin/plugin-composer-host";
 import { SecondaryPanelLayout } from "@/components/secondary-panel/SecondaryPanelLayout";
 import { secondaryPanelWidthPercentAtom } from "@/components/secondary-panel/threadSecondaryPanelAtoms";
@@ -57,7 +60,7 @@ type RootSecondaryPanelProps = Omit<
 interface RootComposeSecondaryContentProps {
   children: ReactNode;
   compactScrollContent: ReactNode;
-  overview: ReactNode;
+  homepageSectionProject: HomepageSectionProject;
   isCompactHomeLayout: boolean;
   contentClassName?: string;
   isSecondaryPanelOpen: boolean;
@@ -81,7 +84,7 @@ function DrawerPanelLoadingSkeleton() {
 export function RootComposeSecondaryContent({
   children,
   compactScrollContent,
-  overview,
+  homepageSectionProject,
   isCompactHomeLayout,
   contentClassName,
   isSecondaryPanelOpen,
@@ -128,10 +131,7 @@ export function RootComposeSecondaryContent({
         composer={children}
         compactScrollContent={compactScrollContent}
         homepageSections={
-          <>
-            {overview}
-            <PluginHomepageSections />
-          </>
+          <PluginHomepageSections project={homepageSectionProject} />
         }
         wideContentClassName={contentClassName}
       />

@@ -719,10 +719,17 @@ export function collectPluginAppRegistrations(
         const kind = "slots.homepageSection";
         const id = requireSlotId(kind, registration?.id);
         requireUniqueId(kind, seenIds.homepageSection, id);
+        const placement = registration.experimental_placement;
+        if (placement !== undefined && placement !== "lead") {
+          throw new Error(`${kind}: experimental_placement must be "lead"`);
+        }
         collected.homepageSections.push({
           id,
           title: requireNonEmptyString(kind, "title", registration.title),
           component: requireComponent(kind, registration.component),
+          ...(placement !== undefined
+            ? { experimental_placement: placement }
+            : {}),
         });
       },
       settingsSection(registration) {

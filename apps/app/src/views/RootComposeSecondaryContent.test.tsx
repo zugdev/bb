@@ -112,6 +112,11 @@ vi.mock("@/components/plugin/PluginHomepageSections", async () => {
   };
 });
 
+const NO_SECTION_PROJECT = {
+  projectId: null,
+  experimental_setProjectId: null,
+};
+
 function createSecondaryPanel(
   isOpen: boolean,
 ): RootComposeSecondaryContentProps["secondaryPanel"] {
@@ -163,7 +168,7 @@ function renderRootCompose(args: RenderRootComposeArgs) {
         >
           <RootComposeSecondaryContent
             compactScrollContent={null}
-            overview={null}
+            homepageSectionProject={NO_SECTION_PROJECT}
             isCompactHomeLayout={false}
             isSecondaryPanelOpen={renderArgs.isSecondaryPanelOpen}
             onToggleSecondaryPanel={() => undefined}
@@ -207,7 +212,7 @@ describe("RootComposeSecondaryContent desktop layout", () => {
       <CompactViewportOverrideProvider isCompactViewport={isCompactViewport}>
         <RootComposeSecondaryContent
           compactScrollContent={compactContent}
-          overview={null}
+          homepageSectionProject={NO_SECTION_PROJECT}
           isCompactHomeLayout={isCompactViewport}
           isSecondaryPanelOpen={false}
           onToggleSecondaryPanel={noop}

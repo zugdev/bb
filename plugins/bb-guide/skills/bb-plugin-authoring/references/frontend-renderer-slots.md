@@ -100,7 +100,8 @@ Original }`. `experimental_fullFileContents` is either
   their inline actions; surfaces that hide plugin customizations return none.
   Other host components: `experimental_VoiceInputButton`,
   `experimental_VoiceRecordingBar`, `experimental_FailedVoiceRecordings`,
-  `experimental_ShortcutHint`, `experimental_ImageLightbox`,
+  `experimental_ShortcutHint`, `experimental_useCommandShortcut`,
+  `experimental_ProjectPicker`, `experimental_ImageLightbox`,
   `experimental_PromptMentionIcon`, `experimental_PluginIcon`,
   `experimental_ThreadTitleText`, plus `experimental_useThreadTitleDisplayText`.
 

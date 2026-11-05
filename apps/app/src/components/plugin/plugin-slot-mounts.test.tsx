@@ -29,6 +29,7 @@ import type {
   ExperimentalComposerSelection,
   PluginComposerApi,
   PluginFileOpenerProps,
+  PluginHomepageSectionProps,
   PluginNewThreadPanelProps,
   ExperimentalThreadActionTabProps,
 } from "@get-bb/plugin-sdk";
@@ -65,7 +66,10 @@ import {
   useComposerHostDraftNotifier,
   usePublishPluginComposerHost,
 } from "./plugin-composer-host";
-import { PluginHomepageSections } from "./PluginHomepageSections";
+import {
+  HOME_SECTION_PROJECT,
+  PluginHomepageSections,
+} from "./PluginHomepageSections";
 import { makePluginRegistrationSet as registrationSet } from "@/test/fixtures/plugins";
 import {
   getComposerInputLock,
@@ -148,11 +152,68 @@ describe("PluginHomepageSections", () => {
     );
     render(
       <MemoryRouter initialEntries={["/"]}>
-        <PluginHomepageSections />
+        <PluginHomepageSections project={HOME_SECTION_PROJECT} />
       </MemoryRouter>,
     );
     expect(screen.getByText("plugin broken crashed")).toBeDefined();
     expect(screen.getByText("fine section body")).toBeDefined();
+  });
+
+  it("renders lead sections first without a heading and hands every section the compose project", () => {
+    const setProjectId = vi.fn();
+    function Shows({
+      projectId,
+      experimental_setProjectId,
+    }: PluginHomepageSectionProps) {
+      return (
+        <button
+          type="button"
+          onClick={() => experimental_setProjectId?.("proj_next")}
+        >
+          {`project ${projectId}`}
+        </button>
+      );
+    }
+    setPluginSlotRegistrations(
+      "titled",
+      registrationSet({
+        homepageSections: [{ id: "a", title: "Titled", component: Shows }],
+      }),
+    );
+    setPluginSlotRegistrations(
+      "lead",
+      registrationSet({
+        homepageSections: [
+          {
+            id: "b",
+            title: "Lead",
+            component: Shows,
+            experimental_placement: "lead",
+          },
+        ],
+      }),
+    );
+    render(
+      <MemoryRouter initialEntries={["/"]}>
+        <PluginHomepageSections
+          project={{
+            projectId: "proj_web",
+            experimental_setProjectId: setProjectId,
+          }}
+        />
+      </MemoryRouter>,
+    );
+    const bodies = screen.getAllByRole("button", { name: "project proj_web" });
+    expect(bodies).toHaveLength(2);
+    expect(
+      bodies[0]!.compareDocumentPosition(bodies[1]!) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(screen.queryByRole("heading", { name: "Lead" })).toBeNull();
+    expect(screen.getByRole("heading", { name: "Titled" })).toBeDefined();
+    expect(bodies[0]!.closest("section")).toBeNull();
+    fireEvent.click(bodies[0]!);
+    expect(setProjectId).toHaveBeenCalledWith("proj_next");
   });
 });
 

@@ -111,7 +111,10 @@ function MountedHomepageSections() {
         pluginId: section.pluginId,
         slotKind: "homepageSection",
         slotId: section.id,
-        children: createElement(section.component, { projectId: null }),
+        children: createElement(section.component, {
+          projectId: null,
+          experimental_setProjectId: null,
+        }),
       }),
     ),
   );

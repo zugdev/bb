@@ -44,6 +44,17 @@ describe("toPluginSidebarThread", () => {
     ).toBe("Review Slop Cop in bb");
   });
 
+  it("reports when the user last messaged the thread", () => {
+    expect(
+      toPluginSidebarThread(makeThread({ lastUserMessageAt: 42 }))
+        .experimental_lastUserMessageAt,
+    ).toBe(42);
+    expect(
+      toPluginSidebarThread(makeThread({ lastUserMessageAt: null }))
+        .experimental_lastUserMessageAt,
+    ).toBeNull();
+  });
+
   it("maps activity counts onto the plugin-facing names", () => {
     const mapped = toPluginSidebarThread(
       makeThread({

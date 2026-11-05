@@ -398,7 +398,8 @@ await sdk.threads.update({ id: thread.id, sectionId });
 // environment { id, name, branchName, path, isWorktree, providerId,
 // workspaceDisplayKind }, where workspaceDisplayKind is deprecated
 // compatibility data; host { id, name }, createdAt, updatedAt, lastReadAt,
-// latestAttentionAt, and `indicator` (bb's resolved status kind) +
+// latestAttentionAt, experimental_lastUserMessageAt (null before the user's
+// first message), and `indicator` (bb's resolved status kind) +
 // `indicatorLabel` (its a11y string). Draw your own glyph for `indicator`;
 // the SDK ships no status component. Treat an unknown indicator, status, or
 // runtimeStatus value as its documented fallback — bb adds kinds over time.

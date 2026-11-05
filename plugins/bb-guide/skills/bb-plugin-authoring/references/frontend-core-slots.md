@@ -60,8 +60,17 @@ cleanup-safe example: `examples/plugins/content-script`.
 
 Slot props contracts (versioned, additive-only):
 
-- `homepageSection` → `{ projectId: string | null }` (project in view on
-  the compose surface). Registration: `{ id, title, component }`.
+- `homepageSection` → `{ projectId: string | null,
+  experimental_setProjectId: ((projectId: string | null) => void) | null }`.
+  `projectId` is the New thread composer's project, null for No project and
+  on Home. `experimental_setProjectId` selects a project in that composer the
+  way its project picker does; it is null on Home and while the composer is
+  submitting. Registration: `{ id, title, component, experimental_placement? }`;
+  `experimental_placement: "lead"` renders the section first on the New thread
+  screen without the host heading and leaves it off Home. Pair it with
+  `experimental_ProjectPicker` (bb's project picker, `{ value, onChange,
+  disabled }`) and `experimental_useCommandShortcut(id)`, which returns the
+  `{ label, ariaKeyshortcuts }` bound to one of your commands or null.
 - `settingsSection` → `{}` (deliberately no props in V1). Rendered on the
   plugin detail page below the host-rendered declarative settings
   form for running, needs-configuration, and degraded plugins. Registration:
