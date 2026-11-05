@@ -78,7 +78,7 @@ function NewThreadOverviewSection({
       onOpenThread={(thread, { newTab }) =>
         navigate.toThread(
           thread.id,
-          newTab ? { experimental_tab: true } : undefined,
+          newTab ? { experimental_tab: true } : { experimental_inPane: true },
         )
       }
     />

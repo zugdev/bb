@@ -62,7 +62,11 @@ describe("home plugin", () => {
     fireEvent.click(row);
     fireEvent.click(row, { metaKey: true });
     expect(view.navigateCalls).toEqual([
-      { method: "toThread", threadId: "ask-web", options: undefined },
+      {
+        method: "toThread",
+        threadId: "ask-web",
+        options: { experimental_inPane: true },
+      },
       {
         method: "toThread",
         threadId: "ask-web",

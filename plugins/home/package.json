@@ -12,7 +12,7 @@
     "name": "Home",
     "description": "The New thread overview: threads that need you, the selected project's latest threads, and recent project shortcuts.",
     "branding": {
-      "icon": "House"
+      "icon": "Home"
     },
     "app": "./app.tsx"
   },
