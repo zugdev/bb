@@ -12,6 +12,7 @@ export function classifyChanges(
   checkoutPath: string,
   changedFiles: readonly string[],
   localPlugins: readonly LocalPlugin[],
+  newPluginDirs: readonly string[] = [],
 ):
   | { kind: "up-to-date" }
   | { kind: "docs" }
@@ -29,7 +30,9 @@ export function classifyChanges(
   const pluginIds = new Set<string>();
   for (const file of shippedFiles) {
     const match = /^plugins\/([^/]+)\//u.exec(file);
-    const id = match === null ? undefined : idByDir.get(match[1]!);
+    const dir = match?.[1];
+    if (dir !== undefined && newPluginDirs.includes(dir)) continue;
+    const id = dir === undefined ? undefined : idByDir.get(dir);
     if (id === undefined) return { kind: "rebuild" };
     pluginIds.add(id);
   }

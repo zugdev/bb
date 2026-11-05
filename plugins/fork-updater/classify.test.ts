@@ -46,4 +46,10 @@ describe("classifyChanges", () => {
       expect(classifyChanges(checkout, ["docs/fork-roadmap.md", shipped], plugins)).toEqual({ kind: "rebuild" });
     }
   });
+
+  it("installs new fork plugins without rebuilding", () => {
+    expect(
+      classifyChanges(checkout, ["plugins/home/server.ts", "plugins/assistant/app.tsx"], plugins, ["home"]),
+    ).toEqual({ kind: "plugins", pluginIds: ["assistant"] });
+  });
 });
