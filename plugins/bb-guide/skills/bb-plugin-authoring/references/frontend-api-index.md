@@ -238,6 +238,8 @@ Read the installed SDK declarations for the exact current signatures.
 - `ExperimentalThreadContextKind`
 - `ExperimentalThreadContextCardProps`
 - `ExperimentalThreadContextCardRowProps`
+- `ExperimentalThreadHeaderLeadingProps`
+- `ExperimentalThreadHeaderLeadingRegistration`
 - `PluginThreadActionTarget`
 - `PluginThreadActionChoice`
 - `PluginThreadActionChoices`
