@@ -1,0 +1,45 @@
+{
+  "name": "bb-plugin-muon-copy",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Copy a Project Muon task's instruction and survey answer from a muon-copy block",
+  "engines": {
+    "bb": ">=0.0",
+    "bbPluginSdk": ">=0.6.47"
+  },
+  "bb": {
+    "name": "Muon copy",
+    "description": "Copy a Project Muon task's instruction and survey answer from a muon-copy block",
+    "branding": {
+      "icon": "Copy"
+    },
+    "server": "./server.ts",
+    "app": "./app.tsx"
+  },
+  "keywords": [
+    "bb-plugin"
+  ],
+  "scripts": {
+    "test": "vitest run --config vitest.config.ts",
+    "typecheck": "tsrs --noEmit",
+    "lint": "oxlint --ignore-pattern node_modules --ignore-pattern dist .",
+    "prepare:bundled": "bb-plugin-build prepare-bundled"
+  },
+  "dependencies": {
+    "@bb/shared-ui": "workspace:*",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@bb/plugin-build": "workspace:*",
+    "@get-bb/plugin-sdk": "workspace:*",
+    "@types/node": "^22.0.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "tsrs": "0.18.0-ts7.1.0-dev.20260929",
+    "typescript": "npm:@typescript/typescript6@^6.0.2",
+    "vitest": "^4.1.1"
+  }
+}
