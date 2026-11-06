@@ -28,6 +28,18 @@ export const sortDirectionSchema = z.enum([
 ]);
 export type SortDirection = z.infer<typeof sortDirectionSchema>;
 
+export const threadFilterStatusSchema = z.enum(["all", "running", "needs-you"]);
+export type ThreadFilterStatus = z.infer<typeof threadFilterStatusSchema>;
+
+export const threadFilterSchema = z
+  .object({
+    status: threadFilterStatusSchema,
+    projectId: listItemSchema.nullable(),
+    olderThanDays: z.number().int().min(1).max(3_650).nullable(),
+  })
+  .strict();
+export type ThreadFilter = z.infer<typeof threadFilterSchema>;
+
 export const environmentGroupingSchema = z.union([
   z.literal("auto"),
   z.boolean(),
@@ -116,6 +128,12 @@ export const preferenceDefinitions = {
       .refine((value) => new Set(value).size === value.length),
     ["active"],
     "Thread lifecycles shown in the list: active, archived, or both. At least one is required.",
+    null,
+  ),
+  threadFilter: definePreference(
+    threadFilterSchema,
+    { status: "all", projectId: null, olderThanDays: null },
+    "Filter row under the sidebar navigation: status (all, running, or needs-you), a project id or null for every project, and olderThanDays to show only threads untouched for that many days, or null.",
     null,
   ),
   organizationMode: definePreference(

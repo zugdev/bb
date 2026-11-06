@@ -4811,15 +4811,9 @@ importers:
       '@bb/shared-ui':
         specifier: workspace:*
         version: link:../../packages/shared-ui
-      '@dnd-kit/core':
-        specifier: ^6.3.1
-        version: 6.3.1(patch_hash=qw3asnk7ibbhyy46aayp6jxhwi)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
-      '@dnd-kit/sortable':
-        specifier: ^10.0.0
-        version: 10.0.0(@dnd-kit/core@6.3.1(patch_hash=qw3asnk7ibbhyy46aayp6jxhwi)(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(react@19.3.0)
-      '@dnd-kit/utilities':
-        specifier: ^3.2.2
-        version: 3.2.2(react@19.3.0)
+      sonner:
+        specifier: ^1.7.4
+        version: 1.7.4(patch_hash=ywi4zh4oqnjpviiknloue4elvi)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
     devDependencies:
       '@bb/plugin-build':
         specifier: workspace:*
@@ -12406,7 +12400,7 @@ packages:
 
   bunyan@1.8.15:
     resolution: {integrity: sha512-0tECWShh6wUysgucJcBAoYegf3JJoZWibxdqhTm7OHPeT42qdjkZ29QCMcKwbgU1kiH+auSIasNRXMLWXafXig==}
-    engines: {node: '>=0.10.0'}
+    engines: {'0': node >=0.10.0}
     hasBin: true
 
   bytes@3.1.2:
@@ -22489,9 +22483,7 @@ snapshots:
       metro-runtime: 0.87.1
     transitivePeerDependencies:
       - '@babel/core'
-      - bufferutil
       - supports-color
-      - utf-8-validate
 
   '@react-native/normalize-colors@0.79.6': {}
 

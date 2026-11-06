@@ -6,7 +6,6 @@ import {
 
 export const NEEDS_YOU_LIMIT = 3;
 export const RECENT_PROJECT_LIMIT = 4;
-export const PROJECT_THREAD_LIMIT = 4;
 
 const SIDE_CHAT_PLUGIN_ID = "side-chat";
 
@@ -103,18 +102,73 @@ export function needsYouThreads(
     .sort((a, b) => b.latestAttentionAt - a.latestAttentionAt);
 }
 
-export function lastMessageTime(thread: PluginSidebarThread): number {
-  return thread.experimental_lastUserMessageAt ?? thread.createdAt;
+export const HOME_STATUS_FILTERS = [
+  { value: "all", label: "All" },
+  { value: "running", label: "Running" },
+  { value: "needs-you", label: "Needs you" },
+] as const;
+
+export const HOME_AGE_FILTERS = [
+  { value: null, label: "Any age" },
+  { value: 7, label: "7d+" },
+  { value: 30, label: "30d+" },
+] as const;
+
+export interface HomeThreadFilter {
+  status: (typeof HOME_STATUS_FILTERS)[number]["value"];
+  olderThanDays: number | null;
 }
 
-export function latestThreads(
+export const DEFAULT_HOME_THREAD_FILTER: HomeThreadFilter = {
+  status: "all",
+  olderThanDays: null,
+};
+
+export function isHomeThreadFilter(value: unknown): value is HomeThreadFilter {
+  if (typeof value !== "object" || value === null) return false;
+  const { status, olderThanDays } = value as Record<string, unknown>;
+  return (
+    HOME_STATUS_FILTERS.some((option) => option.value === status) &&
+    (olderThanDays === null ||
+      (typeof olderThanDays === "number" && olderThanDays > 0))
+  );
+}
+
+export function filterHomeThreads(
   threads: readonly PluginSidebarThread[],
-  excluded: ReadonlySet<string>,
+  filter: HomeThreadFilter,
+  now: number,
 ): PluginSidebarThread[] {
-  return homeTopLevelThreads(threads)
-    .sort((a, b) => lastMessageTime(b) - lastMessageTime(a))
-    .filter((thread) => !excluded.has(thread.id))
-    .slice(0, PROJECT_THREAD_LIMIT);
+  const descendants = liveThreadDescendants(threads);
+  return threads.filter((thread) => {
+    if (thread.parentThreadId !== null) return true;
+    if (
+      filter.olderThanDays !== null &&
+      now - thread.updatedAt < filter.olderThanDays * DAY_MS
+    ) {
+      return false;
+    }
+    if (filter.status === "all") return true;
+    const status = resolveHomeThreadStatus(thread, descendants);
+    return filter.status === "running"
+      ? status.isWorking
+      : NEEDS_YOU_INDICATORS.has(status.indicator);
+  });
+}
+
+export function archivableHomeThreads(
+  threads: readonly PluginSidebarThread[],
+): PluginSidebarThread[] {
+  const descendants = liveThreadDescendants(threads);
+  return homeTopLevelThreads(threads).filter(
+    (thread) =>
+      !thread.isPinned &&
+      !resolveHomeThreadStatus(thread, descendants).isWorking,
+  );
+}
+
+export function lastMessageTime(thread: PluginSidebarThread): number {
+  return thread.experimental_lastUserMessageAt ?? thread.createdAt;
 }
 
 export function recentProjects(
@@ -168,24 +222,6 @@ export function formatRelativeTime(timestamp: number, now: number): string {
   });
 }
 
-export function homeAttention(threads: readonly PluginSidebarThread[]): {
-  needsYou: PluginSidebarThread[];
-  replies: PluginSidebarThread[];
-} {
-  const descendants = liveThreadDescendants(threads);
-  const byAttention = (a: PluginSidebarThread, b: PluginSidebarThread) =>
-    b.latestAttentionAt - a.latestAttentionAt;
-  const needsYou: PluginSidebarThread[] = [];
-  const replies: PluginSidebarThread[] = [];
-  for (const thread of homeTopLevelThreads(threads)) {
-    const status = resolveHomeThreadStatus(thread, descendants);
-    if (NEEDS_YOU_INDICATORS.has(status.indicator)) needsYou.push(thread);
-    else if (!status.isWorking && status.indicator === "unread-success")
-      replies.push(thread);
-  }
-  return { needsYou: needsYou.sort(byAttention), replies: replies.sort(byAttention) };
-}
-
 export const HOME_THREAD_SORTS = [
   { value: "message", label: "Your last message" },
   { value: "activity", label: "Last activity" },
@@ -224,80 +260,6 @@ export function sortAndFilterHomeThreads(
     .sort(
       (a, b) => direction * (homeThreadTime(b, sort) - homeThreadTime(a, sort)),
     );
-}
-
-export const HOME_FIXED_SECTION_IDS = ["attention"];
-
-export interface HomeLayoutPrefs {
-  order: string[];
-  hidden: string[];
-}
-
-export const DEFAULT_HOME_LAYOUT: HomeLayoutPrefs = { order: [], hidden: [] };
-
-export function isHomeLayoutPrefs(value: unknown): value is HomeLayoutPrefs {
-  if (typeof value !== "object" || value === null) return false;
-  const { order, hidden } = value as Record<string, unknown>;
-  return (
-    Array.isArray(order) &&
-    Array.isArray(hidden) &&
-    [...order, ...hidden].every((id) => typeof id === "string")
-  );
-}
-
-export function projectSectionId(projectId: string): string {
-  return `project:${projectId}`;
-}
-
-export function pluginSectionId(pluginId: string, sectionId: string): string {
-  return `plugin:${pluginId}/${sectionId}`;
-}
-
-export function resolveHomeSections(
-  prefs: HomeLayoutPrefs,
-  projectIds: readonly string[],
-  pluginSectionIds: readonly string[] = [],
-): { visible: string[]; hidden: string[] } {
-  const leading = [...HOME_FIXED_SECTION_IDS, ...pluginSectionIds];
-  const available = [...leading, ...projectIds.map(projectSectionId)];
-  const unsaved = available.filter((id) => !prefs.order.includes(id));
-  const ordered = [
-    ...unsaved.filter((id) => leading.includes(id)),
-    ...prefs.order.filter((id) => available.includes(id)),
-    ...unsaved.filter((id) => !leading.includes(id)),
-  ];
-  const hidden = new Set(prefs.hidden);
-  return {
-    visible: ordered.filter((id) => !hidden.has(id)),
-    hidden: ordered.filter((id) => hidden.has(id)),
-  };
-}
-
-export function moveHomeSection(
-  prefs: HomeLayoutPrefs,
-  visible: readonly string[],
-  activeId: string,
-  overId: string,
-): HomeLayoutPrefs {
-  const from = visible.indexOf(activeId);
-  const to = visible.indexOf(overId);
-  if (from === -1 || to === -1 || from === to) return prefs;
-  const order = [...visible];
-  order.splice(to, 0, ...order.splice(from, 1));
-  return { order: [...order, ...prefs.hidden], hidden: prefs.hidden };
-}
-
-export function setHomeSectionHidden(
-  prefs: HomeLayoutPrefs,
-  visible: readonly string[],
-  id: string,
-  isHidden: boolean,
-): HomeLayoutPrefs {
-  const hidden = prefs.hidden.filter((hiddenId) => hiddenId !== id);
-  return {
-    order: isHidden ? [...visible, ...hidden] : [...visible, id, ...hidden],
-    hidden: isHidden ? [...hidden, id] : hidden,
-  };
 }
 
 export function repoWebUrl(gitRemoteUrl: string | null): string | null {

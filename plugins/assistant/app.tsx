@@ -161,6 +161,7 @@ export default definePluginApp((app) => {
     id: "assistant",
     title: "Assistant",
     component: AssistantHomeSection,
+    experimental_placement: "lead",
   });
   app.slots.navPanel({
     id: "assistant",

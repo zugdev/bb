@@ -1,27 +1,25 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   definePluginApp,
-  experimental_HomepageSection as HomepageSection,
   experimental_ProjectPicker as ProjectPicker,
-  experimental_useAddProject,
   experimental_useCommandShortcut,
-  experimental_useHomepageSections,
   experimental_useSidebarThreads,
-  experimental_useThreadSearch,
   useBbNavigate,
+  useSdk,
   type PluginComposerApi,
   type PluginHomepageSectionProps,
+  type PluginSidebarThread,
 } from "@get-bb/plugin-sdk/app";
+import { toast } from "sonner";
 import {
-  DEFAULT_HOME_LAYOUT,
-  isHomeLayoutPrefs,
+  DEFAULT_HOME_THREAD_FILTER,
+  isHomeThreadFilter,
   isHomeThreadSort,
   nextCycledProject,
   recentProjects,
-  type HomeLayoutPrefs,
+  type HomeThreadFilter,
   type HomeThreadSort,
 } from "./home-overview";
-import { HomePage } from "./HomePage";
 import { NewThreadOverview } from "./NewThreadOverview";
 
 export const CYCLE_PROJECT_COMMAND_ID = "cycle-project";
@@ -49,6 +47,25 @@ function NewThreadOverviewSection({
 }: PluginHomepageSectionProps) {
   const { threads, projects } = experimental_useSidebarThreads();
   const navigate = useBbNavigate();
+  const sdk = useSdk();
+  const [filter, setFilter] = useStoredState<HomeThreadFilter>(
+    HOME_THREAD_FILTER_KEY,
+    isHomeThreadFilter,
+    DEFAULT_HOME_THREAD_FILTER,
+  );
+  const archiveThreads = async (archived: readonly PluginSidebarThread[]) => {
+    const results = await Promise.allSettled(
+      archived.map((thread) => sdk.threads.archive({ threadId: thread.id })),
+    );
+    const failed = results.filter((result) => result.status === "rejected");
+    if (failed.length > 0) {
+      toast.error(
+        `Failed to archive ${failed.length} of ${results.length} threads.`,
+      );
+    } else {
+      toast.success(`Archived ${results.length} threads.`);
+    }
+  };
   const cycleShortcut = experimental_useCommandShortcut(
     CYCLE_PROJECT_COMMAND_ID,
   );
@@ -83,6 +100,9 @@ function NewThreadOverviewSection({
       setProjectId={setProjectId}
       cycleShortcutLabel={cycleShortcut?.label ?? null}
       order={order}
+      filter={filter}
+      setFilter={setFilter}
+      onArchiveThreads={archiveThreads}
       picker={
         <ProjectPicker
           value={projectId}
@@ -100,7 +120,7 @@ function NewThreadOverviewSection({
   );
 }
 
-export const HOME_LAYOUT_KEY = "bb.home.layout";
+export const HOME_THREAD_FILTER_KEY = "bb.home.threadFilter";
 const HOME_THREAD_SORT_KEY = "bb.home.threadSort";
 const HOME_THREAD_OLDEST_FIRST_KEY = "bb.home.threadOldestFirst";
 
@@ -152,57 +172,7 @@ function useHomeThreadOrder() {
   return { sort, setSort, isOldestFirst, setIsOldestFirst };
 }
 
-function HomePanel() {
-  const { threads, projects } = experimental_useSidebarThreads();
-  const navigate = useBbNavigate();
-  const sections = experimental_useHomepageSections();
-  const threadSearch = experimental_useThreadSearch();
-  const addProject = experimental_useAddProject();
-  const [layout, setLayout] = useStoredState<HomeLayoutPrefs>(
-    HOME_LAYOUT_KEY,
-    isHomeLayoutPrefs,
-    DEFAULT_HOME_LAYOUT,
-  );
-  const order = useHomeThreadOrder();
-  const pluginSections = useMemo(
-    () => sections.filter((section) => section.experimental_placement === null),
-    [sections],
-  );
-  return (
-    <HomePage
-      threads={threads}
-      projects={projects}
-      pluginSections={pluginSections}
-      renderPluginSection={(section) => (
-        <HomepageSection pluginId={section.pluginId} sectionId={section.id} />
-      )}
-      layout={layout}
-      setLayout={setLayout}
-      order={order}
-      search={{
-        shortcutLabel: threadSearch.shortcut?.label ?? null,
-        open: threadSearch.open,
-      }}
-      addProject={addProject}
-      onOpenThread={(thread) =>
-        navigate.toThread(thread.id, { experimental_tab: true })
-      }
-      onNewThread={(projectId) =>
-        navigate.toCompose({ projectId, experimental_tab: true })
-      }
-    />
-  );
-}
-
 export default definePluginApp((app) => {
-  app.slots.navPanel({
-    id: "home",
-    title: "Home",
-    icon: "Home",
-    path: "home",
-    component: HomePanel,
-    experimental_pinnedTab: true,
-  });
   app.slots.homepageSection({
     id: "new-thread-overview",
     title: "New thread overview",

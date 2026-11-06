@@ -1,18 +1,23 @@
-import { useMemo, type ReactNode, type Ref } from "react";
+import { useMemo, useState, type ReactNode, type Ref } from "react";
 import type {
   PluginSidebarProject,
   PluginSidebarThread,
 } from "@get-bb/plugin-sdk/app";
 import { cn } from "@bb/shared-ui/lib/utils";
 import {
+  archivableHomeThreads,
+  filterHomeThreads,
+  HOME_AGE_FILTERS,
+  HOME_STATUS_FILTERS,
   homeTopLevelThreads,
   lastMessageTime,
   liveThreadDescendants,
   NEEDS_YOU_LIMIT,
   needsYouThreads,
   recentProjects,
+  type HomeThreadFilter,
 } from "./home-overview";
-import { ProjectSection, type HomeThreadOrder } from "./HomePage";
+import { ProjectSection, type HomeThreadOrder } from "./ProjectSection";
 import {
   ThreadDescendantsContext,
   ThreadRow,
@@ -27,8 +32,23 @@ export interface NewThreadOverviewProps {
   picker: ReactNode;
   cycleShortcutLabel: string | null;
   order: HomeThreadOrder;
+  filter: HomeThreadFilter;
+  setFilter: (filter: HomeThreadFilter) => void;
+  onArchiveThreads: (threads: readonly PluginSidebarThread[]) => Promise<void>;
   onOpenThread: OpenThread;
   rootRef?: Ref<HTMLDivElement>;
+}
+
+const PILL_CLASS =
+  "h-7 max-w-40 truncate rounded-full border px-2.5 text-xs transition-colors";
+
+function pillClass(selected: boolean) {
+  return cn(
+    PILL_CLASS,
+    selected
+      ? "border-foreground/30 bg-accent text-foreground"
+      : "border-transparent text-muted-foreground hover:bg-accent hover:text-foreground",
+  );
 }
 
 export function NewThreadOverview({
@@ -39,10 +59,18 @@ export function NewThreadOverview({
   picker,
   cycleShortcutLabel,
   order,
+  filter,
+  setFilter,
+  onArchiveThreads,
   onOpenThread,
   rootRef,
 }: NewThreadOverviewProps) {
+  const [isArchiving, setIsArchiving] = useState(false);
   const descendants = useMemo(() => liveThreadDescendants(threads), [threads]);
+  const filteredThreads = useMemo(
+    () => filterHomeThreads(threads, filter, Date.now()),
+    [filter, threads],
+  );
   const recent = useMemo(
     () => recentProjects(projects, threads),
     [projects, threads],
@@ -54,9 +82,16 @@ export function NewThreadOverview({
   const projectThreads = useMemo(
     () =>
       selectedProject === null
-        ? threads
-        : threads.filter((thread) => thread.projectId === selectedProject.id),
-    [selectedProject, threads],
+        ? filteredThreads
+        : filteredThreads.filter(
+            (thread) => thread.projectId === selectedProject.id,
+          ),
+    [selectedProject, filteredThreads],
+  );
+  const archivable = useMemo(
+    () =>
+      filter.olderThanDays === null ? [] : archivableHomeThreads(projectThreads),
+    [filter.olderThanDays, projectThreads],
   );
   const needsYou = useMemo(
     () => needsYouThreads(projectThreads),
@@ -118,12 +153,7 @@ export function NewThreadOverview({
                 aria-pressed={selected}
                 disabled={setProjectId === null}
                 onClick={() => setProjectId?.(option.id)}
-                className={cn(
-                  "h-7 max-w-40 truncate rounded-full border px-2.5 text-xs transition-colors",
-                  selected
-                    ? "border-foreground/30 bg-accent text-foreground"
-                    : "border-transparent text-muted-foreground hover:bg-accent hover:text-foreground",
-                )}
+                className={pillClass(selected)}
               >
                 {option.name}
               </button>
@@ -136,6 +166,52 @@ export function NewThreadOverview({
             >
               {cycleShortcutLabel}
             </span>
+          )}
+        </div>
+        <div
+          role="group"
+          aria-label="Thread filters"
+          className="-mt-3 flex flex-wrap items-center gap-1.5"
+        >
+          {HOME_STATUS_FILTERS.map((option) => (
+            <button
+              key={option.value}
+              type="button"
+              aria-pressed={filter.status === option.value}
+              onClick={() => setFilter({ ...filter, status: option.value })}
+              className={pillClass(filter.status === option.value)}
+            >
+              {option.label}
+            </button>
+          ))}
+          <span className="mx-1 h-4 w-px bg-border" aria-hidden="true" />
+          {HOME_AGE_FILTERS.map((option) => (
+            <button
+              key={option.label}
+              type="button"
+              aria-pressed={filter.olderThanDays === option.value}
+              onClick={() =>
+                setFilter({ ...filter, olderThanDays: option.value })
+              }
+              className={pillClass(filter.olderThanDays === option.value)}
+            >
+              {option.label}
+            </button>
+          ))}
+          {archivable.length === 0 ? null : (
+            <button
+              type="button"
+              disabled={isArchiving}
+              onClick={() => {
+                setIsArchiving(true);
+                void onArchiveThreads(archivable).finally(() =>
+                  setIsArchiving(false),
+                );
+              }}
+              className={cn(pillClass(false), "ml-auto")}
+            >
+              Archive {archivable.length} idle
+            </button>
           )}
         </div>
         {needsYou.length === 0 && selectedProject === null ? null : (
