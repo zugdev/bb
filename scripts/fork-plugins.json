@@ -6,6 +6,7 @@
     "plugins/home",
     "plugins/orchestrator",
     "plugins/parent-link",
+    "plugins/muon-copy",
     "plugins/perf"
   ]
 }
