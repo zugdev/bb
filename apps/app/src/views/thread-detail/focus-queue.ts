@@ -35,15 +35,7 @@ export function nextFocusStep(
   if (shownThreadId !== null && queue.some((t) => t.id === shownThreadId)) {
     return { kind: "stay" };
   }
-  const trackedLeftQueue =
-    shownThreadId === null &&
-    typeof trackedThreadId === "string" &&
-    !queue.some((t) => t.id === trackedThreadId);
-  if (
-    trackedThreadId !== undefined &&
-    trackedThreadId !== shownThreadId &&
-    !trackedLeftQueue
-  ) {
+  if (shownThreadId !== null && trackedThreadId !== shownThreadId) {
     return { kind: "stay" };
   }
   const head = queue[0];
