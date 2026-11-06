@@ -12,6 +12,7 @@ import { reportHostProgress } from "bb-environment-provider-host/progress";
 import { z } from "zod";
 import {
   discoveredWorktreeSchema,
+  openPullRequestSchema,
   worktreeBaseBranchSchema,
   worktreeHostContract,
   worktreeHostSignals,
@@ -67,6 +68,17 @@ export const worktreeRpcContract = defineRpcContract({
       })
       .strict(),
     output: z.object({ worktrees: z.array(discoveredWorktreeSchema) }).strict(),
+  },
+  listOpenPullRequests: {
+    input: z
+      .object({
+        projectId: z.string().min(1),
+        hostId: z.string().min(1),
+      })
+      .strict(),
+    output: z
+      .object({ pullRequests: z.array(openPullRequestSchema) })
+      .strict(),
   },
 });
 
@@ -239,6 +251,14 @@ export default async function worktreePlugin(bb: BbPluginApi): Promise<void> {
 
   bb.agents.contributeInstructions(() => DETACHED_WORKTREE_INSTRUCTIONS);
 
+  async function localSource(projectId: string, hostId: string) {
+    const project = await bb.sdk.projects.get({ projectId });
+    return project.sources.find(
+      (candidate) =>
+        candidate.hostId === hostId && candidate.type === "local_path",
+    );
+  }
+
   bb.rpc.register(worktreeRpcContract, {
     async defaultBaseBranch({ projectId, hostId }) {
       const project = await bb.sdk.projects.get({ projectId });
@@ -256,12 +276,17 @@ export default async function worktreePlugin(bb: BbPluginApi): Promise<void> {
         { hostId: source.hostId },
       );
     },
-    async listExistingWorktrees({ projectId, hostId }) {
-      const project = await bb.sdk.projects.get({ projectId });
-      const source = project.sources.find(
-        (candidate) =>
-          candidate.hostId === hostId && candidate.type === "local_path",
+    async listOpenPullRequests({ projectId, hostId }) {
+      const source = await localSource(projectId, hostId);
+      if (source === undefined) return { pullRequests: [] };
+      return host.call(
+        "listOpenPullRequests",
+        { sourcePath: source.path },
+        { hostId },
       );
+    },
+    async listExistingWorktrees({ projectId, hostId }) {
+      const source = await localSource(projectId, hostId);
       if (source === undefined) return { worktrees: [] };
       return host.call(
         "listWorktrees",
