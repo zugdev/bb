@@ -969,6 +969,9 @@ function SplitThreadAreaContent({ routeContent }: SplitThreadAreaProps) {
           isTopRow
           ownsWindowTopLeft
           onNavigateInPane={navigateInPane}
+          onBeginPaneDrag={
+            singlePaneContent.kind === "thread" ? beginPaneDrag : undefined
+          }
         />
         {workspace}
       </>

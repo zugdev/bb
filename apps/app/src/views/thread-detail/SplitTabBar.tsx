@@ -18,11 +18,7 @@ import {
   CONTEXT_SELECTION_SURFACE_CLASS,
 } from "@bb/shared-ui/context-selection";
 import { OverflowFade } from "@bb/shared-ui/overflow-fade";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@bb/shared-ui/tooltip";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@bb/shared-ui/tooltip";
 import { useThread } from "@/hooks/queries/thread-queries";
 import {
   useProjectDisplayName,
@@ -39,7 +35,10 @@ import { AppCommandShortcutHint } from "@/components/commands/AppCommandShortcut
 import { PINNED_TAB_ROUTE_PATH } from "@/lib/route-paths";
 import { usePinnedTabPanel } from "@/lib/pinned-tab";
 import type { AppShortcutPresentation } from "@/lib/app-keybindings";
-import { useIsSidebarFramed } from "@/components/ui/sidebar.js";
+import {
+  useIsSidebarFramed,
+  useIsSidebarShowing,
+} from "@/components/ui/sidebar.js";
 import { useUsesSwipeChrome } from "@/components/layout/useUsesSwipeChrome";
 import {
   getBbDesktopInfo,
@@ -464,7 +463,12 @@ function SplitTabItem({
 const TRAFFIC_LIGHT_RESERVE_CLASS =
   "pl-[max(0px,calc(var(--bb-window-title-bar-controls-end)_+_12px_-_1rem_-_var(--bb-split-tab-bar-left,0px)))]";
 
-function useWindowLeftEdgeVariable(enabled: boolean) {
+const SIDEBAR_ANIMATION_TRACK_MS = 300;
+
+function useWindowLeftEdgeVariable(
+  enabled: boolean,
+  isSidebarShowing: boolean,
+) {
   const ref = useRef<HTMLDivElement>(null);
   useLayoutEffect(() => {
     const bar = ref.current;
@@ -479,6 +483,21 @@ function useWindowLeftEdgeVariable(enabled: boolean) {
     observer.observe(bar);
     return () => observer.disconnect();
   }, [enabled]);
+  useLayoutEffect(() => {
+    const bar = ref.current;
+    if (!enabled || bar === null) return;
+    const until = performance.now() + SIDEBAR_ANIMATION_TRACK_MS;
+    let frame = 0;
+    const track = () => {
+      bar.style.setProperty(
+        "--bb-split-tab-bar-left",
+        `${bar.getBoundingClientRect().left}px`,
+      );
+      if (performance.now() < until) frame = requestAnimationFrame(track);
+    };
+    frame = requestAnimationFrame(track);
+    return () => cancelAnimationFrame(frame);
+  }, [enabled, isSidebarShowing]);
   return ref;
 }
 
@@ -528,7 +547,7 @@ export function SplitTabBar() {
   };
   const pinnedTabCommand = SPLIT_TAB_SELECT_APP_COMMAND_IDS[0];
   const isInTitleBar = useIsSidebarFramed();
-  const barRef = useWindowLeftEdgeVariable(isInTitleBar);
+  const barRef = useWindowLeftEdgeVariable(isInTitleBar, useIsSidebarShowing());
   const hidesChromeToggles = useUsesSwipeChrome();
   const [desktopInfo] = useState(getBbDesktopInfo);
   const usesDesktopChrome = shouldUseMacosDesktopChrome(desktopInfo);

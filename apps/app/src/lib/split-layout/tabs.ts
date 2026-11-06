@@ -394,7 +394,9 @@ function crossTabMoveSource(state: SplitTabsState, move: CrossTabPaneMove) {
   const source = state.tabs.find((tab) => tab.id === move.sourceTabId);
   if (source?.layout == null) return null;
   const pane = findPane(source.layout.root, move.paneId);
-  return pane === null ? null : { layout: source.layout, content: pane.content };
+  return pane === null
+    ? null
+    : { layout: source.layout, content: pane.content };
 }
 
 function placeMovedPane(

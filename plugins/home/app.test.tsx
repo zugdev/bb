@@ -90,7 +90,9 @@ describe("home plugin", () => {
   it("disables the picker while the composer can't change project", () => {
     renderSection(null);
     expect(
-      screen.getByRole("combobox", { name: "Project" }).hasAttribute("disabled"),
+      screen
+        .getByRole("combobox", { name: "Project" })
+        .hasAttribute("disabled"),
     ).toBe(true);
   });
 

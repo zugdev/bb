@@ -1716,23 +1716,21 @@ function ThreadDetailViewInternal(
     }
   };
   const panelTabs: readonly SecondaryPanelRenderableTab[] =
-    syncedOrderedSecondaryFileTabs.map(
-      (tab): SecondaryPanelRenderableTab => ({
-        ...presentPanelTab(tab),
-        tab,
-        renderContent: () => renderSecondaryTabContent(tab),
-        onSelect: isPanelTabPane
-          ? () => undefined
-          : tab.kind === "terminal"
-            ? () => terminals.select(tab.terminalId)
-            : () => handleActivateFileTab(tab.id),
-        onClose: () => {
-          if (tab.kind === "terminal") terminals.close(tab.terminalId);
-          else closeTab(tab.id);
-          if (isPanelTabPane) onRequestClose?.();
-        },
-      }),
-    );
+    syncedOrderedSecondaryFileTabs.map((tab): SecondaryPanelRenderableTab => ({
+      ...presentPanelTab(tab),
+      tab,
+      renderContent: () => renderSecondaryTabContent(tab),
+      onSelect: isPanelTabPane
+        ? () => undefined
+        : tab.kind === "terminal"
+          ? () => terminals.select(tab.terminalId)
+          : () => handleActivateFileTab(tab.id),
+      onClose: () => {
+        if (tab.kind === "terminal") terminals.close(tab.terminalId);
+        else closeTab(tab.id);
+        if (isPanelTabPane) onRequestClose?.();
+      },
+    }));
   const shownPanelTabs = panelTabs.filter((tab) => showsPanelTab(tab.tab.id));
   const shownFixedTabs = secondaryPanelFixedTabs.filter((tab) =>
     showsPanelTab(tab.tab.id),

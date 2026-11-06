@@ -127,6 +127,7 @@ export function ThreadDetailHeader({
   const {
     beginPaneDrag,
     isFocused,
+    isSplitPane,
     reservesWindowPanelToggle,
     secondaryPanelHost,
   } = usePaneContext();
@@ -138,7 +139,7 @@ export function ThreadDetailHeader({
   const hostLayout = useContext(SecondaryPanelHostLayoutContext);
   const isWindowPanelOpen = hostLayout?.isOpen === true;
   const pressedWhileUnfocusedRef = useRef(false);
-  const isSplitPaneHeader = beginPaneDrag !== undefined;
+  const isSplitPaneHeader = isSplitPane && beginPaneDrag !== undefined;
   const [measuredPaneWidth, setMeasuredPaneWidth] = useState(0);
   const usesResponsiveActionOverflow =
     isCompactViewport ||
@@ -250,7 +251,7 @@ export function ThreadDetailHeader({
           isSplitPaneHeader && isFocused && CONTEXT_SELECTION_SURFACE_CLASS,
         )}
       >
-        {beginPaneDrag && !isEditing ? (
+        {isSplitPaneHeader && !isEditing ? (
           <PaneDragHandle
             onPointerDown={handleTitlePointerDown}
             usesDesktopChrome={usesDesktopChrome}
@@ -371,7 +372,7 @@ export function ThreadDetailHeader({
       actions={actions}
       isWindowDragRegion={false}
       ownsWindowTopLeft={false}
-      className={cn(beginPaneDrag && "z-[21]")}
+      className={cn(isSplitPaneHeader && "z-[21]")}
     />
   );
 }

@@ -13,7 +13,11 @@ import {
   recentProjects,
 } from "./home-overview";
 import { ProjectSection, type HomeThreadOrder } from "./HomePage";
-import { ThreadDescendantsContext, ThreadRow, type OpenThread } from "./ThreadRow";
+import {
+  ThreadDescendantsContext,
+  ThreadRow,
+  type OpenThread,
+} from "./ThreadRow";
 
 export interface NewThreadOverviewProps {
   threads: readonly PluginSidebarThread[];
@@ -59,8 +63,7 @@ export function NewThreadOverview({
     [projectThreads],
   );
   const projectSections = useMemo(() => {
-    const listed =
-      selectedProject === null ? projects : [selectedProject];
+    const listed = selectedProject === null ? projects : [selectedProject];
     const latestByProject = new Map<string, number>();
     const threadsByProject = new Map<string, PluginSidebarThread[]>();
     const waiting = new Set(needsYou.map((thread) => thread.id));

@@ -3277,7 +3277,7 @@ describe("SplitThreadArea compact breakpoint crossings", () => {
       isBoundedPane: false,
       isTopRow: true,
       ownsWindowTopLeft: true,
-      canDrag: false,
+      canDrag: true,
     });
     expect(screen.queryByTestId("maximize-thr-a")).toBeNull();
   });
