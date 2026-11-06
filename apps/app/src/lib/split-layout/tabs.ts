@@ -1,6 +1,11 @@
 import { atom, type Setter, type useStore } from "jotai";
 import { atomWithStorage } from "jotai/utils";
 import { z } from "zod";
+import { isPromptDraftEmpty } from "@bb/client-core";
+import {
+  getPromptDraftAccessor,
+  type PromptDraftScope,
+} from "@/hooks/usePromptDraftStorage";
 import { createTabScopedStorage } from "@/lib/browser-storage";
 import { PERSONAL_PROJECT_ID } from "@bb/domain";
 import { rootComposeProjectIdAtom } from "@/lib/root-compose-selection";
@@ -147,12 +152,19 @@ export function removeSplitTab(
   activeLayout: SplitLayout | null,
   tabId: string,
 ): { state: SplitTabsState; closed: SplitTab } | null {
-  if (state.tabs.length < 2) return null;
   const tabs = snapshotActiveTab(state, activeLayout);
   const index = tabs.findIndex((tab) => tab.id === tabId);
   const closed = tabs[index];
   if (closed === undefined) return null;
   tabs.splice(index, 1);
+  if (tabs.length === 0) {
+    tabs.push({
+      id: nextTabId([closed]),
+      layout: null,
+      projectId: null,
+      name: null,
+    });
+  }
   const activeTabId =
     tabId === state.activeTabId
       ? (tabs[Math.min(index, tabs.length - 1)]?.id ?? tabs[0]!.id)
@@ -545,6 +557,24 @@ export const recordClosedPaneAtom = atom(
   },
 );
 
+export function composerDraftScope(
+  layout: SplitLayout | null,
+  { tabs, activeTabId }: SplitTabsState,
+  paneId: string,
+): PromptDraftScope {
+  const firstComposerPaneId =
+    layout === null
+      ? null
+      : (findPaneByContent(layout.root, { kind: "new-thread" })?.paneId ??
+        null);
+  const usesSharedDraft =
+    tabs[0]?.id === activeTabId &&
+    (firstComposerPaneId === null || firstComposerPaneId === paneId);
+  return usesSharedDraft
+    ? { kind: "new-thread" }
+    : { kind: "split-new-thread", paneId: `${activeTabId}-${paneId}` };
+}
+
 export const reopenClosedSplitItemAtom = atom(
   null,
   (get, set): SplitLayout | null => {
@@ -574,8 +604,11 @@ export const reopenClosedSplitItemAtom = atom(
       return focusedLayout;
     }
     const focused = findPane(base.root, base.focusedPaneId);
+    const focusedDraft = getPromptDraftAccessor(
+      composerDraftScope(base, get(splitTabsAtom), base.focusedPaneId),
+    ).getCurrent();
     const layout =
-      focused?.content.kind === "new-thread"
+      focused?.content.kind === "new-thread" && isPromptDraftEmpty(focusedDraft)
         ? replacePaneContent(base, base.focusedPaneId, item.content)
         : splitPane(base, base.focusedPaneId, "right", item.content);
     if (layout === base) return null;
