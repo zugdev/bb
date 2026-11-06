@@ -53,11 +53,15 @@ describe("split tabs", () => {
 
     expect(store.set(closeSplitTabAtom, second!.id)).toEqual(threadLayout("a"));
     expect(store.get(splitTabsAtom).tabs).toHaveLength(1);
-    expect(store.set(closeSplitTabAtom, first!.id)).toBeNull();
+    expect(
+      listPanes(store.set(closeSplitTabAtom, first!.id)!.root)[0]?.content,
+    ).toEqual({ kind: "new-thread" });
+    expect(store.get(splitTabsAtom).tabs).toHaveLength(1);
+    expect(store.get(splitTabsAtom).tabs[0]?.id).not.toBe(first!.id);
 
+    expect(store.set(reopenClosedSplitItemAtom)).toEqual(threadLayout("a"));
     expect(store.set(reopenClosedSplitItemAtom)).toEqual(threadLayout("b"));
-    expect(store.get(splitTabsAtom).tabs).toHaveLength(2);
-    expect(store.set(reopenClosedSplitItemAtom)).toBeNull();
+    expect(store.get(splitTabsAtom).tabs).toHaveLength(3);
   });
 
   it("reopens a closed pane beside the focused pane and skips empty composers", () => {

@@ -13,11 +13,16 @@ import { SPLIT_TAB_SELECT_APP_COMMAND_IDS } from "@bb/domain";
 import { Icon } from "@bb/shared-ui/icon";
 import { cn } from "@bb/shared-ui/lib/utils";
 import { CHROME_SUBTLE_ICON_BUTTON_FOREGROUND_CLASS } from "@bb/shared-ui/chrome-style-tokens";
-import {
-  CONTEXT_INACTIVE_TEXT_CLASS,
-  CONTEXT_SELECTION_SURFACE_CLASS,
-} from "@bb/shared-ui/context-selection";
+import { CONTEXT_SELECTION_SURFACE_CLASS } from "@bb/shared-ui/context-selection";
 import { OverflowFade } from "@bb/shared-ui/overflow-fade";
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuSeparator,
+  ContextMenuTrigger,
+} from "@bb/shared-ui/context-menu";
+import { TabPill } from "@/components/ui/tab-pill";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@bb/shared-ui/tooltip";
 import { useThread } from "@/hooks/queries/thread-queries";
 import {
@@ -102,19 +107,10 @@ function useSplitTabTitle(layout: SplitLayout | null, name: string | null) {
   return { title: focusedTitle, isProjectName: false };
 }
 
-function SplitTabTitle({
-  layout,
-  title,
-  showsExtraPanes,
-}: {
-  layout: SplitLayout | null;
-  title: string;
-  showsExtraPanes: boolean;
-}) {
-  const extraPanes = layout === null ? 0 : countPanes(layout.root) - 1;
+function useSplitTabDot(layout: SplitLayout | null) {
   const entries = useThreadEntriesById();
   const descendants = useThreadDescendants();
-  const dot = mostUrgentThreadDot(
+  return mostUrgentThreadDot(
     layout === null
       ? []
       : listPanes(layout.root).map((pane) => {
@@ -124,15 +120,6 @@ function SplitTabTitle({
               : undefined;
           return entry === undefined ? null : threadDot(entry, descendants);
         }),
-  );
-  return (
-    <>
-      <ThreadStatusDot dot={dot} />
-      <span className="min-w-0 truncate">{title}</span>
-      {showsExtraPanes && extraPanes > 0 ? (
-        <span className={CONTEXT_INACTIVE_TEXT_CLASS}>+{extraPanes}</span>
-      ) : null}
-    </>
   );
 }
 
@@ -351,11 +338,8 @@ function TabShell({
         ? {}
         : { [SPLIT_TAB_DROP_ATTR]: dropTabId })}
       className={cn(
-        "group flex shrink-0 cursor-default items-center gap-1.5 border-r border-border px-2 text-xs select-none",
+        "flex shrink-0 cursor-default items-center gap-1 select-none",
         noDragClassName,
-        isActive
-          ? CONTEXT_SELECTION_SURFACE_CLASS
-          : CONTEXT_INACTIVE_TEXT_CLASS,
         className,
       )}
       onPointerDown={(event) => {
@@ -375,13 +359,16 @@ function SplitTabItem({
   activeTabRef,
   command,
   shortcut,
-  canClose,
   isRenaming,
   noDragClassName,
+  hasTabsToRight,
+  hasOtherTabs,
   onSelect,
   onRename,
   onRenameDone,
   onClose,
+  onCloseOthers,
+  onCloseRight,
 }: {
   tab: SplitTab;
   layout: SplitLayout | null;
@@ -389,74 +376,92 @@ function SplitTabItem({
   activeTabRef: RefObject<HTMLDivElement | null>;
   command: string | undefined;
   shortcut: AppShortcutPresentation | null;
-  canClose: boolean;
   isRenaming: boolean;
   noDragClassName: string | false;
-  onSelect: (event: ReactPointerEvent<HTMLDivElement>, title: string) => void;
-  onRename: (title: string) => void;
+  hasTabsToRight: boolean;
+  hasOtherTabs: boolean;
+  onSelect: (event: ReactPointerEvent<HTMLDivElement>) => void;
+  onRename: () => void;
   onRenameDone: (name: string | null) => void;
   onClose: () => void;
+  onCloseOthers: () => void;
+  onCloseRight: () => void;
 }) {
   const { title, isProjectName } = useSplitTabTitle(layout, tab.name);
+  const dot = useSplitTabDot(layout);
+  const extraPanes = layout === null ? 0 : countPanes(layout.root) - 1;
   return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <TabShell
-          ref={isActive ? activeTabRef : undefined}
-          {...{ [SPLIT_TAB_ID_ATTR]: tab.id }}
-          isActive={isActive}
-          noDragClassName={noDragClassName}
-          dropTabId={tab.id}
-          className="min-w-24 max-w-44"
-          onSelect={(event) => {
-            if (isRenaming) return;
-            onSelect(event, title);
-          }}
-        >
-          <div
-            className="flex min-w-0 flex-1 items-center gap-1.5"
-            onDoubleClick={() => onRename(title)}
-            onAuxClick={(event) => {
-              if (event.button === 1) onClose();
-            }}
-          >
-            {isRenaming ? (
-              <SplitTabRenameInput initialName={title} onDone={onRenameDone} />
-            ) : (
-              <SplitTabTitle
-                layout={layout}
-                title={title}
-                showsExtraPanes={!isProjectName}
-              />
-            )}
-          </div>
-          <span className="ml-auto flex shrink-0 items-center gap-1">
-            {command === undefined ? null : (
-              <AppCommandShortcutHint shortcut={shortcut} />
-            )}
-            {canClose ? (
-              <button
-                type="button"
-                aria-label="Close tab"
-                className={cn(
-                  "flex size-4 items-center justify-center rounded opacity-0 group-hover:opacity-100",
-                  CHROME_SUBTLE_ICON_BUTTON_FOREGROUND_CLASS,
-                )}
-                onPointerDown={(event) => event.stopPropagation()}
-                onClick={onClose}
-              >
-                <Icon name="CloseThreadPane" className="size-3" />
-              </button>
-            ) : null}
-          </span>
-        </TabShell>
-      </TooltipTrigger>
-      {isRenaming ? null : (
-        <TooltipContent side="bottom" align="start">
-          <SplitTabTooltip layout={layout} title={title} />
-        </TooltipContent>
-      )}
-    </Tooltip>
+    <ContextMenu modal={false}>
+      <Tooltip>
+        <ContextMenuTrigger asChild disabled={isRenaming}>
+          <TooltipTrigger asChild>
+            <TabShell
+              ref={isActive ? activeTabRef : undefined}
+              {...{ [SPLIT_TAB_ID_ATTR]: tab.id }}
+              isActive={isActive}
+              noDragClassName={noDragClassName}
+              dropTabId={tab.id}
+              onSelect={(event) => {
+                if (!isRenaming) onSelect(event);
+              }}
+              onDoubleClick={onRename}
+            >
+              {isRenaming ? (
+                <div
+                  className={cn(
+                    "flex h-7 w-40 items-center rounded-md px-2",
+                    CONTEXT_SELECTION_SURFACE_CLASS,
+                  )}
+                >
+                  <SplitTabRenameInput
+                    initialName={title}
+                    onDone={onRenameDone}
+                  />
+                </div>
+              ) : (
+                <TabPill
+                  label={title}
+                  title={title}
+                  leadingVisual={
+                    dot === null ? (
+                      <Icon name="MessageSquare" />
+                    ) : (
+                      <ThreadStatusDot dot={dot} />
+                    )
+                  }
+                  secondaryLabel={
+                    !isProjectName && extraPanes > 0 ? `+${extraPanes}` : null
+                  }
+                  isActive={isActive}
+                  onSelect={() => undefined}
+                  labelMaxWidthClass="max-w-[160px]"
+                  closeAction={{ onClose, closeLabel: `Close ${title}` }}
+                />
+              )}
+              {command === undefined ? null : (
+                <AppCommandShortcutHint shortcut={shortcut} />
+              )}
+            </TabShell>
+          </TooltipTrigger>
+        </ContextMenuTrigger>
+        {isRenaming ? null : (
+          <TooltipContent side="bottom" align="start">
+            <SplitTabTooltip layout={layout} title={title} />
+          </TooltipContent>
+        )}
+      </Tooltip>
+      <ContextMenuContent aria-label={`${title} tab actions`}>
+        <ContextMenuItem onSelect={onRename}>Rename tab</ContextMenuItem>
+        <ContextMenuItem onSelect={onClose}>Close tab</ContextMenuItem>
+        <ContextMenuSeparator />
+        <ContextMenuItem disabled={!hasOtherTabs} onSelect={onCloseOthers}>
+          Close other tabs
+        </ContextMenuItem>
+        <ContextMenuItem disabled={!hasTabsToRight} onSelect={onCloseRight}>
+          Close tabs to the right
+        </ContextMenuItem>
+      </ContextMenuContent>
+    </ContextMenu>
   );
 }
 
@@ -545,6 +550,9 @@ export function SplitTabBar() {
     window.addEventListener("pointerup", handleEnd);
     window.addEventListener("pointercancel", handleEnd);
   };
+  const closeTabs = (tabIds: readonly string[]) => {
+    for (const tabId of tabIds) show(store.set(closeSplitTabAtom, tabId));
+  };
   const pinnedTabCommand = SPLIT_TAB_SELECT_APP_COMMAND_IDS[0];
   const isInTitleBar = useIsSidebarFramed();
   const barRef = useWindowLeftEdgeVariable(isInTitleBar, useIsSidebarShowing());
@@ -562,7 +570,7 @@ export function SplitTabBar() {
       ref={barRef}
       role="tablist"
       className={cn(
-        "-mx-4 -mt-4 mb-4 flex shrink-0 items-stretch md:-mx-5 md:-mt-5 md:mb-5",
+        "-mx-4 -mt-4 mb-4 flex shrink-0 items-center gap-1 px-1 md:-mx-5 md:-mt-5 md:mb-5",
         !hidesChromeToggles && "pr-12",
         isInTitleBar
           ? [MACOS_TITLE_BAR_ROW_CLASS, TRAFFIC_LIGHT_RESERVE_CLASS]
@@ -579,14 +587,20 @@ export function SplitTabBar() {
           noDragClassName={noDragClassName}
           onSelect={() => navigate(PINNED_TAB_ROUTE_PATH)}
         >
-          <Icon name={pinnedTab.icon} className="size-3" />
-          <span>{pinnedTab.title}</span>
+          <TabPill
+            label={pinnedTab.title}
+            title={pinnedTab.title}
+            leadingVisual={<Icon name={pinnedTab.icon} />}
+            isActive={isPinnedTab}
+            onSelect={() => navigate(PINNED_TAB_ROUTE_PATH)}
+            closeAction={null}
+          />
           <AppCommandShortcutHint
             shortcut={shortcuts.get(pinnedTabCommand) ?? null}
           />
         </TabShell>
       )}
-      <div ref={stripRef} className="relative flex min-w-0 items-stretch">
+      <div ref={stripRef} className="relative flex min-w-0 items-center">
         <OverflowFade
           placement="left"
           className={cn(
@@ -605,11 +619,11 @@ export function SplitTabBar() {
           ref={viewportRef}
           data-split-tab-scroll-viewport
           className={cn(
-            "no-scrollbar flex min-w-0 items-stretch overflow-x-auto overflow-y-hidden",
+            "no-scrollbar flex min-w-0 items-center overflow-x-auto overflow-y-hidden",
             usesDesktopChrome && MACOS_APP_REGION_NO_DRAG_CLASS,
           )}
         >
-          <div ref={contentRef} className="flex w-max items-stretch">
+          <div ref={contentRef} className="flex w-max items-center gap-1">
             {state.tabs.map((tab, index) => {
               const command = SPLIT_TAB_SELECT_APP_COMMAND_IDS[index + 1];
               return (
@@ -627,7 +641,8 @@ export function SplitTabBar() {
                       ? null
                       : (shortcuts.get(command) ?? null)
                   }
-                  canClose={state.tabs.length > 1}
+                  hasOtherTabs={state.tabs.length > 1}
+                  hasTabsToRight={index < state.tabs.length - 1}
                   isRenaming={renamingTabId === tab.id}
                   noDragClassName={noDragClassName}
                   onSelect={(event) => {
@@ -641,7 +656,18 @@ export function SplitTabBar() {
                       store.set(renameSplitTabAtom, { tabId: tab.id, name });
                     }
                   }}
-                  onClose={() => show(store.set(closeSplitTabAtom, tab.id))}
+                  onClose={() => closeTabs([tab.id])}
+                  onCloseOthers={() => {
+                    show(store.set(selectSplitTabAtom, tab.id));
+                    closeTabs(
+                      state.tabs
+                        .filter((other) => other.id !== tab.id)
+                        .map((other) => other.id),
+                    );
+                  }}
+                  onCloseRight={() =>
+                    closeTabs(state.tabs.slice(index + 1).map((t) => t.id))
+                  }
                 />
               );
             })}
