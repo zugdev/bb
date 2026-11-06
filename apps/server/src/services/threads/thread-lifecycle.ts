@@ -316,7 +316,7 @@ interface InterruptedActiveThreadResult {
   threadId: string;
 }
 
-interface InterruptActiveThreadsResult {
+export interface InterruptActiveThreadsResult {
   threads: InterruptedActiveThreadResult[];
 }
 
@@ -2055,7 +2055,7 @@ export function finalizeStoppedThreadInTransaction(
 export async function reconcileDaemonReportedThreads(
   deps: LoggedPendingInteractionWorkSessionDeps,
   args: ReconcileDaemonReportedThreadsArgs,
-): Promise<void> {
+): Promise<InterruptActiveThreadsResult> {
   const activeThreadIdSet = new Set(args.activeThreadIds);
 
   const pendingThreads = deps.db
@@ -2160,7 +2160,7 @@ export async function reconcileDaemonReportedThreads(
     )
     .all();
 
-  interruptActiveThreads(deps, {
+  const interrupted = interruptActiveThreads(deps, {
     threads: activeButMissing.map((thread) => ({
       environmentId: thread.environmentId,
       threadId: thread.id,
@@ -2170,7 +2170,7 @@ export async function reconcileDaemonReportedThreads(
   });
 
   if (args.activeThreadIds.length === 0) {
-    return;
+    return interrupted;
   }
 
   const inactiveButActive = deps.db
@@ -2220,4 +2220,5 @@ export async function reconcileDaemonReportedThreads(
     });
     clearThreadProvisionSchedule(thread.id);
   }
+  return interrupted;
 }
