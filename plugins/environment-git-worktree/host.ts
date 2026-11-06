@@ -9,6 +9,7 @@ import {
   resolveWorktreeAttemptRoot,
   resolveWorktreeTargetPath,
 } from "./host/paths.js";
+import { listOpenPullRequests } from "./host/pull-requests.js";
 import {
   createWorktree,
   listAdoptableWorktrees,
@@ -54,6 +55,11 @@ export function createWorktreeHostEntry() {
           kind: "default",
         });
         return { branch: resolved?.ref ?? null };
+      },
+      async listOpenPullRequests(input) {
+        return {
+          pullRequests: await listOpenPullRequests(input.sourcePath),
+        };
       },
       async listWorktrees(input, context) {
         const worktrees = await listAdoptableWorktrees({

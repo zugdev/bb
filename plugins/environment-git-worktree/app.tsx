@@ -36,7 +36,7 @@ import {
   type JsonValue,
   type PluginEnvironmentProviderInputsProps,
 } from "@get-bb/plugin-sdk/app";
-import type { DiscoveredWorktree } from "./contract.js";
+import type { DiscoveredWorktree, OpenPullRequest } from "./contract.js";
 import { GIT_WORKTREE_ENVIRONMENT_PROVIDER_ID } from "./provider-id.js";
 import type { WorktreeInputs, worktreeRpcContract } from "./server.js";
 
@@ -81,6 +81,10 @@ function worktreeRowValue(path: string): string {
   return `worktree:${path}`;
 }
 
+function pullRequestRowValue(number: number): string {
+  return `pr:${number}`;
+}
+
 function worktreePathLabel(path: string): string {
   return path.split("/").filter(Boolean).slice(-2).join("/") || path;
 }
@@ -112,6 +116,16 @@ function WorktreeInputsControl({
       ? worktreeResult
       : null;
   const worktrees = scopedWorktreeResult?.worktrees ?? [];
+  const [pullRequestResult, setPullRequestResult] = useState<{
+    projectId: string;
+    hostId: string;
+    pullRequests: readonly OpenPullRequest[];
+  } | null>(null);
+  const pullRequests =
+    pullRequestResult?.projectId === projectId &&
+    pullRequestResult?.hostId === hostId
+      ? pullRequestResult.pullRequests
+      : [];
   const [baseResult, setBaseResult] = useState<{
     projectId: string;
     hostId: string | null;
@@ -203,6 +217,25 @@ function WorktreeInputsControl({
   }, [projectId, hostId, branchName, existingPath, baseRefresh, rpc]);
 
   useEffect(() => {
+    if (projectId === null || hostId === null) return;
+    let active = true;
+    void rpc
+      .call("listOpenPullRequests", { projectId, hostId })
+      .then((result) => {
+        if (active)
+          setPullRequestResult({
+            projectId,
+            hostId,
+            pullRequests: result.pullRequests,
+          });
+      })
+      .catch(() => undefined);
+    return () => {
+      active = false;
+    };
+  }, [projectId, hostId, rpc]);
+
+  useEffect(() => {
     if (open) setIntent(selectedIntent);
   }, [open, selectedIntent]);
 
@@ -219,6 +252,12 @@ function WorktreeInputsControl({
     [branchState.branches, branchState.remoteBranches, deferredQuery],
   );
 
+  const pullRequestOptions = pullRequests.filter((pr) =>
+    [`#${pr.number}`, pr.title, pr.headRefName].some((value) =>
+      value.toLowerCase().includes(deferredQuery.trim().toLowerCase()),
+    ),
+  );
+
   const worktreeOptions = worktrees.filter((worktree) =>
     [worktree.path, worktree.branch ?? ""].some((value) =>
       value.toLowerCase().includes(deferredQuery.trim().toLowerCase()),
@@ -230,9 +269,11 @@ function WorktreeInputsControl({
   );
   const searchHighlight =
     intent === "new"
-      ? branchOptions[0] === undefined
-        ? undefined
-        : branchRowValue(branchOptions[0])
+      ? pullRequestOptions[0] !== undefined
+        ? pullRequestRowValue(pullRequestOptions[0].number)
+        : branchOptions[0] === undefined
+          ? undefined
+          : branchRowValue(branchOptions[0])
       : firstSelectableWorktree === undefined
         ? undefined
         : worktreeRowValue(firstSelectableWorktree.path);
@@ -264,6 +305,26 @@ function WorktreeInputsControl({
   const submit = (next: WorktreeInputs) => {
     onChange({ status: "ready", value: next });
     updateOpen(false);
+  };
+  const selectPullRequest = async (pr: OpenPullRequest) => {
+    const branchInputs: WorktreeInputs = {
+      branch: { kind: "named", name: pr.headRefName },
+    };
+    if (projectId === null || hostId === null) return submit(branchInputs);
+    const existing = await rpc
+      .call("listExistingWorktrees", { projectId, hostId })
+      .then((result) =>
+        result.worktrees.find(
+          (worktree) =>
+            worktree.branch === pr.headRefName && !worktree.prunable,
+        ),
+      )
+      .catch(() => undefined);
+    submit(
+      existing === undefined
+        ? branchInputs
+        : { kind: "existing", path: existing.path },
+    );
   };
 
   return (
@@ -375,6 +436,31 @@ function WorktreeInputsControl({
             <div className="my-1 h-px bg-border/60" />
             {intent === "new" ? (
               <>
+                {pullRequestOptions.length > 0 ? (
+                  <>
+                    <BranchPickerSectionHeader label="Your pull requests:" />
+                    {pullRequestOptions.map((pr) => (
+                      <BranchPickerRow
+                        key={pr.number}
+                        value={pullRequestRowValue(pr.number)}
+                        icon="GitPullRequest"
+                        selected={false}
+                        title={`#${pr.number} ${pr.title} (${pr.headRefName})`}
+                        onSelect={() => void selectPullRequest(pr)}
+                      >
+                        <span className="flex min-w-0 flex-1 flex-col">
+                          <span className="min-w-0 truncate">
+                            #{pr.number} {pr.title}
+                          </span>
+                          <span className="min-w-0 truncate text-xs text-muted-foreground">
+                            {pr.headRefName}
+                            {pr.isDraft ? " · draft" : ""}
+                          </span>
+                        </span>
+                      </BranchPickerRow>
+                    ))}
+                  </>
+                ) : null}
                 <BranchPickerSectionHeader label="Branch from:" />
                 <BranchPickerRow
                   value={DEFAULT_BRANCH_ROW_VALUE}

@@ -18,7 +18,23 @@ export const discoveredWorktreeSchema = z
   .strict();
 export type DiscoveredWorktree = z.infer<typeof discoveredWorktreeSchema>;
 
+export const openPullRequestSchema = z
+  .object({
+    number: z.number().int(),
+    title: z.string(),
+    headRefName: z.string().min(1),
+    isDraft: z.boolean(),
+  })
+  .strict();
+export type OpenPullRequest = z.infer<typeof openPullRequestSchema>;
+
 export const worktreeHostContract = defineRpcContract({
+  listOpenPullRequests: {
+    input: z.object({ sourcePath: z.string().min(1) }).strict(),
+    output: z
+      .object({ pullRequests: z.array(openPullRequestSchema) })
+      .strict(),
+  },
   defaultBaseBranch: {
     input: z.object({ sourcePath: z.string().min(1) }).strict(),
     output: z.object({ branch: z.string().min(1).nullable() }).strict(),

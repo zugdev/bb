@@ -38,6 +38,11 @@ const WORKTREES: JsonValue[] = [
   { path: "/code/app-hotfix", branch: "hotfix", locked: false, prunable: true },
 ];
 
+const PULL_REQUESTS: JsonValue[] = [
+  { number: 12, title: "Ship feature", headRefName: "feature", isDraft: false },
+  { number: 13, title: "Fresh work", headRefName: "fresh", isDraft: true },
+];
+
 function render(
   value: JsonValue | null,
   onChange = vi.fn(),
@@ -55,6 +60,7 @@ function render(
       rpc: {
         listExistingWorktrees: () => ({ worktrees }),
         defaultBaseBranch: () => ({ branch: "main" }),
+        listOpenPullRequests: () => ({ pullRequests: PULL_REQUESTS }),
       },
       branchesState: {
         branches: ["main", "release"],
@@ -236,6 +242,34 @@ describe("worktree inputs control", () => {
     );
     fireEvent.keyDown(search, { key: "Enter" });
     expect(onChange).not.toHaveBeenCalled();
+  });
+
+  it("reuses the worktree that already has a pull request's branch", async () => {
+    const { slot, onChange } = render({ branch: { kind: "default" } });
+    await openPicker(slot);
+    fireEvent.click(
+      await slot.findByRole("button", { name: /#12 Ship feature/u }),
+    );
+    await waitFor(() =>
+      expect(onChange).toHaveBeenLastCalledWith({
+        status: "ready",
+        value: { kind: "existing", path: "/code/app-feature" },
+      }),
+    );
+  });
+
+  it("starts a new worktree from a pull request's branch when none has it", async () => {
+    const { slot, onChange } = render({ branch: { kind: "default" } });
+    await openPicker(slot);
+    fireEvent.click(
+      await slot.findByRole("button", { name: /#13 Fresh work/u }),
+    );
+    await waitFor(() =>
+      expect(onChange).toHaveBeenLastCalledWith({
+        status: "ready",
+        value: { branch: { kind: "named", name: "fresh" } },
+      }),
+    );
   });
 
   it("picks an existing worktree from the second section", async () => {
