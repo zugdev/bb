@@ -2,6 +2,10 @@ import { useState } from "react";
 import type { PluginSidebarThread } from "@get-bb/plugin-sdk/app";
 import { makeProject, makeThread, PERSONAL } from "./fixtures";
 import { NewThreadOverview } from "./NewThreadOverview";
+import {
+  DEFAULT_HOME_THREAD_FILTER,
+  type HomeThreadSort,
+} from "./home-overview";
 
 export default { title: "plugins/Home/New thread overview" };
 
@@ -43,6 +47,9 @@ const THREADS = [
 
 function Stage({ initialProject }: { initialProject: string | null }) {
   const [projectId, setProjectId] = useState(initialProject);
+  const [filter, setFilter] = useState(DEFAULT_HOME_THREAD_FILTER);
+  const [sort, setSort] = useState<HomeThreadSort>("message");
+  const [isOldestFirst, setIsOldestFirst] = useState(false);
   const name =
     PROJECTS.find((project) => project.id === projectId)?.name ?? "No project";
   return (
@@ -58,6 +65,10 @@ function Stage({ initialProject }: { initialProject: string | null }) {
           </span>
         }
         cycleShortcutLabel="⌥ O"
+        order={{ sort, setSort, isOldestFirst, setIsOldestFirst }}
+        filter={filter}
+        setFilter={setFilter}
+        onArchiveThreads={() => Promise.resolve()}
         onOpenThread={() => undefined}
       />
       <div className="h-28 rounded-xl border bg-card p-3 text-sm text-muted-foreground">

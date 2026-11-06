@@ -2,15 +2,9 @@ import { describe, expect, it } from "vitest";
 import type { PluginSidebarThread } from "@get-bb/plugin-sdk/app";
 import { makeProject, makeThread } from "./fixtures";
 import {
-  homeAttention,
+  filterHomeThreads,
   homeThreadDot,
-  isHomeLayoutPrefs,
-  latestThreads,
-  moveHomeSection,
-  pluginSectionId,
   repoWebUrl,
-  resolveHomeSections,
-  setHomeSectionHidden,
   sortAndFilterHomeThreads,
   liveThreadDescendants,
   needsYouThreads,
@@ -98,21 +92,6 @@ describe("parent status roll up", () => {
   });
 });
 
-describe("latestThreads", () => {
-  it("sorts top level threads by your last message, falling back to creation time", () => {
-    const threads = [
-      makeThread({ id: "old", experimental_lastUserMessageAt: 10, createdAt: 1 }),
-      makeThread({ id: "never", createdAt: 20 }),
-      makeThread({ id: "new", experimental_lastUserMessageAt: 30, createdAt: 2 }),
-      makeThread({ id: "skip", experimental_lastUserMessageAt: 40 }),
-      makeThread({ id: "child", parentThreadId: "new", createdAt: 50 }),
-    ];
-    expect(
-      latestThreads(threads, new Set(["skip"])).map((thread) => thread.id),
-    ).toEqual(["new", "never", "old"]);
-  });
-});
-
 describe("nextCycledProject", () => {
   it("cycles No project and the recent projects, wrapping around", () => {
     const recent = [makeProject("a"), makeProject("b")];
@@ -120,99 +99,6 @@ describe("nextCycledProject", () => {
     expect(nextCycledProject("a", recent)).toBe("b");
     expect(nextCycledProject("b", recent)).toBeNull();
     expect(nextCycledProject("elsewhere", recent)).toBeNull();
-  });
-});
-
-describe("home layout", () => {
-  it("keeps saved order, appends new projects, and moves and hides sections", () => {
-    const prefs = {
-      order: ["project:b", "removed", "attention"],
-      hidden: ["project:c"],
-    };
-    const { visible, hidden } = resolveHomeSections(prefs, ["a", "b", "c"]);
-    expect(visible).toEqual(["project:b", "attention", "project:a"]);
-    expect(hidden).toEqual(["project:c"]);
-
-    const moved = moveHomeSection(prefs, visible, "project:a", "project:b");
-    expect(resolveHomeSections(moved, ["a", "b", "c"]).visible).toEqual([
-      "project:a",
-      "project:b",
-      "attention",
-    ]);
-
-    const shown = setHomeSectionHidden(prefs, visible, "project:c", false);
-    expect(resolveHomeSections(shown, ["a", "b", "c"]).visible.at(-1)).toBe(
-      "project:c",
-    );
-    const hiddenAttention = setHomeSectionHidden(
-      prefs,
-      visible,
-      "attention",
-      true,
-    );
-    expect(
-      resolveHomeSections(hiddenAttention, ["a", "b", "c"]).hidden,
-    ).toEqual(["attention", "project:c"]);
-  });
-
-  it("puts the attention panel first when the saved layout predates it", () => {
-    const prefs = { order: ["needs-you", "project:a", "search"], hidden: [] };
-    expect(resolveHomeSections(prefs, ["a", "b"]).visible).toEqual([
-      "attention",
-      "project:a",
-      "project:b",
-    ]);
-  });
-
-  it("places new plugin sections after the fixed ones and keeps a saved order", () => {
-    const assistant = pluginSectionId("assistant", "assistant");
-    expect(
-      resolveHomeSections({ order: [], hidden: [] }, ["a"], [assistant])
-        .visible,
-    ).toEqual(["attention", assistant, "project:a"]);
-    expect(
-      resolveHomeSections(
-        { order: ["project:a", assistant, "attention"], hidden: [] },
-        ["a"],
-        [assistant],
-      ).visible,
-    ).toEqual(["project:a", assistant, "attention"]);
-    expect(
-      resolveHomeSections({ order: [], hidden: [assistant] }, ["a"], []).hidden,
-    ).toEqual([]);
-  });
-
-  it("accepts only saved layouts with string ids", () => {
-    expect(isHomeLayoutPrefs({ order: ["a"], hidden: [] })).toBe(true);
-    expect(isHomeLayoutPrefs({ order: [1], hidden: [] })).toBe(false);
-    expect(isHomeLayoutPrefs(null)).toBe(false);
-  });
-
-  it("builds a web url from ssh and https remotes", () => {
-    expect(repoWebUrl("git@github.com:zugdev/bb.git")).toBe(
-      "https://github.com/zugdev/bb",
-    );
-    expect(repoWebUrl("https://github.com/zugdev/bb.git")).toBe(
-      "https://github.com/zugdev/bb",
-    );
-    expect(repoWebUrl(null)).toBeNull();
-  });
-});
-
-describe("homeAttention", () => {
-  it("merges needs you and unread replies across projects, newest attention first", () => {
-    const attention = homeAttention([
-      makeThread({ id: "old-ask", projectId: "a", ...waiting, latestAttentionAt: 10 }),
-      makeThread({ id: "new-ask", projectId: "b", ...waiting, latestAttentionAt: 30 }),
-      makeThread({ id: "reply", projectId: "b", isUnread: true, latestAttentionAt: 20 }),
-      makeThread({ id: "busy", projectId: "b", isUnread: true, ...working }),
-      makeThread({ id: "quiet", projectId: "b", latestAttentionAt: 40 }),
-    ]);
-    expect(attention.needsYou.map((thread) => thread.id)).toEqual([
-      "new-ask",
-      "old-ask",
-    ]);
-    expect(attention.replies.map((thread) => thread.id)).toEqual(["reply"]);
   });
 });
 
@@ -230,5 +116,28 @@ describe("sortAndFilterHomeThreads", () => {
     expect(ids(sortAndFilterHomeThreads(threads, "message", "", true))).toEqual(["fix", "old", "never", "new"]);
     expect(ids(sortAndFilterHomeThreads(threads, "activity", ""))[0]).toBe("old");
     expect(ids(sortAndFilterHomeThreads(threads, "created", ""))[0]).toBe("never");
+  });
+});
+
+describe("filterHomeThreads", () => {
+  const DAY = 86_400_000;
+  const now = 100 * DAY;
+  const threads = [
+    makeThread({ id: "run", updatedAt: now, ...working }),
+    makeThread({ id: "ask", updatedAt: now - 20 * DAY, ...waiting }),
+    makeThread({ id: "old", updatedAt: now - 20 * DAY }),
+    makeThread({ id: "child", parentThreadId: "old", updatedAt: now }),
+  ];
+  const ids = (status: "all" | "running" | "needs-you", olderThanDays: number | null) =>
+    filterHomeThreads(threads, { status, olderThanDays }, now).map((t) => t.id);
+
+  it("keeps running or waiting top level threads and every child", () => {
+    expect(ids("running", null)).toEqual(["run", "child"]);
+    expect(ids("needs-you", null)).toEqual(["ask", "child"]);
+  });
+
+  it("drops threads updated within the age window", () => {
+    expect(ids("all", 7)).toEqual(["ask", "old", "child"]);
+    expect(ids("needs-you", 7)).toEqual(["ask", "child"]);
   });
 });

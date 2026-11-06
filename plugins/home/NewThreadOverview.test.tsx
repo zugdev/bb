@@ -5,7 +5,11 @@ import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { installTestPluginRuntime } from "@get-bb/plugin-sdk/testing/app";
 import type { PluginSidebarThread } from "@get-bb/plugin-sdk/app";
 import { asking, makeProject, makeThread, PERSONAL, WEB } from "./fixtures";
-import { NEEDS_YOU_LIMIT, RECENT_PROJECT_LIMIT } from "./home-overview";
+import {
+  DEFAULT_HOME_THREAD_FILTER,
+  NEEDS_YOU_LIMIT,
+  RECENT_PROJECT_LIMIT,
+} from "./home-overview";
 import {
   NewThreadOverview,
   type NewThreadOverviewProps,
@@ -29,6 +33,9 @@ function renderOverview(props: Partial<NewThreadOverviewProps>) {
         isOldestFirst: false,
         setIsOldestFirst: () => undefined,
       }}
+      filter={DEFAULT_HOME_THREAD_FILTER}
+      setFilter={() => undefined}
+      onArchiveThreads={() => Promise.resolve()}
       onOpenThread={() => undefined}
       {...props}
     />,
@@ -80,7 +87,7 @@ describe("NewThreadOverview", () => {
 
   it("hides Needs you when nothing waits on you", () => {
     renderOverview({});
-    expect(screen.queryByText("Needs you")).toBeNull();
+    expect(screen.queryByRole("heading", { name: "Needs you" })).toBeNull();
   });
 
   it("offers the most recently messaged projects as chips that pick the project", () => {
@@ -112,7 +119,11 @@ describe("NewThreadOverview", () => {
     });
     const chips = screen
       .getAllByRole("button")
-      .filter((button) => button.hasAttribute("aria-pressed"));
+      .filter(
+        (button) =>
+          button.hasAttribute("aria-pressed") &&
+          button.closest('[aria-label="Thread filters"]') === null,
+      );
     expect(chips.map((chip) => chip.textContent)).toEqual(
       ["newest", "recent", "mid", "older"].slice(0, RECENT_PROJECT_LIMIT),
     );
@@ -194,9 +205,37 @@ describe("NewThreadOverview", () => {
       threads: [asking("mine", 9, PERSONAL.id)],
       projectId: WEB.id,
     });
-    expect(screen.getByText("Needs you")).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Needs you" })).toBeTruthy();
     expect(screen.getByText("Nothing waiting")).toBeTruthy();
     expect(screen.queryByText("mine")).toBeNull();
     expect(screen.getByRole("button", { name: "New thread" })).toBeTruthy();
+  });
+
+  it("archives the idle threads older than the age filter", () => {
+    const DAY = 86_400_000;
+    const now = Date.now();
+    const onArchiveThreads = vi.fn(
+      (_threads: readonly PluginSidebarThread[]) => Promise.resolve(),
+    );
+    renderOverview({
+      threads: [
+        makeThread({ id: "stale", updatedAt: now - 10 * DAY }),
+        makeThread({ id: "pinned", updatedAt: now - 10 * DAY, isPinned: true }),
+        makeThread({
+          id: "busy",
+          updatedAt: now - 10 * DAY,
+          status: "active",
+          runtimeStatus: "active",
+        }),
+        makeThread({ id: "fresh", updatedAt: now - DAY }),
+      ],
+      filter: { status: "all", olderThanDays: 7 },
+      onArchiveThreads,
+    });
+    expect(screen.queryByText("fresh")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Archive 1 idle" }));
+    expect(onArchiveThreads.mock.calls[0]?.[0].map((t) => t.id)).toEqual([
+      "stale",
+    ]);
   });
 });

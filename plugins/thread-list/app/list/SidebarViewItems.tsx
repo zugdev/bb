@@ -137,7 +137,7 @@ export function SidebarHeaderMenuContents({
   );
 }
 
-function SidebarViewItems({ page }: { page: SidebarViewPage }) {
+export function SidebarViewItems({ page }: { page: SidebarViewPage }) {
   const [lifecycles, setLifecycles] = useAtom(sidebarThreadLifecyclesAtom);
   const [organization, setOrganization] = useAtom(sidebarOrganizationModeAtom);
   const [sort, setSort] = useAtom(sidebarChronologicalSortAtom);

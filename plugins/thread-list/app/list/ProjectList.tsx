@@ -6,6 +6,8 @@ import {
   type ThreadListVisibilityGroup,
 } from "./ThreadListVisibility.js";
 import { SidebarDraftPresenceSync } from "./sidebarDraftPresence.js";
+import { ThreadFilterBar } from "./ThreadFilterBar.js";
+import { filterSidebarProjects } from "../model/thread-filter.js";
 import {
   memo,
   useCallback,
@@ -101,6 +103,7 @@ import {
   sidebarManualSectionOrderAtom,
   sidebarOrganizationModeAtom,
   sidebarShowEmptyProjectsAtom,
+  sidebarThreadFilterAtom,
 } from "../preferences/atoms.js";
 import type {
   ChronologicalSort as SidebarChronologicalSort,
@@ -1314,8 +1317,18 @@ function ProjectListComponent({
   const sdk = useSdk();
   const navigate = useBbNavigate();
   const { providers } = experimental_useProviders();
-  const { status, sections, projects, personalProject, archived } =
-    useSidebarData();
+  const {
+    status,
+    sections,
+    projects: allProjects,
+    personalProject,
+    archived,
+  } = useSidebarData();
+  const threadFilter = useAtomValue(sidebarThreadFilterAtom);
+  const projects = useMemo(
+    () => filterSidebarProjects(allProjects, threadFilter, Date.now()),
+    [allProjects, threadFilter],
+  );
   const personalProjectId = personalProject?.id ?? null;
   const threads = useMemo<SidebarThread[]>(
     () => projects.flatMap((project) => project.threads),
@@ -1710,6 +1723,7 @@ function ProjectListComponent({
     >
       <ProjectListShell>
         <SidebarDraftPresenceSync />
+        <ThreadFilterBar allProjects={allProjects} filteredThreads={threads} />
         <ActiveSidebarModeSections
           mode={organizationMode}
           renderMachine={() => (
@@ -1833,7 +1847,7 @@ function ProjectListComponent({
     </SidebarHeaderActionsProvider>
   );
   return (
-    <SidebarProjectsContext.Provider value={projects}>
+    <SidebarProjectsContext.Provider value={allProjects}>
       <SidebarProvidersContext.Provider value={providers}>
         {content}
       </SidebarProvidersContext.Provider>

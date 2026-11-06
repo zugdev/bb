@@ -6,7 +6,7 @@ description: "Inspect or change the sidebar thread list's layout preferences: or
 # Thread list preferences
 
 The Thread list plugin owns the sidebar's layout state. Read it with
-`bb thread-list prefs list --json`; keys are `showProviderIcons`, `showRowMetadata`, `showEmptyProjects`, `threadLifecycles`, `organizationMode`,
+`bb thread-list prefs list --json`; keys are `showProviderIcons`, `showRowMetadata`, `showEmptyProjects`, `threadFilter`, `threadLifecycles`, `organizationMode`,
 `environmentGrouping`, `groupByReadStatus`, `chronologicalSort`, `sortDirection`, `sectionOrder`,
 `manualSectionOrder`, `machineSectionOrder`, `hiddenGroups` (including the
 built-in `threads` group), `rowActions`,
@@ -60,6 +60,8 @@ remain selected. `bb thread-list prefs set threadLifecycles '["archived"]'`
 shows archived threads, and `'["active","archived"]'` shows both. The default
 is `'["active"]'`. Archived results load in pages; use Show more at the end
 of the list. The same preference is available through `setPreference` RPC.
+
+The filter row under the sidebar navigation narrows the list by status (All threads, Running, or Needs you), by one project, and by age (older than 1, 7, or 30 days since the thread last updated), and opens the sort options. Projects with no matching threads drop out while a filter is set. With an age filter set, the age menu offers Archive N idle threads, which archives every match that is not pinned or running, children included. The row stores its state in `threadFilter`: `bb thread-list prefs set threadFilter '{"status":"running","projectId":null,"olderThanDays":null}'` shows only running threads, and `'{"status":"all","projectId":null,"olderThanDays":7}'` shows threads untouched for a week.
 
 Organized by project, the Filter menu's Empty projects item toggles
 `showEmptyProjects` (default `true`). With

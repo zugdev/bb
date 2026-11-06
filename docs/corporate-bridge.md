@@ -26,7 +26,7 @@ Rows follow the buckets in [fork-roadmap.md](fork-roadmap.md#plugins-over-patche
 | --- | --- | --- | --- |
 | Profiling plugin, `bb perf` | `plugins/perf` (in progress) | Marketplace | Reads `BB_PERF_DIAGNOSTICS` samples, turn traces and stall cpuprofiles core already writes. Turn traces span server and daemon, which is where multiplayer lag would show. |
 | Parent thread link | `plugins/parent-link`, `experimental_threadHeaderLeading`, `toThread({ experimental_inPane })` | Company fork, API first | Two small core APIs. |
-| Home tab and New thread overview | `plugins/home` and the `experimental_*` APIs listed in the roadmap row | Company fork, API first | Also needs the 0150 migration and the pane tabs patch for the pinned tab. Largest dependency chain here. |
+| New thread overview | `plugins/home` and the `experimental_*` APIs listed in the roadmap row | Company fork, API first | Also needs the 0150 migration and the pane tabs patch for the pinned tab. Largest dependency chain here. |
 | Status rollup of child threads | `ThreadStatusDot.tsx`, `plugins/thread-list` | Company fork, patch | Useful when many agents fan out. |
 | Usage readout and reset notifications | `plugins/provider-usage`, `experimental_buttonContent` | Company fork, patch | Edits a bundled plugin. Only useful if the company runs agents on subscriptions. |
 | Notifications only on the starting device | `plugins/push-notifications`, core `experimental_clientId` | Company fork, patch | In multiplayer the target is a user and their devices, so check how the company fork routes notifications first. |

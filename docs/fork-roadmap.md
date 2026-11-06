@@ -123,7 +123,7 @@ Moves done:
 3. Home page into `plugins/home` ([#44](https://github.com/zugdev/bb/pull/44)), with `experimental_useHomepageSections`, `experimental_HomepageSection`, `experimental_pinnedTab`, `experimental_useThreadSearch`, `experimental_useAddProject`, `toCompose({ experimental_tab })` and `PluginSidebarProject.experimental_gitRemoteUrl`. Core keeps `/home` as the pinned tab's URL and the status rollup the tab bar needs (`components/thread/thread-dot.ts`).
 4. Doc and test gaps those moves left on main, fixed in [#45](https://github.com/zugdev/bb/pull/45).
 
-Without `plugins/home` installed, New thread has no overview and there is no Home tab. `scripts/fork-plugins.json` lists `plugins/home` and `plugins/parent-link`, so the fork updater installs them.
+The Home page and its pinned tab were removed on 2026-11-06; New thread carries the overview, its filters and the Assistant card. Without `plugins/home` installed, New thread has no overview. `scripts/fork-plugins.json` lists `plugins/home` and `plugins/parent-link`, so the fork updater installs them.
 
 Every other row is an upstream candidate waiting for approval or a patch with its reason, so no move is left that the Plugin SDK covers today.
 
