@@ -38,7 +38,7 @@ export function ActiveTabThreadsSection({
   if (rows.length === 0) return null;
   const tabName = tabs.find((tab) => tab.id === activeTabId)?.name ?? null;
   return (
-    <section aria-label="Threads in this tab" className="mb-2 px-2">
+    <section aria-label="Threads in this tab" className="px-2">
       <div
         className={cn(
           CHROME_SECTION_LABEL_CLASS,
