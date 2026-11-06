@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import type { PluginHomepageSectionProps } from "@get-bb/plugin-sdk/app";
 import {
   usePluginSlots,
@@ -5,6 +6,8 @@ import {
 } from "@/lib/plugin-slots";
 import { getPluginHomepageSectionAnchor } from "@/lib/plugin-homepage-section";
 import { PluginSlotMount } from "./PluginSlotMount";
+
+const HOME_PLUGIN_ID = "home";
 
 export type HomepageSectionProject = Pick<
   PluginHomepageSectionProps,
@@ -24,28 +27,35 @@ export function isLeadHomepageSection(
 
 export function PluginHomepageSections({
   project,
+  leadAction = null,
 }: {
   project: HomepageSectionProject;
+  leadAction?: ReactNode;
 }) {
   const { homepageSections } = usePluginSlots();
   const lead = homepageSections.filter(isLeadHomepageSection);
   const titled = homepageSections.filter(
     (section) => !isLeadHomepageSection(section),
   );
+  const homeIndex = lead.findIndex(
+    (section) => section.pluginId === HOME_PLUGIN_ID,
+  );
+  const focusIndex = homeIndex === -1 ? 0 : homeIndex;
   return (
     <>
-      {lead.length === 0 ? null : (
-        <div className="space-y-6">
-          {lead.map((section) => (
-            <div
-              key={`${section.pluginId}/${section.id}/${section.generation}`}
-              id={getPluginHomepageSectionAnchor(section.pluginId, section.id)}
-            >
-              <PluginHomepageSectionBody section={section} project={project} />
-            </div>
-          ))}
-        </div>
-      )}
+      <div className="space-y-6">
+        {lead.map((section, index) => (
+          <div
+            key={`${section.pluginId}/${section.id}/${section.generation}`}
+            id={getPluginHomepageSectionAnchor(section.pluginId, section.id)}
+            className={index === focusIndex ? "space-y-3" : undefined}
+          >
+            {index === focusIndex ? leadAction : null}
+            <PluginHomepageSectionBody section={section} project={project} />
+          </div>
+        ))}
+        {lead.length === 0 ? leadAction : null}
+      </div>
       {titled.length === 0 ? null : (
         <div className="mt-6 space-y-6" data-testid="plugin-homepage-sections">
           {titled.map((section) => (

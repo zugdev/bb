@@ -247,17 +247,11 @@ export const APP_COMMAND_GROUPS: readonly AppCommandGroup[] = [
         "Reopen the chat pane or tab closed most recently.",
       ),
       ...SPLIT_TAB_SELECT_APP_COMMAND_IDS.map((id, index) =>
-        index === 0
-          ? command(
-              id,
-              "Go to Home",
-              "Open Home, the overview of every project's threads.",
-            )
-          : paletteHiddenCommand(
-              id,
-              `Switch to pane tab ${index}`,
-              `Switch to the pane tab after Home numbered ${index}.`,
-            ),
+        paletteHiddenCommand(
+          id,
+          `Switch to tab ${index + 1}`,
+          `Switch to tab ${index + 1}, counting a pinned tab first when a plugin adds one.`,
+        ),
       ),
       command(
         "logs.openServerDaemon",

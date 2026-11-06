@@ -31,7 +31,7 @@ export function FocusTabButton() {
       type="button"
       variant="ghost"
       size="sm"
-      className="h-7 gap-1.5 px-2 text-xs"
+      className="-ml-2 h-7 gap-1.5 px-2 text-xs"
       aria-label={`Focus on ${count} threads that need a reply`}
       onClick={() => openFocusTab(store, navigate)}
     >
