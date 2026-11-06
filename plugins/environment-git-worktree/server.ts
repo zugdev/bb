@@ -12,13 +12,13 @@ import { reportHostProgress } from "bb-environment-provider-host/progress";
 import { z } from "zod";
 import {
   discoveredWorktreeSchema,
-  openPullRequestSchema,
   worktreeBaseBranchSchema,
   worktreeHostContract,
   worktreeHostSignals,
   type WorktreeBaseBranch,
 } from "./contract.js";
 import { GIT_WORKTREE_ENVIRONMENT_PROVIDER_ID } from "./provider-id.js";
+import { worktreePullRequestsRpcContract } from "./pull-requests-contract.js";
 
 const CREATE_TIMEOUT_MS = 15 * 60 * 1000;
 const REMOVE_TIMEOUT_MS = 15 * 60 * 1000;
@@ -69,17 +69,7 @@ export const worktreeRpcContract = defineRpcContract({
       .strict(),
     output: z.object({ worktrees: z.array(discoveredWorktreeSchema) }).strict(),
   },
-  listOpenPullRequests: {
-    input: z
-      .object({
-        projectId: z.string().min(1),
-        hostId: z.string().min(1),
-      })
-      .strict(),
-    output: z
-      .object({ pullRequests: z.array(openPullRequestSchema) })
-      .strict(),
-  },
+  ...worktreePullRequestsRpcContract,
 });
 
 export const DETACHED_WORKTREE_INSTRUCTIONS =
@@ -251,24 +241,19 @@ export default async function worktreePlugin(bb: BbPluginApi): Promise<void> {
 
   bb.agents.contributeInstructions(() => DETACHED_WORKTREE_INSTRUCTIONS);
 
-  async function localSource(projectId: string, hostId: string) {
+  async function localSource(projectId: string, hostId: string | null) {
     const project = await bb.sdk.projects.get({ projectId });
-    return project.sources.find(
-      (candidate) =>
-        candidate.hostId === hostId && candidate.type === "local_path",
+    const sources = project.sources.filter(
+      (source) => source.type === "local_path",
     );
+    return hostId === null
+      ? (sources.find((source) => source.isDefault) ?? sources[0])
+      : sources.find((source) => source.hostId === hostId);
   }
 
   bb.rpc.register(worktreeRpcContract, {
     async defaultBaseBranch({ projectId, hostId }) {
-      const project = await bb.sdk.projects.get({ projectId });
-      const sources = project.sources.filter(
-        (source) => source.type === "local_path",
-      );
-      const source =
-        hostId === null
-          ? (sources.find((source) => source.isDefault) ?? sources[0])
-          : sources.find((source) => source.hostId === hostId);
+      const source = await localSource(projectId, hostId);
       if (source === undefined) return { branch: null };
       return host.call(
         "defaultBaseBranch",
@@ -278,12 +263,27 @@ export default async function worktreePlugin(bb: BbPluginApi): Promise<void> {
     },
     async listOpenPullRequests({ projectId, hostId }) {
       const source = await localSource(projectId, hostId);
-      if (source === undefined) return { pullRequests: [] };
-      return host.call(
-        "listOpenPullRequests",
-        { sourcePath: source.path },
-        { hostId },
-      );
+      if (source === undefined) return { hostId: null, pullRequests: [] };
+      const target = { hostId: source.hostId };
+      const [{ pullRequests }, { worktrees }] = await Promise.all([
+        host.call(
+          "listOpenPullRequests",
+          { sourcePath: source.path },
+          target,
+        ),
+        host.call("listWorktrees", { sourcePath: source.path }, target),
+      ]);
+      return {
+        hostId: source.hostId,
+        pullRequests: pullRequests.map((pr) => ({
+          ...pr,
+          worktreePath:
+            worktrees.find(
+              (worktree) =>
+                worktree.branch === pr.headRefName && !worktree.prunable,
+            )?.path ?? null,
+        })),
+      };
     },
     async listExistingWorktrees({ projectId, hostId }) {
       const source = await localSource(projectId, hostId);

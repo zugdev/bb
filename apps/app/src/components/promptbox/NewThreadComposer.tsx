@@ -182,6 +182,7 @@ interface NewThreadComposerSelectionState extends CommittedComposerState {
     value: string,
     providerMachine: EnvironmentMachineSelection | null,
   ) => void;
+  changeProviderInputs: (inputs: JsonValue) => void;
   changeProvider: (providerId: string) => void;
   changeModel: (model: string) => void;
   changeReasoning: (level: ReasoningLevel) => void;
@@ -1843,6 +1844,8 @@ export function NewThreadComposer({
       providerIds,
       changeProject,
       changeEnvironment,
+      changeProviderInputs: (inputs) =>
+        handleProviderInputsChange({ status: "ready", value: inputs }),
       changeProvider: handleProviderChange,
       changeModel: handleModelChange,
       changeReasoning: handleReasoningChange,
@@ -1914,6 +1917,10 @@ export function NewThreadComposer({
         if (seed !== null) {
           state.changeEnvironment(seed.selectionValue, seed.providerMachine);
           await settle(false);
+          if (seed.providerInputs !== null) {
+            state.changeProviderInputs(seed.providerInputs);
+            await settle(false);
+          }
         }
       }
       if (selection.providerId !== undefined) await ensureSettled();

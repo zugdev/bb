@@ -4811,6 +4811,9 @@ importers:
       '@bb/shared-ui':
         specifier: workspace:*
         version: link:../../packages/shared-ui
+      bb-plugin-environment-git-worktree:
+        specifier: workspace:*
+        version: link:../environment-git-worktree
       sonner:
         specifier: ^1.7.4
         version: 1.7.4(patch_hash=ywi4zh4oqnjpviiknloue4elvi)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)

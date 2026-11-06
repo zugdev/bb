@@ -4,6 +4,8 @@ import type {
   PluginSidebarThread,
 } from "@get-bb/plugin-sdk/app";
 import { cn } from "@bb/shared-ui/lib/utils";
+import type { ProjectPullRequest } from "bb-plugin-environment-git-worktree/pull-requests-contract";
+import { PullRequestsSection } from "./PullRequestsSection";
 import {
   archivableHomeThreads,
   filterHomeThreads,
@@ -35,6 +37,8 @@ export interface NewThreadOverviewProps {
   filter: HomeThreadFilter;
   setFilter: (filter: HomeThreadFilter) => void;
   onArchiveThreads: (threads: readonly PluginSidebarThread[]) => Promise<void>;
+  pullRequests: readonly ProjectPullRequest[];
+  onSelectPullRequest: (pr: ProjectPullRequest) => void;
   onOpenThread: OpenThread;
   rootRef?: Ref<HTMLDivElement>;
 }
@@ -62,6 +66,8 @@ export function NewThreadOverview({
   filter,
   setFilter,
   onArchiveThreads,
+  pullRequests,
+  onSelectPullRequest,
   onOpenThread,
   rootRef,
 }: NewThreadOverviewProps) {
@@ -255,6 +261,12 @@ export function NewThreadOverview({
             onNewThread={() => setProjectId?.(project.id)}
           />
         ))}
+        {selectedProject === null || pullRequests.length === 0 ? null : (
+          <PullRequestsSection
+            pullRequests={pullRequests}
+            onSelect={onSelectPullRequest}
+          />
+        )}
       </div>
     </ThreadDescendantsContext>
   );

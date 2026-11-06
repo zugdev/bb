@@ -17,6 +17,9 @@
     "host": "./host.ts",
     "app": "./app.tsx"
   },
+  "exports": {
+    "./pull-requests-contract": "./pull-requests-contract.ts"
+  },
   "keywords": [
     "bb-plugin"
   ],

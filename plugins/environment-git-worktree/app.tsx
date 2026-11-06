@@ -36,7 +36,11 @@ import {
   type JsonValue,
   type PluginEnvironmentProviderInputsProps,
 } from "@get-bb/plugin-sdk/app";
-import type { DiscoveredWorktree, OpenPullRequest } from "./contract.js";
+import type { DiscoveredWorktree } from "./contract.js";
+import {
+  pullRequestInputs,
+  type ProjectPullRequest,
+} from "./pull-requests-contract.js";
 import { GIT_WORKTREE_ENVIRONMENT_PROVIDER_ID } from "./provider-id.js";
 import type { WorktreeInputs, worktreeRpcContract } from "./server.js";
 
@@ -119,7 +123,7 @@ function WorktreeInputsControl({
   const [pullRequestResult, setPullRequestResult] = useState<{
     projectId: string;
     hostId: string;
-    pullRequests: readonly OpenPullRequest[];
+    pullRequests: readonly ProjectPullRequest[];
   } | null>(null);
   const pullRequests =
     pullRequestResult?.projectId === projectId &&
@@ -306,26 +310,8 @@ function WorktreeInputsControl({
     onChange({ status: "ready", value: next });
     updateOpen(false);
   };
-  const selectPullRequest = async (pr: OpenPullRequest) => {
-    const branchInputs: WorktreeInputs = {
-      branch: { kind: "named", name: pr.headRefName },
-    };
-    if (projectId === null || hostId === null) return submit(branchInputs);
-    const existing = await rpc
-      .call("listExistingWorktrees", { projectId, hostId })
-      .then((result) =>
-        result.worktrees.find(
-          (worktree) =>
-            worktree.branch === pr.headRefName && !worktree.prunable,
-        ),
-      )
-      .catch(() => undefined);
-    submit(
-      existing === undefined
-        ? branchInputs
-        : { kind: "existing", path: existing.path },
-    );
-  };
+  const selectPullRequest = (pr: ProjectPullRequest) =>
+    submit(pullRequestInputs(pr));
 
   return (
     <Popover open={open} onOpenChange={updateOpen}>
@@ -446,7 +432,7 @@ function WorktreeInputsControl({
                         icon="GitPullRequest"
                         selected={false}
                         title={`#${pr.number} ${pr.title} (${pr.headRefName})`}
-                        onSelect={() => void selectPullRequest(pr)}
+                        onSelect={() => selectPullRequest(pr)}
                       >
                         <span className="flex min-w-0 flex-1 flex-col">
                           <span className="min-w-0 truncate">

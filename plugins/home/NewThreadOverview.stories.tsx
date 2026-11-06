@@ -68,6 +68,23 @@ function Stage({ initialProject }: { initialProject: string | null }) {
         order={{ sort, setSort, isOldestFirst, setIsOldestFirst }}
         filter={filter}
         setFilter={setFilter}
+        pullRequests={[
+          {
+            number: 128,
+            title: "Show open pull requests on New thread",
+            headRefName: "home-open-prs",
+            isDraft: false,
+            worktreePath: null,
+          },
+          {
+            number: 131,
+            title: "Draft: split pane tabs",
+            headRefName: "split-pane-tabs",
+            isDraft: true,
+            worktreePath: "/code/bb-split",
+          },
+        ]}
+        onSelectPullRequest={() => undefined}
         onArchiveThreads={() => Promise.resolve()}
         onOpenThread={() => undefined}
       />
