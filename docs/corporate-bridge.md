@@ -2,6 +2,8 @@
 
 This page tracks how work from this fork moves into a company fork of bb that runs multiplayer, with one shared server and many enrolled hosts. It lists only what lives in zugdev/bb. Notes about the company's own setup belong in the company fork, never here, because zugdev/bb is public.
 
+[bb-whitepaper.md](bb-whitepaper.md) covers the design ideas behind this list and the proposed designs for placement, lifecycle and identity.
+
 The unit of transfer is a PR against the company fork. Nothing in this fork auto updates company machines: `plugins/fork-updater` and `pnpm fork:update` pull from zugdev/bb main and stay personal.
 
 ## Targets
