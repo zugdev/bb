@@ -23,14 +23,18 @@ export interface FileTreePanelProps {
   truncated: boolean;
   activePath: string;
   background: string | null;
+  docked: boolean;
   onOpenFile: (path: string) => void;
   onClose: () => void;
 }
 
 const INDENT_PER_LEVEL_PX = 12;
 
+const DOCKED_TREE_WIDTH = "clamp(9rem, 35%, 18rem)";
+
 export function FileTreePanel({
   background,
+  docked,
   entries,
   root,
   isLoading,
@@ -151,11 +155,12 @@ export function FileTreePanel({
     <div
       ref={panelRef}
       style={{
-        height,
+        ...(docked ? { width: DOCKED_TREE_WIDTH } : { height }),
         ...(background === null ? {} : { backgroundColor: background }),
       }}
       className={cn(
         "flex shrink-0 flex-col",
+        docked && "border-r border-border",
         background === null && "bg-surface-recessed",
       )}
     >
@@ -230,11 +235,13 @@ export function FileTreePanel({
         ) : null}
       </div>
       <ContextMenu state={menu} onClose={() => setMenu(null)} />
-      <ResizeHandle
-        onResize={resizeBy}
-        onResizeEnd={commitHeight}
-        onResizeStart={startResize}
-      />
+      {docked ? null : (
+        <ResizeHandle
+          onResize={resizeBy}
+          onResizeEnd={commitHeight}
+          onResizeStart={startResize}
+        />
+      )}
     </div>
   );
 }

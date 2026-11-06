@@ -1,9 +1,18 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ComponentType,
+} from "react";
 import {
   definePluginApp,
   experimental_useCodeTheme,
   useRpc,
+  type ExperimentalThreadTabProps,
   type PluginFileOpenerProps,
+  type PluginFileOpenerSource,
 } from "@get-bb/plugin-sdk/app";
 import type * as MonacoNs from "monaco-editor";
 import { Icon } from "@/components/ui/icon";
@@ -19,6 +28,7 @@ import { cn } from "@/lib/utils";
 import { FileToolbar, type SaveIndicator } from "./components/FileToolbar.js";
 import { FileTreePanel } from "./components/FileTreePanel.js";
 import type { FlatEntry } from "./lib/file-tree.js";
+import { bindEditor, createFileModel } from "./lib/navigation.js";
 import {
   EDITOR_COMMANDS,
   forgetEditor,
@@ -60,12 +70,106 @@ function revealLineRange(
   editor.revealRangeInCenter(selection);
 }
 
+type FileSource = PluginFileOpenerSource;
+
+interface ActiveFile {
+  path: string;
+  source: FileSource;
+}
+
+type LineRange = PluginFileOpenerProps["experimental_lineRange"];
+
+function rangeToLineRange(range: MonacoNs.IRange | null): LineRange {
+  if (range === null) return null;
+  return {
+    startLineNumber: range.startLineNumber,
+    endLineNumber: range.endLineNumber,
+  };
+}
+
+function revealSelection(
+  editor: MonacoNs.editor.IStandaloneCodeEditor,
+  range: MonacoNs.IRange,
+) {
+  editor.setSelection(range);
+  editor.revealRangeInCenter(range);
+}
+
+function workspaceSourceOf(source: FileSource): FileSource {
+  return source.kind === "host" ? { ...source, kind: "workspace" } : source;
+}
+
 function MonacoFileOpener({
   path,
   source,
   Original,
   experimental_lineRange,
 }: PluginFileOpenerProps) {
+  return (
+    <WorkspaceEditor
+      path={path}
+      source={source}
+      lineRange={experimental_lineRange}
+      Original={Original}
+      docked={false}
+    />
+  );
+}
+
+const LAST_FILE_KEY_PREFIX = "bb-plugin-monaco-editor:last-file:";
+
+function readLastFile(threadId: string): string | null {
+  try {
+    return window.localStorage.getItem(`${LAST_FILE_KEY_PREFIX}${threadId}`);
+  } catch {
+    return null;
+  }
+}
+
+function storeLastFile(threadId: string, file: ActiveFile) {
+  if (file.source.kind !== "workspace") return;
+  try {
+    window.localStorage.setItem(`${LAST_FILE_KEY_PREFIX}${threadId}`, file.path);
+  } catch {}
+}
+
+function EditorTab({ threadId, environment }: ExperimentalThreadTabProps) {
+  const environmentId = environment?.id ?? null;
+  const source = useMemo<FileSource>(
+    () => ({ kind: "workspace", threadId, environmentId, projectId: null }),
+    [threadId, environmentId],
+  );
+  const [initialPath] = useState(() => readLastFile(threadId));
+  const onActiveFileChange = useCallback(
+    (file: ActiveFile) => storeLastFile(threadId, file),
+    [threadId],
+  );
+  return (
+    <WorkspaceEditor
+      key={`${threadId}:${environmentId ?? ""}`}
+      path={initialPath}
+      source={source}
+      docked
+      onActiveFileChange={onActiveFileChange}
+    />
+  );
+}
+
+function WorkspaceEditor({
+  path,
+  source,
+  Original,
+  lineRange,
+  docked,
+  onActiveFileChange,
+}: {
+  path: string | null;
+  source: FileSource;
+  Original?: ComponentType;
+  lineRange?: LineRange;
+  docked: boolean;
+  onActiveFileChange?: (file: ActiveFile) => void;
+}) {
   const rpc = useRpc<typeof rpcContract>();
   const codeTheme = experimental_useCodeTheme();
   const codeThemeRef = useRef(codeTheme);
@@ -75,10 +179,29 @@ function MonacoFileOpener({
   const monacoRef = useRef<typeof MonacoNs | null>(null);
   const editorRef = useRef<MonacoNs.editor.IStandaloneCodeEditor | null>(null);
 
-  const navigationRef = useRef({ path, lineRange: experimental_lineRange });
+  const navigationRef = useRef({ path, lineRange });
+  const pendingRevealRef = useRef<{
+    file: ActiveFile;
+    range: MonacoNs.IRange;
+  } | null>(null);
 
-  const [activePath, setActivePath] = useState(path);
-  useEffect(() => setActivePath(path), [path]);
+  const [activeFile, setActiveFile] = useState<ActiveFile | null>(
+    path === null ? null : { path, source },
+  );
+  useEffect(
+    () =>
+      setActiveFile((current) =>
+        current?.path === path && current.source === source
+          ? current
+          : path === null
+            ? null
+            : { path, source },
+      ),
+    [path, source],
+  );
+  useEffect(() => {
+    if (activeFile !== null) onActiveFileChange?.(activeFile);
+  }, [activeFile, onActiveFileChange]);
 
   const sha256Ref = useRef<string | null>(null);
   const saveStateRef = useRef<SaveState>({ kind: "clean" });
@@ -86,8 +209,8 @@ function MonacoFileOpener({
   const [saveState, setSaveStateValue] = useState<SaveState>({ kind: "clean" });
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [pendingDiscard, setPendingDiscard] = useState(false);
-  const [isFilesOpen, setIsFilesOpen] = useState(false);
-  const [pendingOpen, setPendingOpen] = useState<string | null>(null);
+  const [isFilesOpen, setIsFilesOpen] = useState(docked);
+  const [pendingOpen, setPendingOpen] = useState<ActiveFile | null>(null);
   const [tree, setTree] = useState<{
     entries: readonly FlatEntry[];
     root: string;
@@ -116,12 +239,12 @@ function MonacoFileOpener({
   const writeEditorContent = useCallback(
     async (expectedSha256: string | null) => {
       const editor = editorRef.current;
-      if (!editor) return;
+      if (!editor || activeFile === null) return;
       setSaveState({ kind: "saving" });
       try {
         const result = await rpc.call("write", {
-          path: activePath,
-          source,
+          path: activeFile.path,
+          source: activeFile.source,
           content: editor.getValue(),
           expectedSha256,
         });
@@ -141,7 +264,7 @@ function MonacoFileOpener({
         });
       }
     },
-    [activePath, rpc, setSaveState, source],
+    [activeFile, rpc, setSaveState],
   );
 
   const save = useCallback(async () => {
@@ -158,10 +281,10 @@ function MonacoFileOpener({
 
   const reloadFromDisk = useCallback(async () => {
     const editor = editorRef.current;
-    if (!editor) return;
+    if (!editor || activeFile === null) return;
     setIsRefreshing(true);
     try {
-      const file = await rpc.call("read", { path: activePath, source });
+      const file = await rpc.call("read", activeFile);
       if (file.kind !== "text" || editorRef.current !== editor) return;
       const discardedContent =
         saveStateRef.current.kind === "conflict" ? editor.getValue() : null;
@@ -182,7 +305,7 @@ function MonacoFileOpener({
     } finally {
       if (editorRef.current === editor) setIsRefreshing(false);
     }
-  }, [activePath, rpc, setSaveState, source]);
+  }, [activeFile, rpc, setSaveState]);
 
   const undoReload = useCallback(() => {
     const current = saveStateRef.current;
@@ -234,17 +357,53 @@ function MonacoFileOpener({
     };
   }, [isFilesOpen, rpc, source]);
 
-  const openFromTree = useCallback(
-    (next: string) => {
-      if (next === activePath) return;
+  const requestOpen = useCallback(
+    (next: ActiveFile) => {
+      if (
+        activeFile !== null &&
+        next.path === activeFile.path &&
+        next.source.kind === activeFile.source.kind
+      ) {
+        const pending = pendingRevealRef.current;
+        const editor = editorRef.current;
+        if (pending !== null && editor !== null) {
+          pendingRevealRef.current = null;
+          revealSelection(editor, pending.range);
+        }
+        return;
+      }
       if (saveStateRef.current.kind === "dirty") {
         setPendingOpen(next);
         return;
       }
-      setActivePath(next);
+      if (pendingRevealRef.current !== null) {
+        pendingRevealRef.current = { ...pendingRevealRef.current, file: next };
+      }
+      setActiveFile(next);
     },
-    [activePath],
+    [activeFile],
   );
+
+  const openFromTree = useCallback(
+    (next: string) => {
+      pendingRevealRef.current = null;
+      requestOpen({ path: next, source });
+    },
+    [requestOpen, source],
+  );
+
+  const openLocationRef = useRef<
+    (absolutePath: string, relativePath: string | null, range: MonacoNs.IRange | null) => void
+  >(() => {});
+  openLocationRef.current = (absolutePath, relativePath, range) => {
+    const workspaceSource = workspaceSourceOf(source);
+    const next: ActiveFile =
+      relativePath === null
+        ? { path: absolutePath, source: { ...workspaceSource, kind: "host" } }
+        : { path: relativePath, source: workspaceSource };
+    pendingRevealRef.current = range === null ? null : { file: next, range };
+    requestOpen(next);
+  };
 
   const requestRefresh = useCallback(() => {
     if (saveStateRef.current.kind === "dirty") {
@@ -261,7 +420,9 @@ function MonacoFileOpener({
   }, [writeEditorContent]);
 
   useEffect(() => {
+    if (activeFile === null) return;
     let disposed = false;
+    let unbind: (() => void) | null = null;
     setStatus({ kind: "loading" });
     setIsRefreshing(false);
     if (saveStateRef.current.kind === "reloaded") {
@@ -272,7 +433,7 @@ function MonacoFileOpener({
       try {
         const [{ baseUrl }, file] = await Promise.all([
           rpc.call("assets"),
-          rpc.call("read", { path: activePath, source }),
+          rpc.call("read", activeFile),
         ]);
         if (disposed) return;
         if (file.kind === "unsupported") {
@@ -289,9 +450,9 @@ function MonacoFileOpener({
         sha256Ref.current = file.sha256;
         const applied = applyCodeTheme(monaco, codeThemeRef.current);
         setOverflowWidgetsTheme(applied.base);
+        const model = createFileModel(monaco, file.absolutePath, file.content);
         const editor = monaco.editor.create(container, {
-          value: file.content,
-          language: languageForPath(activePath),
+          model,
           automaticLayout: true,
           lineNumbers: "on",
           theme: applied.name,
@@ -307,7 +468,51 @@ function MonacoFileOpener({
           overflowWidgetsDomNode: overflowWidgetsNode(),
         });
         editorRef.current = editor;
-        if (activePath === navigationRef.current.path) {
+        const workspaceSource = workspaceSourceOf(activeFile.source);
+        const relativeByAbsolute = new Map<string, string | null>();
+        const position = (content: string, at: MonacoNs.IPosition) => ({
+          ...activeFile,
+          content,
+          line: at.lineNumber,
+          column: at.column,
+        });
+        unbind = bindEditor(editor, model, {
+          async definitions(content, at) {
+            const result = await rpc.call("definition", position(content, at));
+            for (const target of result.definitions) {
+              relativeByAbsolute.set(target.absolutePath, target.relativePath);
+            }
+            return result.definitions;
+          },
+          async hover(content, at) {
+            return (await rpc.call("hover", position(content, at))).contents;
+          },
+          async readFile(absolutePath) {
+            const relativePath = relativeByAbsolute.get(absolutePath) ?? null;
+            const result = await rpc.call(
+              "read",
+              relativePath === null
+                ? {
+                    path: absolutePath,
+                    source: { ...workspaceSource, kind: "host" },
+                  }
+                : { path: relativePath, source: workspaceSource },
+            );
+            return result.kind === "text" ? result.content : null;
+          },
+          open(absolutePath, range) {
+            openLocationRef.current(
+              absolutePath,
+              relativeByAbsolute.get(absolutePath) ?? null,
+              range,
+            );
+          },
+        });
+        const pending = pendingRevealRef.current;
+        if (pending !== null && pending.file === activeFile) {
+          pendingRevealRef.current = null;
+          revealSelection(editor, pending.range);
+        } else if (activeFile.path === navigationRef.current.path) {
           revealLineRange(editor, navigationRef.current.lineRange);
         }
         const active = {
@@ -343,20 +548,21 @@ function MonacoFileOpener({
 
     return () => {
       disposed = true;
+      unbind?.();
       if (editorRef.current) forgetEditor(editorRef.current);
       editorRef.current?.getModel()?.dispose();
       editorRef.current?.dispose();
       editorRef.current = null;
     };
-  }, [activePath, rpc, setSaveState, source]);
+  }, [activeFile, rpc, setSaveState]);
 
   useEffect(() => {
-    navigationRef.current = { path, lineRange: experimental_lineRange };
+    navigationRef.current = { path, lineRange };
     const editor = editorRef.current;
-    if (editor !== null && activePath === path) {
-      revealLineRange(editor, experimental_lineRange);
+    if (editor !== null && activeFile?.path === path) {
+      revealLineRange(editor, lineRange);
     }
-  }, [activePath, path, experimental_lineRange]);
+  }, [activeFile, path, lineRange]);
 
   useEffect(() => {
     const monaco = monacoRef.current;
@@ -366,59 +572,129 @@ function MonacoFileOpener({
     setOverflowWidgetsTheme(applied.base);
   }, [codeTheme, status]);
 
-  if (status.kind === "delegate") return <Original />;
+  if (status.kind === "delegate" && Original !== undefined) return <Original />;
 
+  const treeActivePath =
+    activeFile !== null && activeFile.source.kind === source.kind
+      ? activeFile.path
+      : "";
+  const fileTree = isFilesOpen ? (
+    <FileTreePanel
+      activePath={treeActivePath}
+      background={editorBackground(codeTheme.theme)}
+      docked={docked}
+      entries={tree.entries}
+      error={tree.error}
+      isLoading={tree.isLoading}
+      root={tree.root}
+      onClose={() => setIsFilesOpen(false)}
+      onOpenFile={openFromTree}
+      truncated={tree.truncated}
+    />
+  ) : null;
+
+  const editorColumn = (
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+      {activeFile === null ? (
+        <>
+          {isFilesOpen ? null : (
+            <EmptyToolbar onShowFiles={() => setIsFilesOpen(true)} />
+          )}
+          <p className="px-4 py-3 text-sm text-muted-foreground">
+            Pick a file from the tree to open it.
+          </p>
+        </>
+      ) : (
+        <>
+          <FileToolbar
+            path={activeFile.path}
+            indicator={indicatorFor(saveState, status)}
+            saveConflict={saveState.kind === "conflict"}
+            saveDisabled={
+              status.kind !== "ready" ||
+              isRefreshing ||
+              saveState.kind === "saving"
+            }
+            onSave={() => void save()}
+            isRefreshing={isRefreshing}
+            onRefresh={requestRefresh}
+            isFilesOpen={isFilesOpen}
+            onToggleFiles={() => setIsFilesOpen((open) => !open)}
+          />
+          <Notice
+            conflictNoticeRef={conflictNoticeRef}
+            isRefreshing={isRefreshing}
+            onDiscardCancel={() => setPendingDiscard(false)}
+            onDiscardConfirm={() => {
+              setPendingDiscard(false);
+              void reloadFromDisk();
+            }}
+            onOpenCancel={() => {
+              pendingRevealRef.current = null;
+              setPendingOpen(null);
+            }}
+            onOpenConfirm={() => {
+              const next = pendingOpen;
+              setPendingOpen(null);
+              if (next === null) return;
+              if (pendingRevealRef.current !== null) {
+                pendingRevealRef.current = {
+                  ...pendingRevealRef.current,
+                  file: next,
+                };
+              }
+              setActiveFile(next);
+            }}
+            onOverwrite={() => void overwrite()}
+            onReload={() => void reloadFromDisk()}
+            onUndoReload={undoReload}
+            pendingDiscard={pendingDiscard}
+            pendingOpen={pendingOpen?.path ?? null}
+            saveState={saveState}
+            status={
+              status.kind === "delegate"
+                ? { kind: "error", message: status.reason }
+                : status
+            }
+          />
+        </>
+      )}
+      <div
+        ref={containerRef}
+        className={cn(
+          "min-h-0 flex-1",
+          (activeFile === null || status.kind === "delegate") && "hidden",
+        )}
+      />
+    </div>
+  );
+
+  if (docked) {
+    return (
+      <div className="flex min-h-0 flex-1 flex-row">
+        {fileTree}
+        {editorColumn}
+      </div>
+    );
+  }
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      {isFilesOpen ? (
-        <FileTreePanel
-          activePath={activePath}
-          background={editorBackground(codeTheme.theme)}
-          entries={tree.entries}
-          error={tree.error}
-          isLoading={tree.isLoading}
-          root={tree.root}
-          onClose={() => setIsFilesOpen(false)}
-          onOpenFile={openFromTree}
-          truncated={tree.truncated}
-        />
-      ) : null}
-      <FileToolbar
-        path={activePath}
-        indicator={indicatorFor(saveState, status)}
-        saveConflict={saveState.kind === "conflict"}
-        saveDisabled={
-          status.kind !== "ready" || isRefreshing || saveState.kind === "saving"
-        }
-        onSave={() => void save()}
-        isRefreshing={isRefreshing}
-        onRefresh={requestRefresh}
-        isFilesOpen={isFilesOpen}
-        onToggleFiles={() => setIsFilesOpen((open) => !open)}
-      />
-      <Notice
-        conflictNoticeRef={conflictNoticeRef}
-        isRefreshing={isRefreshing}
-        onDiscardCancel={() => setPendingDiscard(false)}
-        onDiscardConfirm={() => {
-          setPendingDiscard(false);
-          void reloadFromDisk();
-        }}
-        onOpenCancel={() => setPendingOpen(null)}
-        onOpenConfirm={() => {
-          const next = pendingOpen;
-          setPendingOpen(null);
-          if (next !== null) setActivePath(next);
-        }}
-        onOverwrite={() => void overwrite()}
-        onReload={() => void reloadFromDisk()}
-        onUndoReload={undoReload}
-        pendingDiscard={pendingDiscard}
-        pendingOpen={pendingOpen}
-        saveState={saveState}
-        status={status}
-      />
-      <div ref={containerRef} className="min-h-0 flex-1" />
+      {fileTree}
+      {editorColumn}
+    </div>
+  );
+}
+
+function EmptyToolbar({ onShowFiles }: { onShowFiles: () => void }) {
+  return (
+    <div className="flex h-9 shrink-0 items-center bg-surface-raised px-4">
+      <button
+        type="button"
+        onClick={onShowFiles}
+        className="cursor-pointer text-sm text-muted-foreground hover:text-foreground"
+      >
+        Show files
+      </button>
     </div>
   );
 }
@@ -619,6 +895,17 @@ export default definePluginApp((app) => {
     title: "File Editor",
     extensions: CLAIMED_EXTENSIONS,
     component: MonacoFileOpener,
+  });
+
+  app.slots.experimental_tab({
+    context: { kind: "thread" },
+    availability: "fixed",
+    id: "editor",
+    title: "Editor",
+    icon: "Code",
+    layout: "flush",
+    component: EditorTab,
+    useVisible: ({ environment }) => environment !== null,
   });
 
   for (const command of EDITOR_COMMANDS) {
