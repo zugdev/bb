@@ -7,7 +7,6 @@ export const updateStepSchema = z.enum([
   "fast-forward",
   "install",
   "package",
-  "swap",
   "swap-and-reopen",
 ]);
 export type UpdateStep = z.infer<typeof updateStepSchema>;
@@ -59,7 +58,7 @@ export const forkUpdaterRpcContract = defineRpcContract({
     output: statusSchema,
   },
   update: {
-    input: z.object({ reopen: z.boolean() }).strict(),
+    input: z.object({}).strict(),
     output: statusSchema,
   },
 });

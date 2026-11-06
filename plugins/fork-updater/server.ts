@@ -176,7 +176,7 @@ export default async function forkUpdaterPlugin(bb: BbPluginApi): Promise<void> 
     await bb.storage.kv.set(BUILT_COMMIT_KEY, commit);
   }
 
-  async function applyUpdate(reopen: boolean): Promise<ForkUpdaterStatus> {
+  async function applyUpdate(): Promise<ForkUpdaterStatus> {
     swapError = null;
     const current = await check();
     if (current.error !== null) throw new Error(current.error);
@@ -203,8 +203,8 @@ export default async function forkUpdaterPlugin(bb: BbPluginApi): Promise<void> 
       await runStep("install", path);
       setStatus({ progress: "Packaging bb.app, this takes several minutes" });
       await runStep("package", path);
-      setStatus({ progress: reopen ? "Restarting bb with the new build" : "Installing the new build, bb will quit" });
-      await runStep(reopen ? "swap-and-reopen" : "swap", path);
+      setStatus({ progress: "Restarting bb with the new build" });
+      await runStep("swap-and-reopen", path);
       return status;
     } catch (error) {
       setStatus({ progress: null, error: errorMessage(error) });
@@ -212,8 +212,8 @@ export default async function forkUpdaterPlugin(bb: BbPluginApi): Promise<void> 
     }
   }
 
-  function update(reopen: boolean): Promise<ForkUpdaterStatus> {
-    updating ??= applyUpdate(reopen)
+  function update(): Promise<ForkUpdaterStatus> {
+    updating ??= applyUpdate()
       .finally(() => {
         updating = null;
       })
@@ -227,8 +227,8 @@ export default async function forkUpdaterPlugin(bb: BbPluginApi): Promise<void> 
 
   bb.rpc.register(forkUpdaterRpcContract, {
     status: ({ refresh }) => (refresh || status.checkedAt === null ? check() : status),
-    update: ({ reopen }) => {
-      void update(reopen).catch(() => undefined);
+    update: () => {
+      void update().catch(() => undefined);
       return status;
     },
   });
@@ -250,13 +250,10 @@ export default async function forkUpdaterPlugin(bb: BbPluginApi): Promise<void> 
         }),
         update: cliCommand({
           summary: "Apply pending commits: reload plugins, or rebuild bb.app and reopen it",
-          options: {
-            json: JSON_OPTION,
-            "no-reopen": { type: "boolean", description: "After a rebuild, install the new bb.app and leave bb closed" },
-          },
+          options: { json: JSON_OPTION },
           async run(input) {
             try {
-              const result = await update(input.options["no-reopen"] !== true);
+              const result = await update();
               return { exitCode: 0, stdout: input.options.json ? JSON.stringify(result) : formatStatus(result) };
             } catch (error) {
               throw new PluginCliError(errorMessage(error), { code: "update_failed" });
