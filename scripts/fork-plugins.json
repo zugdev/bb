@@ -5,6 +5,7 @@
     "plugins/fork-updater",
     "plugins/home",
     "plugins/orchestrator",
-    "plugins/parent-link"
+    "plugins/parent-link",
+    "plugins/perf"
   ]
 }
