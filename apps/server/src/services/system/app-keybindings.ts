@@ -198,7 +198,7 @@ export const DEFAULT_APP_KEYBINDINGS: AppDefaultKeybindings = [
   unassignedBinding("thread.pin", mainWithoutModal),
   binding("app.back", "Escape", {}, mainWithoutModal),
   binding("settings.open", ",", { mod: true }, mainWithoutModal),
-  binding("sidebar.toggle", "\\", { mod: true }, mainWithoutModal),
+  binding("sidebar.toggle", "s", { mod: true }, mainWithoutModal),
   unassignedBinding("notifications.open", mainWithoutModal),
   unassignedBinding("plugins.enterSafeMode", mainWithoutModal),
   unassignedBinding("plugins.exitSafeMode", mainWithoutModal),
@@ -350,7 +350,7 @@ export const DEFAULT_APP_KEYBINDINGS: AppDefaultKeybindings = [
     { mod: true, alt: true },
     mainWithoutModal,
   ),
-  binding("panel.toggle", "j", { mod: true }, mainWithoutModal),
+  binding("panel.toggle", "e", { mod: true }, mainWithoutModal),
   unassignedBinding("panel.fullScreen.toggle", mainWithoutModal),
   binding("file.quickOpen", "p", { mod: true }, mainWithoutModal),
   binding(

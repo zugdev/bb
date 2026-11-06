@@ -36,7 +36,11 @@ import {
   type HomeLayoutPrefs,
   type HomeThreadSort,
 } from "./home-overview";
-import { ThreadDescendantsContext, ThreadRow, type OpenThread } from "./ThreadRow";
+import {
+  ThreadDescendantsContext,
+  ThreadRow,
+  type OpenThread,
+} from "./ThreadRow";
 
 const PROJECT_ROW_LIMIT = 6;
 const ATTENTION_ROW_LIMIT = 5;
@@ -148,7 +152,7 @@ function AttentionPanel({
   );
 }
 
-function ProjectSection({
+export function ProjectSection({
   project,
   threads: projectThreads,
   order,

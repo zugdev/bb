@@ -38,14 +38,20 @@ import {
 } from "@/lib/split-layout/atoms";
 import {
   activateSplitTabsAtom,
+  canMovePaneAcrossTabs,
   closeSplitTabAtom,
   focusThreadInOtherTabAtom,
+  movePaneAcrossTabsAtom,
   movePaneToTabAtom,
   recordClosedPaneAtom,
   seedSplitComposeProjectAtom,
+  selectSplitTabAtom,
   splitTabsAtom,
 } from "@/lib/split-layout/tabs";
-import { resolveSplitTabDropTarget } from "./SplitTabBar";
+import {
+  createSplitTabHoverSwitch,
+  resolveSplitTabDropTarget,
+} from "./SplitTabBar";
 import {
   computePaneRects,
   countPanes,
@@ -711,10 +717,15 @@ function SplitThreadAreaContent({ routeContent }: SplitThreadAreaProps) {
 
   const beginPaneDrag = useCallback<BeginPaneDrag>(
     (paneId, event, label) => {
-      const startLayout = store.get(splitLayoutAtom);
-      if (startLayout === null || countPanes(startLayout.root) < 2) {
+      if (store.get(splitLayoutAtom) === null) {
         return;
       }
+      const sourceTabId = store.get(splitTabsAtom).activeTabId;
+      const isInSourceTab = () =>
+        store.get(splitTabsAtom).activeTabId === sourceTabId;
+      const hoverSwitch = createSplitTabHoverSwitch((tabId) =>
+        showTabLayout(store.set(selectSplitTabAtom, tabId)),
+      );
       const restoreMaximizeAfterDrag =
         store.get(maximizedPaneIdAtom) === paneId;
       const sourceEl =
@@ -733,24 +744,50 @@ function SplitThreadAreaContent({ routeContent }: SplitThreadAreaProps) {
         onEngage: restoreMaximizeAfterDrag
           ? () => setMaximizedPaneId(null)
           : undefined,
-        onEnd: restoreMaximizeAfterDrag
-          ? () => {
-              const current = store.get(splitLayoutAtom);
-              if (
-                current !== null &&
-                findPane(current.root, current.focusedPaneId) !== null
-              ) {
-                setMaximizedPaneId(current.focusedPaneId);
-              }
-            }
-          : undefined,
-        resolveAuxiliaryTarget: (x, y) =>
-          resolveSplitTabDropTarget(x, y, (tabId) =>
-            showTabLayout(store.set(movePaneToTabAtom, { paneId, tabId })),
-          ),
-        decide: (targetPaneId, zone) =>
-          decidePaneDrop({ zone, isSelf: targetPaneId === paneId }),
+        onEnd: () => {
+          hoverSwitch.cancel();
+          if (!restoreMaximizeAfterDrag || !isInSourceTab()) return;
+          const current = store.get(splitLayoutAtom);
+          if (
+            current !== null &&
+            findPane(current.root, current.focusedPaneId) !== null
+          ) {
+            setMaximizedPaneId(current.focusedPaneId);
+          }
+        },
+        resolveAuxiliaryTarget: (x, y) => {
+          hoverSwitch.update(x, y);
+          return isInSourceTab()
+            ? resolveSplitTabDropTarget(x, y, (tabId) =>
+                showTabLayout(store.set(movePaneToTabAtom, { paneId, tabId })),
+              )
+            : null;
+        },
+        decide: (targetPaneId, zone) => {
+          if (isInSourceTab()) {
+            return decidePaneDrop({ zone, isSelf: targetPaneId === paneId });
+          }
+          const move = { sourceTabId, paneId, targetPaneId, zone };
+          return canMovePaneAcrossTabs(
+            store.get(splitTabsAtom),
+            store.get(splitLayoutAtom),
+            move,
+          )
+            ? { zone, label: zone === "center" ? "Move here" : `Move ${zone}` }
+            : null;
+        },
         onDrop: (target) => {
+          if (!isInSourceTab()) {
+            showTabLayout(
+              store.set(movePaneAcrossTabsAtom, {
+                sourceTabId,
+                paneId,
+                targetPaneId: target.paneId,
+                zone: target.zone,
+              }),
+            );
+            return;
+          }
           const current = store.get(splitLayoutAtom);
           if (current === null) {
             return;
@@ -932,6 +969,9 @@ function SplitThreadAreaContent({ routeContent }: SplitThreadAreaProps) {
           isTopRow
           ownsWindowTopLeft
           onNavigateInPane={navigateInPane}
+          onBeginPaneDrag={
+            singlePaneContent.kind === "thread" ? beginPaneDrag : undefined
+          }
         />
         {workspace}
       </>
