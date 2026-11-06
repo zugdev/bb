@@ -43,6 +43,7 @@ function menuArgs(
     openNewThread: () => {},
     openLocalLogs: () => {},
     openSettings: () => {},
+    quitAndStopAgents: () => {},
     reopenClosedTab: () => {},
     reloadWindow,
     zoomFocusedPage: () => {},

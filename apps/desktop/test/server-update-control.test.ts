@@ -48,6 +48,7 @@ describe("hosting desktop update control", () => {
         cwd: root,
         env: { ...process.env, APPDIR: root },
         logLineLimit: 50,
+        outputPath: null,
         runtime:
           runtimeKind === "appimage"
             ? {

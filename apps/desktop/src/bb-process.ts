@@ -1,5 +1,6 @@
 import { spawnHostProcess as spawn } from "@bb/process-utils";
 import type { ChildProcess } from "node:child_process";
+import { closeSync, openSync, readFileSync } from "node:fs";
 import { posix as posixPath } from "node:path";
 import {
   hasProcessExited,
@@ -8,13 +9,21 @@ import {
   type ChildProcessExitResult,
 } from "@bb/config/child-process-exit";
 
-interface RuntimeLogBuffer {
-  append(chunk: Buffer | string): void;
+interface RuntimeLogs {
   text(): string;
+}
+
+interface RuntimeLogBuffer extends RuntimeLogs {
+  append(chunk: Buffer | string): void;
 }
 
 interface CreateRuntimeLogBufferArgs {
   maxLines: number;
+}
+
+interface ReadRuntimeOutputFileArgs {
+  maxLines: number;
+  path: string;
 }
 
 interface StartBbAppProcessArgs {
@@ -22,13 +31,14 @@ interface StartBbAppProcessArgs {
   cwd: string;
   env: NodeJS.ProcessEnv;
   logLineLimit: number;
+  outputPath: string | null;
   runtime: BbAppProcessRuntime;
 }
 
 export interface BbAppProcess {
   childProcess: ChildProcess;
   exit: Promise<BbAppProcessExit>;
-  logs: RuntimeLogBuffer;
+  logs: RuntimeLogs;
   pid: number;
   stop(args: StopBbAppProcessArgs): Promise<void>;
 }
@@ -247,6 +257,24 @@ function createRuntimeLogBuffer(
   };
 }
 
+const RUNTIME_OUTPUT_TAIL_BYTES = 256 * 1024;
+
+function readRuntimeOutputFile(args: ReadRuntimeOutputFileArgs): string {
+  let output: Buffer;
+  try {
+    output = readFileSync(args.path);
+  } catch {
+    return "";
+  }
+  return output
+    .subarray(-RUNTIME_OUTPUT_TAIL_BYTES)
+    .toString("utf8")
+    .split(/\r?\n/u)
+    .filter((line) => line.length > 0)
+    .slice(-args.maxLines)
+    .join("\n");
+}
+
 export function createBbAppProcessEnv(
   args: CreateBbAppProcessEnvArgs,
 ): NodeJS.ProcessEnv {
@@ -347,33 +375,46 @@ export function createBbAppProcessLaunch(
 }
 
 export function startBbAppProcess(args: StartBbAppProcessArgs): BbAppProcess {
-  const logs = createRuntimeLogBuffer({ maxLines: args.logLineLimit });
   const launch = createBbAppProcessLaunch({
     bridgePath: args.bridgePath,
     env: args.env,
     runtime: args.runtime,
   });
-  const childProcess = spawn(launch.executablePath, launch.args, {
-    cwd: args.cwd,
-    detached: args.runtime.kind === "appimage",
-    env: launch.env,
-    stdio: ["ignore", "pipe", "pipe", "ipc"],
-  });
+  const outputFd =
+    args.outputPath === null ? null : openSync(args.outputPath, "w");
+  let childProcess: ChildProcess;
+  try {
+    childProcess = spawn(launch.executablePath, launch.args, {
+      cwd: args.cwd,
+      detached: args.runtime.kind === "appimage",
+      env: launch.env,
+      stdio: ["ignore", outputFd ?? "pipe", outputFd ?? "pipe", "ipc"],
+    });
+  } finally {
+    if (outputFd !== null) {
+      closeSync(outputFd);
+    }
+  }
   const pid = childProcess.pid;
   if (pid === undefined) {
     throw new Error("bb-app child process did not expose a PID");
   }
 
-  if (childProcess.stdout !== null) {
-    childProcess.stdout.on("data", (chunk: Buffer) => {
-      logs.append(chunk);
-    });
-  }
-
-  if (childProcess.stderr !== null) {
-    childProcess.stderr.on("data", (chunk: Buffer) => {
-      logs.append(chunk);
-    });
+  const outputPath = args.outputPath;
+  let logs: RuntimeLogs;
+  if (outputPath === null) {
+    const buffer = createRuntimeLogBuffer({ maxLines: args.logLineLimit });
+    childProcess.stdout?.on("data", (chunk: Buffer) => buffer.append(chunk));
+    childProcess.stderr?.on("data", (chunk: Buffer) => buffer.append(chunk));
+    logs = buffer;
+  } else {
+    logs = {
+      text: () =>
+        readRuntimeOutputFile({
+          maxLines: args.logLineLimit,
+          path: outputPath,
+        }),
+    };
   }
 
   const exit = waitForProcessExit(childProcess);

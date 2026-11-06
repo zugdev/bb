@@ -109,6 +109,29 @@ async function verifyProcessIdentity(
   return null;
 }
 
+interface IsVerifiedProcessRunningArgs {
+  pid: number;
+  processOps?: VerifiedProcessOps;
+  startedAt: string;
+  verifyTokens: string[];
+}
+
+export async function isVerifiedProcessRunning(
+  args: IsVerifiedProcessRunningArgs,
+): Promise<boolean> {
+  const processOps = args.processOps ?? createNodeVerifiedProcessOps();
+  if (!processOps.isRunning(args.pid)) {
+    return false;
+  }
+  const mismatch = await verifyProcessIdentity({
+    pid: args.pid,
+    processOps,
+    startedAt: args.startedAt,
+    verifyTokens: args.verifyTokens,
+  });
+  return mismatch === null;
+}
+
 export async function stopVerifiedProcess(
   args: StopVerifiedProcessArgs,
 ): Promise<StopVerifiedProcessResult> {

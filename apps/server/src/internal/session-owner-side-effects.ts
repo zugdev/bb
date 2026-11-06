@@ -21,8 +21,10 @@ import type {
 import {
   interruptActiveThreadsForHost,
   reconcileDaemonReportedThreads,
+  type InterruptActiveThreadsResult,
 } from "../services/threads/thread-lifecycle.js";
 import { buildThreadStatusChangeMetadataByThreadId } from "../services/threads/thread-runtime-display.js";
+import { resumeThreadsInterruptedByRestart } from "../services/threads/runtime-restart-resume.js";
 import { settleDanglingBackgroundTasks } from "../services/threads/background-task-reconciliation.js";
 import { reconcileDaemonReportedOpenWork } from "../services/threads/open-work-reconciliation.js";
 import { interruptEnvironmentProvisioningForHost } from "../services/environments/environment-engine.js";
@@ -109,6 +111,7 @@ export async function handleHostSessionOpened(
     return { endedInteractiveRequests: [] };
   }
 
+  const interrupted: InterruptActiveThreadsResult[] = [];
   if (replacedSession && !sameDaemonInstance) {
     interruptEnvironmentProvisioningForHost(deps, {
       hostId: args.hostId,
@@ -118,28 +121,32 @@ export async function handleHostSessionOpened(
       hostId: args.hostId,
       reason: DAEMON_RESTARTED_PENDING_INTERACTION_REASON,
     });
-    interruptActiveThreadsForHost(deps, {
-      includeStopping: false,
-      hostId: args.hostId,
-      reason: "host-daemon-restarted",
-    });
+    interrupted.push(
+      interruptActiveThreadsForHost(deps, {
+        includeStopping: false,
+        hostId: args.hostId,
+        reason: "host-daemon-restarted",
+      }),
+    );
     settleDanglingBackgroundTasks(deps, { hostId: args.hostId });
   }
 
-  await reconcileDaemonReportedThreads(deps, {
-    activeThreadIds: args.activeThreads.map((thread) => thread.threadId),
-    hostId: args.hostId,
-    sameDaemonInstance,
-    undeliveredEventThreadIds: args.undeliveredEventThreadIds,
-  });
-
-  return {
-    endedInteractiveRequests: reconcileDaemonReportedOpenWork(deps, {
+  interrupted.push(
+    await reconcileDaemonReportedThreads(deps, {
+      activeThreadIds: args.activeThreads.map((thread) => thread.threadId),
       hostId: args.hostId,
-      openThreadWork: args.openThreadWork,
+      sameDaemonInstance,
       undeliveredEventThreadIds: args.undeliveredEventThreadIds,
     }),
-  };
+  );
+
+  const endedInteractiveRequests = reconcileDaemonReportedOpenWork(deps, {
+    hostId: args.hostId,
+    openThreadWork: args.openThreadWork,
+    undeliveredEventThreadIds: args.undeliveredEventThreadIds,
+  });
+  void resumeThreadsInterruptedByRestart(deps, interrupted);
+  return { endedInteractiveRequests };
 }
 
 export function handleDaemonSocketClosed(

@@ -23,6 +23,7 @@ const systemMessageKindValues = [
   "child-outcome-batch",
   "tool-result-delivered",
   "environment-directory-updated",
+  "runtime-restarted",
   "unlabeled",
 ] as const;
 export const systemMessageKindSchema = z.enum(systemMessageKindValues);

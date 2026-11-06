@@ -12,6 +12,7 @@ lock="$HOME/.bb/fork-update.lock"
 builtin_plugins=Contents/Resources/app.asar.unpacked/node_modules/bb-app/server/dist/builtin-plugins
 app_binary="$installed/Contents/MacOS/bb"
 server_url=http://127.0.0.1:38886/api/v1/threads
+owned_runtime="$HOME/Library/Application Support/bb/owned-runtime.json"
 cd "$repo"
 
 unset ELECTRON_RUN_AS_NODE
@@ -92,11 +93,24 @@ server_answers() {
   curl -sf -o /dev/null --max-time 2 "$server_url"
 }
 
+stop_background_runtime() {
+  pid="$(sed -n 's/^ *"pid": *\([0-9][0-9]*\).*/\1/p' "$owned_runtime" 2>/dev/null || true)"
+  if [ -n "$pid" ] && ps -p "$pid" -o command= | grep -qF "bb-app-bridge.mjs"; then
+    echo "stopping the bb runtime that keeps agents running after quit"
+    kill "$pid" || true
+  fi
+}
+
 quit_bb() {
   echo "quitting bb"
   osascript -e 'quit app "bb"' 2>/dev/null || true
   waited=0
+  runtime_stopped=false
   while app_running || server_answers; do
+    if ! $runtime_stopped && ! app_running; then
+      stop_background_runtime
+      runtime_stopped=true
+    fi
     if [ "$waited" -eq 60 ]; then
       echo "bb still running after 60s, sending SIGTERM"
       pkill -xf "$app_binary" || true

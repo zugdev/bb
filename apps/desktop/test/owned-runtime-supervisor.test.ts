@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdtemp, readFile, rm, utimes, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -29,6 +29,7 @@ import type {
   WaitForProcessExitArgs,
 } from "@bb/config/verified-process-stop";
 import {
+  readAdoptableOwnedRuntime,
   readOwnedRuntimePidFile,
   reapStaleOwnedRuntime,
   writeOwnedRuntimePidFile,
@@ -129,6 +130,37 @@ describe("owned runtime supervisor", () => {
       pid: 12345,
       serverUrl: "http://127.0.0.1:38886",
     });
+  });
+
+  it("adopts a running runtime only while its bridge file is unchanged", async () => {
+    const tempDir = await createTempDir();
+    const bridgePath = join(tempDir.path, "bb-app-bridge.mjs");
+    await writeFile(bridgePath, "", "utf8");
+    const serverUrl = "http://127.0.0.1:38886";
+    const fakeProcessOps = createFakeProcessOps({
+      command: `/Applications/bb.app/Contents/MacOS/bb ${bridgePath}`,
+      running: true,
+    });
+    await writeOwnedRuntimePidFile({
+      bridgePath,
+      pid: 12345,
+      serverUrl,
+      userDataPath: tempDir.path,
+    });
+    const adoptable = () =>
+      readAdoptableOwnedRuntime({
+        bridgePath,
+        processOps: fakeProcessOps.ops,
+        serverUrl,
+        userDataPath: tempDir.path,
+      });
+
+    await expect(adoptable()).resolves.toMatchObject({ pid: 12345 });
+
+    const installedAt = new Date(Date.now() + 60_000);
+    await utimes(bridgePath, installedAt, installedAt);
+
+    await expect(adoptable()).resolves.toBeNull();
   });
 
   it("reaps a stale Electron-owned bb-app bridge process", async () => {
