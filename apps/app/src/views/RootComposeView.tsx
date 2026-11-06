@@ -72,6 +72,7 @@ import { Icon } from "@bb/shared-ui/icon";
 import { cn } from "@bb/shared-ui/lib/utils";
 import { PageShell } from "@/components/ui/page-shell.js";
 import { Button } from "@bb/shared-ui/button";
+import { FocusTabButton } from "@/views/thread-detail/FocusTabController";
 import { useIsCompactViewport } from "@bb/shared-ui/hooks/use-compact-viewport";
 import { usePointerCoarse } from "@bb/shared-ui/hooks/use-pointer-coarse";
 import {
@@ -1310,6 +1311,7 @@ function RootComposeSurface({
         isSecondaryPanelOpen && "pointer-events-none invisible",
       )}
     >
+      <FocusTabButton />
       <RootComposeRightPanelToggle
         isOpen={isSecondaryPanelOpen}
         onToggle={handleToggleSecondaryPanel}

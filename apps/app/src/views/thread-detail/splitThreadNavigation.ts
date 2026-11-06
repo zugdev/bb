@@ -14,6 +14,7 @@ import {
 import type { useStore } from "jotai";
 import {
   insertSplitTab,
+  openFocusTabAtom,
   openSplitTabAtom,
   selectSplitTab,
   type SplitTabsState,
@@ -229,6 +230,15 @@ export function openComposeTab(
   projectId: string | null = null,
 ): void {
   const layout = store.set(openSplitTabAtom, projectId);
+  const route = layout === null ? null : focusedPaneRoute(layout);
+  if (route !== null) navigate(route, { replace: true });
+}
+
+export function openFocusTab(
+  store: ReturnType<typeof useStore>,
+  navigate: (route: string, options: { replace: true }) => void,
+): void {
+  const layout = store.set(openFocusTabAtom);
   const route = layout === null ? null : focusedPaneRoute(layout);
   if (route !== null) navigate(route, { replace: true });
 }
