@@ -1,19 +1,17 @@
 // @vitest-environment jsdom
 
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
+import { installTestPluginRuntime } from "@get-bb/plugin-sdk/testing/app";
 import type { PluginSidebarThread } from "@get-bb/plugin-sdk/app";
 import { asking, makeProject, makeThread, PERSONAL, WEB } from "./fixtures";
-import {
-  NEEDS_YOU_LIMIT,
-  PROJECT_THREAD_LIMIT,
-  RECENT_PROJECT_LIMIT,
-} from "./home-overview";
+import { NEEDS_YOU_LIMIT, RECENT_PROJECT_LIMIT } from "./home-overview";
 import {
   NewThreadOverview,
   type NewThreadOverviewProps,
 } from "./NewThreadOverview";
 
+beforeAll(installTestPluginRuntime);
 afterEach(cleanup);
 
 function renderOverview(props: Partial<NewThreadOverviewProps>) {
@@ -25,6 +23,12 @@ function renderOverview(props: Partial<NewThreadOverviewProps>) {
       setProjectId={() => undefined}
       picker={<span>picker</span>}
       cycleShortcutLabel="⌥ O"
+      order={{
+        sort: "message",
+        setSort: () => undefined,
+        isOldestFirst: false,
+        setIsOldestFirst: () => undefined,
+      }}
       onOpenThread={() => undefined}
       {...props}
     />,
@@ -132,7 +136,34 @@ describe("NewThreadOverview", () => {
     expect(chip.hasAttribute("disabled")).toBe(true);
   });
 
-  it("shows the selected project's waiting threads and its latest threads by your last message", () => {
+  it("lists every project's threads, latest project first, when no project is picked", () => {
+    renderOverview({
+      projects: [PERSONAL, WEB, makeProject("api"), makeProject("empty")],
+      threads: [
+        makeThread({ id: "web-old", experimental_lastUserMessageAt: 10 }),
+        makeThread({
+          id: "api-new",
+          projectId: "api",
+          experimental_lastUserMessageAt: 40,
+        }),
+        makeThread({
+          id: "mine",
+          projectId: PERSONAL.id,
+          experimental_lastUserMessageAt: 20,
+        }),
+      ],
+    });
+    expect(
+      screen.getAllByRole("heading", { level: 2 }).map((h) => h.textContent),
+    ).toEqual(["api", PERSONAL.name, WEB.name]);
+    expect(rowTitles(/^(web-old|api-new|mine)/)).toEqual([
+      "api-new",
+      "mine",
+      "web-old",
+    ]);
+  });
+
+  it("shows the selected project's waiting threads and then all of its threads by your last message", () => {
     const sent = (id: string, at: number): PluginSidebarThread =>
       makeThread({ id, experimental_lastUserMessageAt: at });
     renderOverview({
@@ -149,10 +180,13 @@ describe("NewThreadOverview", () => {
     });
     expect(rowTitles(/^(web-(?:ask|\d)|mine)/)).toEqual([
       "web-ask",
-      ...["web-6", "web-5", "web-3", "web-2"].slice(0, PROJECT_THREAD_LIMIT),
+      "web-6",
+      "web-5",
+      "web-3",
+      "web-2",
+      "web-1",
     ]);
     expect(screen.queryByText("Nothing waiting")).toBeNull();
-    expect(screen.getByText("Latest threads")).toBeTruthy();
   });
 
   it("says nothing is waiting in a selected project with no pending threads", () => {
@@ -163,6 +197,6 @@ describe("NewThreadOverview", () => {
     expect(screen.getByText("Needs you")).toBeTruthy();
     expect(screen.getByText("Nothing waiting")).toBeTruthy();
     expect(screen.queryByText("mine")).toBeNull();
-    expect(screen.queryByText("Latest threads")).toBeNull();
+    expect(screen.getByRole("button", { name: "New thread" })).toBeTruthy();
   });
 });

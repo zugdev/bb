@@ -5,13 +5,14 @@ import type {
 } from "@get-bb/plugin-sdk/app";
 import { cn } from "@bb/shared-ui/lib/utils";
 import {
+  homeTopLevelThreads,
   lastMessageTime,
-  latestThreads,
   liveThreadDescendants,
   NEEDS_YOU_LIMIT,
   needsYouThreads,
   recentProjects,
 } from "./home-overview";
+import { ProjectSection, type HomeThreadOrder } from "./HomePage";
 import { ThreadDescendantsContext, ThreadRow, type OpenThread } from "./ThreadRow";
 
 export interface NewThreadOverviewProps {
@@ -21,6 +22,7 @@ export interface NewThreadOverviewProps {
   setProjectId: ((projectId: string | null) => void) | null;
   picker: ReactNode;
   cycleShortcutLabel: string | null;
+  order: HomeThreadOrder;
   onOpenThread: OpenThread;
   rootRef?: Ref<HTMLDivElement>;
 }
@@ -32,6 +34,7 @@ export function NewThreadOverview({
   setProjectId,
   picker,
   cycleShortcutLabel,
+  order,
   onOpenThread,
   rootRef,
 }: NewThreadOverviewProps) {
@@ -55,16 +58,40 @@ export function NewThreadOverview({
     () => needsYouThreads(projectThreads),
     [projectThreads],
   );
-  const latest = useMemo(
-    () =>
-      selectedProject === null
-        ? []
-        : latestThreads(
-            projectThreads,
-            new Set(needsYou.map((thread) => thread.id)),
-          ),
-    [needsYou, projectThreads, selectedProject],
-  );
+  const projectSections = useMemo(() => {
+    const listed =
+      selectedProject === null ? projects : [selectedProject];
+    const latestByProject = new Map<string, number>();
+    const threadsByProject = new Map<string, PluginSidebarThread[]>();
+    const waiting = new Set(needsYou.map((thread) => thread.id));
+    for (const thread of homeTopLevelThreads(projectThreads)) {
+      if (waiting.has(thread.id)) continue;
+      threadsByProject.set(thread.projectId, [
+        ...(threadsByProject.get(thread.projectId) ?? []),
+        thread,
+      ]);
+      latestByProject.set(
+        thread.projectId,
+        Math.max(
+          latestByProject.get(thread.projectId) ?? 0,
+          lastMessageTime(thread),
+        ),
+      );
+    }
+    return listed
+      .filter(
+        (project) =>
+          selectedProject !== null || threadsByProject.has(project.id),
+      )
+      .sort(
+        (a, b) =>
+          (latestByProject.get(b.id) ?? 0) - (latestByProject.get(a.id) ?? 0),
+      )
+      .map((project) => ({
+        project,
+        threads: threadsByProject.get(project.id) ?? [],
+      }));
+  }, [needsYou, projectThreads, projects, selectedProject]);
   const projectNames = useMemo(
     () => new Map(projects.map((project) => [project.id, project.name])),
     [projects],
@@ -139,20 +166,16 @@ export function NewThreadOverview({
             )}
           </section>
         )}
-        {latest.length === 0 ? null : (
-          <section className="flex flex-col">
-            <h2 className="pb-1.5 text-sm font-medium">Latest threads</h2>
-            {latest.map((thread) => (
-              <ThreadRow
-                key={thread.id}
-                thread={thread}
-                projectName={null}
-                time={lastMessageTime(thread)}
-                onOpen={onOpenThread}
-              />
-            ))}
-          </section>
-        )}
+        {projectSections.map(({ project, threads: sectionThreads }) => (
+          <ProjectSection
+            key={project.id}
+            project={project}
+            threads={sectionThreads}
+            order={order}
+            onOpen={onOpenThread}
+            onNewThread={() => setProjectId?.(project.id)}
+          />
+        ))}
       </div>
     </ThreadDescendantsContext>
   );

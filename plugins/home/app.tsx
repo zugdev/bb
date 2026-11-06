@@ -53,6 +53,7 @@ function NewThreadOverviewSection({
     CYCLE_PROJECT_COMMAND_ID,
   );
   const rootRef = useRef<HTMLDivElement>(null);
+  const order = useHomeThreadOrder();
   const recent = useMemo(
     () => recentProjects(projects, threads),
     [projects, threads],
@@ -81,6 +82,7 @@ function NewThreadOverviewSection({
       projectId={projectId}
       setProjectId={setProjectId}
       cycleShortcutLabel={cycleShortcut?.label ?? null}
+      order={order}
       picker={
         <ProjectPicker
           value={projectId}
@@ -136,6 +138,20 @@ function useStoredState<T>(
 const isBoolean = (value: unknown): value is boolean =>
   typeof value === "boolean";
 
+function useHomeThreadOrder() {
+  const [sort, setSort] = useStoredState<HomeThreadSort>(
+    HOME_THREAD_SORT_KEY,
+    isHomeThreadSort,
+    "message",
+  );
+  const [isOldestFirst, setIsOldestFirst] = useStoredState(
+    HOME_THREAD_OLDEST_FIRST_KEY,
+    isBoolean,
+    false,
+  );
+  return { sort, setSort, isOldestFirst, setIsOldestFirst };
+}
+
 function HomePanel() {
   const { threads, projects } = experimental_useSidebarThreads();
   const navigate = useBbNavigate();
@@ -147,16 +163,7 @@ function HomePanel() {
     isHomeLayoutPrefs,
     DEFAULT_HOME_LAYOUT,
   );
-  const [sort, setSort] = useStoredState<HomeThreadSort>(
-    HOME_THREAD_SORT_KEY,
-    isHomeThreadSort,
-    "message",
-  );
-  const [isOldestFirst, setIsOldestFirst] = useStoredState(
-    HOME_THREAD_OLDEST_FIRST_KEY,
-    isBoolean,
-    false,
-  );
+  const order = useHomeThreadOrder();
   const pluginSections = useMemo(
     () => sections.filter((section) => section.experimental_placement === null),
     [sections],
@@ -171,7 +178,7 @@ function HomePanel() {
       )}
       layout={layout}
       setLayout={setLayout}
-      order={{ sort, setSort, isOldestFirst, setIsOldestFirst }}
+      order={order}
       search={{
         shortcutLabel: threadSearch.shortcut?.label ?? null,
         open: threadSearch.open,

@@ -148,7 +148,7 @@ function AttentionPanel({
   );
 }
 
-function ProjectSection({
+export function ProjectSection({
   project,
   threads: projectThreads,
   order,
