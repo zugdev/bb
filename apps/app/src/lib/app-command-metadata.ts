@@ -237,6 +237,11 @@ export const APP_COMMAND_GROUPS: readonly AppCommandGroup[] = [
         "Pick a project and open a tab for it. The sidebar shows only that project's threads while the tab is active.",
       ),
       command(
+        "splitTab.newFocus",
+        "Focus on threads that need a reply",
+        "Open the Focus tab. It shows the oldest thread waiting on your reply and moves to the next one when you reply or archive.",
+      ),
+      command(
         "splitTab.reopenClosed",
         "Reopen closed pane or tab",
         "Reopen the chat pane or tab closed most recently.",

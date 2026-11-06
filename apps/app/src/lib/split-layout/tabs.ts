@@ -35,6 +35,7 @@ export interface SplitTab {
   layout: SplitLayout | null;
   projectId: string | null;
   name: string | null;
+  kind?: "focus";
 }
 
 export interface SplitTabsState {
@@ -66,6 +67,7 @@ const splitTabsStateSchema = z
             layout: splitLayoutSchema.nullable(),
             projectId: z.string().min(1).nullable().default(null),
             name: z.string().min(1).nullable().default(null),
+            kind: z.literal("focus").optional(),
           })
           .strict(),
       )
@@ -224,6 +226,43 @@ export const openSplitTabAtom = atom(
     return activateTabLayout(set, next, NEW_THREAD_LAYOUT);
   },
 );
+
+function markActiveTabFocus(state: SplitTabsState): SplitTabsState {
+  return {
+    ...state,
+    tabs: state.tabs.map((tab) =>
+      tab.id === state.activeTabId ? { ...tab, kind: "focus" } : tab,
+    ),
+  };
+}
+
+function isBlankComposeLayout(layout: SplitLayout | null): boolean {
+  return (
+    layout === null ||
+    (layout.root.type === "pane" && layout.root.content.kind === "new-thread")
+  );
+}
+
+export const openFocusTabAtom = atom(null, (get, set): SplitLayout | null => {
+  const state = get(splitTabsAtom);
+  const activeLayout = get(splitLayoutAtom);
+  const existing = state.tabs.find((tab) => tab.kind === "focus");
+  if (existing !== undefined) {
+    const next = selectSplitTab(state, activeLayout, existing.id);
+    return next === null
+      ? routeLayoutFor(activeLayout)
+      : activateTabLayout(set, next, routeLayoutFor(existing.layout));
+  }
+  const active = state.tabs.find((tab) => tab.id === state.activeTabId);
+  if (active?.name === null && isBlankComposeLayout(activeLayout)) {
+    set(splitTabsAtom, markActiveTabFocus(state));
+    return routeLayoutFor(activeLayout);
+  }
+  const next = insertSplitTab(state, activeLayout, NEW_THREAD_LAYOUT, null);
+  return next === null
+    ? null
+    : activateTabLayout(set, markActiveTabFocus(next), NEW_THREAD_LAYOUT);
+});
 
 export const seedSplitComposeProjectAtom = atom(
   null,

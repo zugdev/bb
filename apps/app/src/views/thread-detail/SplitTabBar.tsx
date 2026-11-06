@@ -74,7 +74,12 @@ import {
   splitTabsAtom,
   type SplitTab,
 } from "@/lib/split-layout/tabs";
-import { focusedPaneRoute, openComposeTab } from "./splitThreadNavigation";
+import {
+  focusedPaneRoute,
+  openComposeTab,
+  openFocusTab,
+} from "./splitThreadNavigation";
+import { FocusTabController, useFocusQueueLength } from "./FocusTabController";
 
 function usePaneTitle(content: PaneContent | null): string {
   const threadId =
@@ -292,6 +297,10 @@ function SplitTabCommandHandlers({
     openComposeTab(store, navigate);
     return true;
   });
+  useAppCommandHandler("splitTab.newFocus", () => {
+    openFocusTab(store, navigate);
+    return true;
+  });
   useAppCommandHandler("splitTab.newForProject", () => {
     onPickProject();
     return true;
@@ -387,9 +396,21 @@ function SplitTabItem({
   onCloseOthers: () => void;
   onCloseRight: () => void;
 }) {
-  const { title, isProjectName } = useSplitTabTitle(layout, tab.name);
+  const isFocus = tab.kind === "focus";
+  const { title, isProjectName } = useSplitTabTitle(
+    layout,
+    tab.name ?? (isFocus ? "Focus" : null),
+  );
   const dot = useSplitTabDot(layout);
+  const focusQueueLength = useFocusQueueLength();
   const extraPanes = layout === null ? 0 : countPanes(layout.root) - 1;
+  const secondaryLabel = isFocus
+    ? focusQueueLength > 0
+      ? String(focusQueueLength)
+      : null
+    : !isProjectName && extraPanes > 0
+      ? `+${extraPanes}`
+      : null;
   return (
     <ContextMenu modal={false}>
       <Tooltip>
@@ -423,15 +444,15 @@ function SplitTabItem({
                   label={title}
                   title={title}
                   leadingVisual={
-                    dot === null ? (
+                    isFocus ? (
+                      <Icon name="Target" className="text-primary" />
+                    ) : dot === null ? (
                       <Icon name="MessageSquare" />
                     ) : (
                       <ThreadStatusDot dot={dot} />
                     )
                   }
-                  secondaryLabel={
-                    !isProjectName && extraPanes > 0 ? `+${extraPanes}` : null
-                  }
+                  secondaryLabel={secondaryLabel}
                   isActive={isActive}
                   onSelect={() => undefined}
                   labelMaxWidthClass="max-w-[160px]"
@@ -581,6 +602,7 @@ export function SplitTabBar() {
       <SplitTabCommandHandlers
         onPickProject={() => setIsPickingProject(true)}
       />
+      <FocusTabController />
       {pinnedTab === null ? null : (
         <TabShell
           isActive={isPinnedTab}
