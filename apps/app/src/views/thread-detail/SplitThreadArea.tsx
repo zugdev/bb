@@ -41,6 +41,7 @@ import {
   canMovePaneAcrossTabs,
   closeSplitTabAtom,
   focusThreadInOtherTabAtom,
+  openOutsideFocusTabAtom,
   movePaneAcrossTabsAtom,
   movePaneToTabAtom,
   recordClosedPaneAtom,
@@ -320,6 +321,7 @@ function SplitThreadAreaContent({ routeContent }: SplitThreadAreaProps) {
     }
     if (currentContent.kind === "thread") {
       if (store.set(focusThreadInOtherTabAtom, currentContent)) return;
+      if (store.set(openOutsideFocusTabAtom, currentContent)) return;
       const beside = splitWorkspaceActive
         ? placeThreadBesideSplit(
             store.get(splitTabsAtom),

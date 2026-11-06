@@ -17,6 +17,7 @@ import {
   findPane,
   findPaneByContent,
   findPaneByThread,
+  isSamePaneContent,
   listPanes,
   removePane,
   replacePaneContent,
@@ -324,6 +325,33 @@ export const openThreadInTabAtom = atom(
     const layout = singlePaneLayout({ kind: "thread", ...thread });
     const next = insertSplitTab(state, activeLayout, layout, thread.projectId);
     return next === null ? null : activateTabLayout(set, next, layout);
+  },
+);
+
+export const openOutsideFocusTabAtom = atom(
+  null,
+  (get, set, content: PaneContent): boolean => {
+    const state = get(splitTabsAtom);
+    const active = state.tabs.find((tab) => tab.id === state.activeTabId);
+    if (active?.kind !== "focus") return false;
+    const activeLayout = get(splitLayoutAtom);
+    const focused =
+      activeLayout === null
+        ? null
+        : findPane(activeLayout.root, activeLayout.focusedPaneId);
+    if (focused === null || isSamePaneContent(focused.content, content)) {
+      return false;
+    }
+    const layout = singlePaneLayout(content);
+    const next = insertSplitTab(
+      state,
+      activeLayout,
+      layout,
+      content.kind === "thread" ? content.projectId : null,
+    );
+    if (next === null) return false;
+    activateTabLayout(set, next, layout);
+    return true;
   },
 );
 

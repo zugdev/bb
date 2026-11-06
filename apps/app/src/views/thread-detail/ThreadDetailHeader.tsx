@@ -57,6 +57,7 @@ import {
 } from "@bb/shared-ui/context-selection";
 import { usePaneContext } from "./PaneContext";
 import { PaneMaximizeButton } from "./PaneMaximizeButton";
+import { FocusTabNavigator } from "./FocusTabController";
 import { PaneDragHandle } from "./PaneDragHandle";
 import { PluginThreadHeaderLeading } from "@/components/plugin/PluginThreadHeaderLeading";
 
@@ -277,6 +278,7 @@ export function ThreadDetailHeader({
           {isEditing ? editor : <ThreadTitle title={threadTitle} />}
         </p>
       </div>
+      <FocusTabNavigator thread={thread} />
       {actionsMenu == null ? null : (
         <span
           className={cn(

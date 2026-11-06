@@ -60,6 +60,12 @@ describe("nextFocusStep", () => {
 
   it("leaves a thread the user opened by hand alone", () => {
     expect(nextFocusStep(queue, "elsewhere", "a")).toEqual({ kind: "stay" });
-    expect(nextFocusStep(queue, null, "a")).toEqual({ kind: "stay" });
+  });
+
+  it("moves on from a composer an archive left behind while threads still wait", () => {
+    expect(nextFocusStep(queue, null, "a")).toEqual({
+      kind: "open",
+      thread: queue[0],
+    });
   });
 });
