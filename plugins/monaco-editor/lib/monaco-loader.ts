@@ -1,4 +1,5 @@
 import type * as MonacoNs from "monaco-editor";
+import { registerNavigation } from "./navigation.js";
 
 let bootPromise: Promise<typeof MonacoNs> | null = null;
 
@@ -32,6 +33,7 @@ async function boot(baseUrl: string): Promise<typeof MonacoNs> {
     throw new Error("the Monaco bundle did not expose its API");
   }
   registerOccurrenceHighlighting(monaco);
+  registerNavigation(monaco);
   return monaco;
 }
 

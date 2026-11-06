@@ -23,9 +23,22 @@ const editor = vi.hoisted(() => ({
   dispose: vi.fn(),
 }));
 const create = vi.hoisted(() => vi.fn(() => editor));
+const fileUri = (path: string) => ({
+  scheme: "file",
+  fsPath: path,
+  toString: () => `file://${path}`,
+  with: () => fileUri(`${path}#copy`),
+});
+const createModel = vi.hoisted(() =>
+  vi.fn((_content: string, _language: string, uri: { toString(): string }) => ({
+    uri,
+    dispose: vi.fn(),
+  })),
+);
 vi.mock("./lib/monaco-loader.js", () => ({
   loadMonaco: async () => ({
-    editor: { create },
+    editor: { create, createModel, getModel: () => null },
+    Uri: { file: fileUri },
     KeyMod: { CtrlCmd: 1 },
     KeyCode: { KeyS: 2 },
   }),

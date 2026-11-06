@@ -10,10 +10,21 @@ import {
   type BbPluginApi,
 } from "@get-bb/plugin-sdk";
 import { z } from "zod";
+import { tsHostContract } from "./contract.js";
 
 const MAX_EDITABLE_BYTES = 8 * 1024 * 1024;
 
 const MAX_TREE_ENTRIES = 10_000;
+
+const TREE_EXCLUDED_NAMES = [
+  ".git",
+  "node_modules",
+  ".pnpm-store",
+  ".turbo",
+  ".trees",
+  "worktrees",
+  "dist",
+];
 
 const ASSET_LEASE_TTL_MS = 60 * 60 * 1000;
 
@@ -32,6 +43,14 @@ const sourceSchema = z
 const fileSchema = z
   .object({ path: z.string().min(1), source: sourceSchema })
   .strict();
+
+const positionSchema = fileSchema.extend({
+  content: z.string(),
+  line: z.number().int().positive(),
+  column: z.number().int().positive(),
+});
+
+const TS_HOST_TIMEOUT_MS = 90_000;
 
 export const rpcContract = defineRpcContract({
   assets: {
@@ -63,6 +82,25 @@ export const rpcContract = defineRpcContract({
       ),
       truncated: z.boolean(),
     }),
+  },
+  definition: {
+    input: positionSchema,
+    output: z.object({
+      definitions: z.array(
+        z.object({
+          absolutePath: z.string(),
+          relativePath: z.string().nullable(),
+          startLine: z.number(),
+          startColumn: z.number(),
+          endLine: z.number(),
+          endColumn: z.number(),
+        }),
+      ),
+    }),
+  },
+  hover: {
+    input: positionSchema,
+    output: z.object({ contents: z.array(z.string()) }),
   },
   write: {
     input: fileSchema.extend({
@@ -134,6 +172,7 @@ async function ensureMonacoBundleDir(
 
 export default async function plugin(bb: BbPluginApi) {
   let assetLease: { baseUrl: string; expiresAtMs: number } | null = null;
+  const tsHost = bb.hosts.experimental_client({ contract: tsHostContract });
 
   async function assets() {
     const now = Date.now();
@@ -230,6 +269,34 @@ export default async function plugin(bb: BbPluginApi) {
     return name;
   }
 
+  async function hostIdFor(target: { hostId?: string }): Promise<string> {
+    if (target.hostId !== undefined) return target.hostId;
+    const { primaryHostId } = await bb.sdk.system.config();
+    if (primaryHostId === null) throw new Error("This bb server has no host");
+    return primaryHostId;
+  }
+
+  async function workspaceRoot(
+    source: z.infer<typeof sourceSchema>,
+  ): Promise<string> {
+    const workspace =
+      source.kind === "host" ? { ...source, kind: "workspace" as const } : source;
+    return (await resolveTarget(workspace, ".")).rootPath;
+  }
+
+  async function tsPosition(input: z.infer<typeof positionSchema>) {
+    const target = await resolveTarget(input.source, input.path);
+    return {
+      hostId: await hostIdFor(target),
+      request: {
+        file: target.path,
+        content: input.content,
+        line: input.line,
+        offset: input.column,
+      },
+    };
+  }
+
   bb.rpc.register(rpcContract, {
     assets: () => assets(),
 
@@ -266,6 +333,7 @@ export default async function plugin(bb: BbPluginApi) {
         includeDirectories: true,
         includeHidden: true,
         limit: MAX_TREE_ENTRIES,
+        excludeNames: TREE_EXCLUDED_NAMES,
         ...(target.hostId !== undefined ? { hostId: target.hostId } : {}),
       });
       return {
@@ -276,6 +344,41 @@ export default async function plugin(bb: BbPluginApi) {
         })),
         truncated: result.truncated,
       };
+    },
+
+    async definition(input) {
+      const { hostId, request } = await tsPosition(input);
+      const [root, result] = await Promise.all([
+        workspaceRoot(input.source),
+        tsHost.call("definition", request, {
+          hostId,
+          timeoutMs: TS_HOST_TIMEOUT_MS,
+        }),
+      ]);
+      return {
+        definitions: result.definitions.map((entry) => {
+          const relative = getRelativeHostPath({
+            rootPath: root,
+            candidatePath: entry.file,
+          });
+          return {
+            absolutePath: entry.file,
+            relativePath: relative === "" ? null : relative,
+            startLine: entry.start.line,
+            startColumn: entry.start.offset,
+            endLine: entry.end.line,
+            endColumn: entry.end.offset,
+          };
+        }),
+      };
+    },
+
+    async hover(input) {
+      const { hostId, request } = await tsPosition(input);
+      return tsHost.call("hover", request, {
+        hostId,
+        timeoutMs: TS_HOST_TIMEOUT_MS,
+      });
     },
 
     async write({ path: filePath, source, content, expectedSha256 }) {
