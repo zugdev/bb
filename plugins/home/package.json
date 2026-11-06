@@ -3,14 +3,14 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "The New thread overview: threads that need you, filters for running and old threads, every project's threads, and recent project shortcuts.",
+  "description": "The New thread overview: threads that need you, filters for running and old threads, every project's threads, your open pull requests in the selected project, and recent project shortcuts.",
   "engines": {
     "bb": ">=0.0",
     "bbPluginSdk": ">=0.6.115"
   },
   "bb": {
     "name": "Home",
-    "description": "The New thread overview: threads that need you, filters for running and old threads, every project's threads, and recent project shortcuts.",
+    "description": "The New thread overview: threads that need you, filters for running and old threads, every project's threads, your open pull requests in the selected project, and recent project shortcuts.",
     "branding": {
       "icon": "Home"
     },
@@ -28,6 +28,7 @@
   },
   "dependencies": {
     "@bb/shared-ui": "workspace:*",
+    "bb-plugin-environment-git-worktree": "workspace:*",
     "sonner": "^1.7.4"
   },
   "devDependencies": {

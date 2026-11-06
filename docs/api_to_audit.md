@@ -3440,9 +3440,11 @@ Docs: `frontend-hooks-and-ui.md` (`setSelection`). No doc covers the
 2. **Timeout shape.** The bounded catalog wait resolves with the unsettled
    selection rather than rejecting. Confirm that is the right failure mode
    for a plugin that shows the result to the user.
-3. **Provider inputs.** `environment.inputs` are not applied; the provider's
-   inputs control keeps its own value. Decide whether the seed path's inputs
-   handling should be reused here.
+3. **Provider inputs.** A `provider` environment's non-null `inputs` go
+   through the same override the provider's inputs control sets with
+   `onChange`, after the environment change commits. Callers: `plugins/home`
+   selects a pull request's worktree with it. Confirm the control should not
+   be told its value came from a plugin.
 4. **Guard semantics after a project switch.** A call already in flight
    survives its own surface's unmount and resolves with the settled result.
    Confirm that is the behavior plugins expect, and whether the promise should

@@ -1,6 +1,9 @@
 import { defineRpcContract } from "@get-bb/plugin-sdk";
 import { z } from "zod";
 import { environmentHostProgressSchema } from "bb-environment-provider-host/progress";
+import { openPullRequestSchema } from "./pull-requests-contract.js";
+
+export { openPullRequestSchema, type OpenPullRequest } from "./pull-requests-contract.js";
 
 export const worktreeBaseBranchSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("named"), name: z.string().min(1) }).strict(),
@@ -17,16 +20,6 @@ export const discoveredWorktreeSchema = z
   })
   .strict();
 export type DiscoveredWorktree = z.infer<typeof discoveredWorktreeSchema>;
-
-export const openPullRequestSchema = z
-  .object({
-    number: z.number().int(),
-    title: z.string(),
-    headRefName: z.string().min(1),
-    isDraft: z.boolean(),
-  })
-  .strict();
-export type OpenPullRequest = z.infer<typeof openPullRequestSchema>;
 
 export const worktreeHostContract = defineRpcContract({
   listOpenPullRequests: {

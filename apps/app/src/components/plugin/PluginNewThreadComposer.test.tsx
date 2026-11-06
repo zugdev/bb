@@ -3042,6 +3042,29 @@ describe("NewThreadComposer setSelection", () => {
     ).toBeNull();
   });
 
+  it("applies a provider environment's inputs over the inputs control's default", async () => {
+    render(rootLikeElement("proj_1"));
+    const inputs = { branch: { kind: "named", name: "feature" } };
+
+    const result = await settled(
+      currentHost().setSelection!({
+        environment: {
+          type: "provider",
+          environmentProviderId: "git-worktree",
+          machine: { type: "existing", hostId: "host_2" },
+          inputs,
+        },
+      }),
+    );
+
+    expect(result.environment).toEqual({
+      type: "provider",
+      environmentProviderId: "git-worktree",
+      machine: { type: "existing", hostId: "host_2" },
+      inputs,
+    });
+  });
+
   it("leaves the project alone when a copy or upload is in flight, and still applies the rest", async () => {
     mocks.copyAttachments.mockReturnValue(new Promise(() => {}));
     getPromptDraftAccessor({ kind: "new-thread" }).setDraft({

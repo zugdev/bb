@@ -39,8 +39,20 @@ const WORKTREES: JsonValue[] = [
 ];
 
 const PULL_REQUESTS: JsonValue[] = [
-  { number: 12, title: "Ship feature", headRefName: "feature", isDraft: false },
-  { number: 13, title: "Fresh work", headRefName: "fresh", isDraft: true },
+  {
+    number: 12,
+    title: "Ship feature",
+    headRefName: "feature",
+    isDraft: false,
+    worktreePath: "/code/app-feature",
+  },
+  {
+    number: 13,
+    title: "Fresh work",
+    headRefName: "fresh",
+    isDraft: true,
+    worktreePath: null,
+  },
 ];
 
 function render(
@@ -60,7 +72,10 @@ function render(
       rpc: {
         listExistingWorktrees: () => ({ worktrees }),
         defaultBaseBranch: () => ({ branch: "main" }),
-        listOpenPullRequests: () => ({ pullRequests: PULL_REQUESTS }),
+        listOpenPullRequests: () => ({
+          hostId: "host-a",
+          pullRequests: PULL_REQUESTS,
+        }),
       },
       branchesState: {
         branches: ["main", "release"],

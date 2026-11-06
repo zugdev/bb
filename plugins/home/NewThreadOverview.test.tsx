@@ -36,6 +36,8 @@ function renderOverview(props: Partial<NewThreadOverviewProps>) {
       filter={DEFAULT_HOME_THREAD_FILTER}
       setFilter={() => undefined}
       onArchiveThreads={() => Promise.resolve()}
+      pullRequests={[]}
+      onSelectPullRequest={() => undefined}
       onOpenThread={() => undefined}
       {...props}
     />,
@@ -237,5 +239,27 @@ describe("NewThreadOverview", () => {
     expect(onArchiveThreads.mock.calls[0]?.[0].map((t) => t.id)).toEqual([
       "stale",
     ]);
+  });
+
+  it("lists the selected project's pull requests and selects one on click", () => {
+    const pr = {
+      number: 42,
+      title: "Ship the overview",
+      headRefName: "overview",
+      isDraft: false,
+      worktreePath: null,
+    };
+    const onSelectPullRequest = vi.fn();
+    renderOverview({
+      projectId: WEB.id,
+      pullRequests: [pr],
+      onSelectPullRequest,
+    });
+    fireEvent.click(screen.getByRole("button", { name: /Ship the overview/u }));
+    expect(onSelectPullRequest).toHaveBeenCalledWith(pr);
+    cleanup();
+
+    renderOverview({ projectId: null, pullRequests: [pr] });
+    expect(screen.queryByText("Your pull requests")).toBeNull();
   });
 });

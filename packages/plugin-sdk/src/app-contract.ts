@@ -4717,9 +4717,10 @@ export interface ComposerSelection {
   projectId?: string;
   /**
    * New-thread composers only. `{ type: "project-default" }` and a `host`
-   * environment without a `hostId` seed nothing and are ignored. Provider
-   * `inputs` are not applied; the provider's own inputs control keeps its
-   * value, and the result reports what the composer would submit.
+   * environment without a `hostId` seed nothing and are ignored. A `provider`
+   * environment's non-null `inputs` replace the provider inputs control's
+   * value, as the control's own `onChange` would, and the result reports what
+   * the composer would submit.
    */
   environment?: CreateThreadEnvironmentArgs;
   /** A provider the composer does not list is ignored, and `model` and `reasoningLevel` with it. */

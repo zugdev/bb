@@ -3,7 +3,9 @@ import {
   definePluginApp,
   experimental_ProjectPicker as ProjectPicker,
   experimental_useCommandShortcut,
+  experimental_useRpcQuery,
   experimental_useSidebarThreads,
+  useComposer,
   useBbNavigate,
   useSdk,
   type PluginComposerApi,
@@ -11,6 +13,11 @@ import {
   type PluginSidebarThread,
 } from "@get-bb/plugin-sdk/app";
 import { toast } from "sonner";
+import {
+  GIT_WORKTREE_PLUGIN_ID,
+  pullRequestEnvironment,
+  worktreePullRequestsRpcContract,
+} from "bb-plugin-environment-git-worktree/pull-requests-contract";
 import {
   DEFAULT_HOME_THREAD_FILTER,
   isHomeThreadFilter,
@@ -66,6 +73,15 @@ function NewThreadOverviewSection({
       toast.success(`Archived ${results.length} threads.`);
     }
   };
+  const composer = useComposer();
+  const pullRequestsQuery = experimental_useRpcQuery({
+    contract: worktreePullRequestsRpcContract,
+    pluginId: GIT_WORKTREE_PLUGIN_ID,
+    method: "listOpenPullRequests",
+    input: { projectId: projectId ?? "", hostId: null },
+    enabled: projectId !== null && setProjectId !== null,
+  });
+  const pullRequestHostId = pullRequestsQuery.data?.hostId ?? null;
   const cycleShortcut = experimental_useCommandShortcut(
     CYCLE_PROJECT_COMMAND_ID,
   );
@@ -103,6 +119,26 @@ function NewThreadOverviewSection({
       filter={filter}
       setFilter={setFilter}
       onArchiveThreads={archiveThreads}
+      pullRequests={
+        projectId === null || pullRequestHostId === null
+          ? []
+          : (pullRequestsQuery.data?.pullRequests ?? [])
+      }
+      onSelectPullRequest={(pr) => {
+        if (pullRequestHostId === null) return;
+        void composer
+          .setSelection({
+            environment: pullRequestEnvironment(pullRequestHostId, pr),
+          })
+          .then(() => composer.focus())
+          .catch((error: unknown) =>
+            toast.error(
+              error instanceof Error
+                ? error.message
+                : "Could not select the pull request's worktree.",
+            ),
+          );
+      }}
       picker={
         <ProjectPicker
           value={projectId}
