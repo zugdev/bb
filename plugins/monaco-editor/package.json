@@ -17,6 +17,8 @@
   "files": [
     "dist",
     "server.ts",
+    "host.ts",
+    "contract.ts",
     "app.tsx",
     "components",
     "lib",
@@ -33,6 +35,7 @@
       "icon": "Code"
     },
     "server": "./server.ts",
+    "host": "./host.ts",
     "app": "./app.tsx"
   },
   "keywords": [

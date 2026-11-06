@@ -23,6 +23,15 @@ panel's file search, and `bb thread open`.
   path, expand and collapse directories, and jump to another file. It opens
   with the current file revealed. Right-click any row to copy its absolute
   path, relative path, or filename.
+- **Editor tab.** Every thread with an environment gets an **Editor** tab in
+  the right panel. The file tree stays docked on its left, rooted at the
+  thread's workspace, and clicking a file opens it in the same tab. The tab
+  reopens the file you last had open in that thread.
+- **Go to definition and hover** for TypeScript and JavaScript. Press
+  <kbd>F12</kbd> or <kbd>⌘</kbd>-click a symbol to jump to its definition,
+  including in another file, and use Peek Definition from the context menu.
+  Hovering a symbol shows its type and docs. Both come from the workspace's own
+  `tsserver`, so they need `typescript` installed in the workspace.
 - **Quick palette commands.** Open the quick palette (<kbd>⌘⇧P</kbd>) and
   type "fold", "sort", or "copy" to reach *fold level 1–5*, *fold
   recursively*, *unfold all*, *unfold recursively*, *unfold at cursor*,
@@ -51,6 +60,13 @@ The dev loop already rebuilds `dist/app.js` and reloads `server.ts` on save,
 so editing `app.tsx`, `components/`, `lib/`, or `server.ts` needs nothing
 extra. It knows nothing about the Monaco bundle, which is why the staleness
 check exists: edit `monaco-bundle/` and the next file open rebuilds.
+
+`host.ts` runs on the host daemon and keeps one `tsserver` per TypeScript
+install, found by resolving `typescript` from the open file, so a pnpm
+workspace shares one process. It sends the editor's current text with
+`updateOpen`, then answers `definitionAndBoundSpan` and `quickinfo`. An idle
+`tsserver` stops after 15 minutes. `server.ts` resolves the file against the
+thread's environment and calls the host the environment lives on.
 
 Monaco is built rather than bundled into `app.js` because `bb plugin build`
 emits one file with no code splitting: Monaco would parse at app boot for
@@ -87,11 +103,10 @@ file link also offers a one-off "Open with…".
 
 ## Roadmap
 
-- **Language intelligence.** There is no language server, so no
-  go-to-definition, find-references, or type checking. Monaco ships a
-  TypeScript checker, but it can only see the one open file, so every import
-  looks unresolved — it is switched off rather than showing errors that are
-  wrong.
+- **Language intelligence beyond TypeScript.** Go to definition and hover
+  cover TypeScript and JavaScript only. Find references, rename, and type
+  errors are not wired up. Monaco's own TypeScript service only sees the open
+  file, so every import would look unresolved; it stays switched off.
 - **File operations.** The tree is read-only; renaming, creating, and
   deleting files are not implemented yet.
 - **Hidden files and `node_modules`** never appear in the tree. BB's path

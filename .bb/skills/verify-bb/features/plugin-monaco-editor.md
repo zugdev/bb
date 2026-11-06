@@ -17,6 +17,8 @@ SKILL.md. Inspect nested `--help` before selecting flags and IDs.
 - `plugins/monaco-editor/package.json`
 - `plugins/monaco-editor/server.ts`
 - `plugins/monaco-editor/app.tsx`
+- `plugins/monaco-editor/host.ts`
+- `plugins/monaco-editor/lib/navigation.ts`
 
 ## Feature recipes
 
@@ -27,7 +29,9 @@ SKILL.md. Inspect nested `--help` before selecting flags and IDs.
 | Editing commands | Use find/replace, multiple cursors, folding, sort lines, undo/redo, and copy path where offered. | Each command affects the intended document/selection; keyboard actions do not act on another pane. |
 | File tree and filtering | Filter, navigate, and open nested fixture files; switch active editor tab. | Tree selection and editor identity stay aligned; hidden filtered files are not deleted. |
 | Themes and opener preference | Change palette/light-dark and set a per-extension opener. | Editor colors follow active theme; future opens obey the saved extension choice. |
-| Large and unsupported files | Open the large text fixture, binary, deleted file, and disconnected-host file. | Read-only/fallback/error behavior is clear; unsupported files are not corrupted. Do not expect LSP features absent from this plugin. |
+| Large and unsupported files | Open the large text fixture, binary, deleted file, and disconnected-host file. | Read-only/fallback/error behavior is clear; unsupported files are not corrupted. |
+| Editor tab | Open a thread with an environment, show the right panel, select **Editor**, open a file from the docked tree, reload the page. | The tree is rooted at the thread workspace, the file opens in the same tab, and the same file reopens after reload. |
+| Go to definition and hover | In a TypeScript workspace with `typescript` installed, press F12 on an imported symbol, Cmd+click another, hover a third. | The tab switches to the defining file with the cursor on the definition; hover shows the tsserver type; a workspace without `typescript` shows no definitions and no error. |
 
 ## Evidence and cleanup
 

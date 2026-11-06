@@ -92,6 +92,15 @@ describe("thread storage host routing", () => {
       includeDirectories: true,
       includeHidden: true,
       limit: 10_000,
+      excludeNames: [
+        ".git",
+        "node_modules",
+        ".pnpm-store",
+        ".turbo",
+        ".trees",
+        "worktrees",
+        "dist",
+      ],
     });
     expect(result).toEqual({
       root: storageRootPath,
@@ -117,5 +126,79 @@ describe("thread storage host routing", () => {
       expectedSha256: "original",
     });
     expect(result).toEqual({ outcome: "written", sha256: "updated" });
+  });
+});
+
+describe("go to definition", () => {
+  it("asks the environment's host and names targets relative to the workspace", async () => {
+    const workspace = "/work/repo";
+    const { bb, harness } = createFakePluginHost({
+      pluginId: "monaco-editor",
+      sdk: {
+        environments: {
+          get: () => ({ id: "env_1", path: workspace, hostId: "laptop" }),
+        },
+      },
+      experimental_callHostRpc: () => ({
+        definitions: [
+          {
+            file: `${workspace}/src/contract.ts`,
+            start: { line: 3, offset: 14 },
+            end: { line: 3, offset: 28 },
+          },
+          {
+            file: "/opt/lib/lib.dom.d.ts",
+            start: { line: 1, offset: 1 },
+            end: { line: 1, offset: 5 },
+          },
+        ],
+      }),
+    });
+    await plugin(bb);
+    const result = await harness.callRpc("definition", {
+      source: {
+        kind: "workspace",
+        threadId: "thr_1",
+        environmentId: "env_1",
+        projectId: null,
+      },
+      path: "src/host.ts",
+      content: "source text",
+      line: 10,
+      column: 4,
+    });
+    expect(harness.experimental_hostRpcCalls).toEqual([
+      {
+        method: "definition",
+        hostId: "laptop",
+        input: {
+          file: `${workspace}/src/host.ts`,
+          content: "source text",
+          line: 10,
+          offset: 4,
+        },
+      },
+    ]);
+    expect(result).toEqual({
+      definitions: [
+        {
+          absolutePath: `${workspace}/src/contract.ts`,
+          relativePath: "src/contract.ts",
+          startLine: 3,
+          startColumn: 14,
+          endLine: 3,
+          endColumn: 28,
+        },
+        {
+          absolutePath: "/opt/lib/lib.dom.d.ts",
+          relativePath: null,
+          startLine: 1,
+          startColumn: 1,
+          endLine: 1,
+          endColumn: 5,
+        },
+      ],
+    });
+    await harness.lifecycle.dispose();
   });
 });
