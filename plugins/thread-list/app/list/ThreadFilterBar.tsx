@@ -146,7 +146,7 @@ export function ThreadFilterBar({
 
   return (
     <div
-      className="flex items-center gap-0.5 px-2 pb-1"
+      className="flex h-8 shrink-0 items-center gap-0.5 px-2 py-1"
       data-testid="thread-filter-bar"
     >
       <FilterChip
