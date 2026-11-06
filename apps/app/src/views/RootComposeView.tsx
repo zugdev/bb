@@ -10,8 +10,7 @@ import {
 import { useRootComposePlacement } from "@/lib/root-compose-selection";
 import { useAtomValue } from "jotai";
 import { splitLayoutAtom } from "@/lib/split-layout/atoms";
-import { splitTabsAtom } from "@/lib/split-layout/tabs";
-import { findPaneByContent } from "@/lib/split-layout";
+import { composerDraftScope, splitTabsAtom } from "@/lib/split-layout/tabs";
 import type { PromptDraftScope } from "@/hooks/usePromptDraftStorage";
 import { useInitialPromptDraft } from "@/components/promptbox/mentions/initial-prompt-draft";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -401,21 +400,15 @@ export function buildRootComposeTerminalSessions({
 
 function useComposerDraftScope(paneId: string): PromptDraftScope {
   const layout = useAtomValue(splitLayoutAtom);
-  const { tabs, activeTabId } = useAtomValue(splitTabsAtom);
-  const firstComposerPaneId =
-    layout === null
-      ? null
-      : (findPaneByContent(layout.root, { kind: "new-thread" })?.paneId ??
-        null);
-  const usesSharedDraft =
-    tabs[0]?.id === activeTabId &&
-    (firstComposerPaneId === null || firstComposerPaneId === paneId);
+  const tabs = useAtomValue(splitTabsAtom);
+  const scope = composerDraftScope(layout, tabs, paneId);
+  const splitPaneId = scope.kind === "split-new-thread" ? scope.paneId : null;
   return useMemo(
     () =>
-      usesSharedDraft
+      splitPaneId === null
         ? { kind: "new-thread" }
-        : { kind: "split-new-thread", paneId: `${activeTabId}-${paneId}` },
-    [activeTabId, paneId, usesSharedDraft],
+        : { kind: "split-new-thread", paneId: splitPaneId },
+    [splitPaneId],
   );
 }
 
