@@ -510,7 +510,7 @@ like the matching thread menu item.
 | Layout    | Close focused chat pane                      | `Alt+W`; desktop `Mod+W`    | All clients              |
 | Layout    | New pane tab / reopen closed pane or tab     | `Alt+T` / `Alt+Shift+T`; desktop `Mod+T` / `Mod+Shift+T` | All clients |
 | Layout    | Go to Home / switch to pane tab 1 to 8       | `Alt+1` / `Alt+2` to `Alt+9`; desktop `Mod+1` / `Mod+2` to `Mod+9` | All clients |
-| Layout    | Toggle sidebar                               | `Mod+\`                     | All clients              |
+| Layout    | Toggle sidebar                               | `Mod+S`                     | All clients              |
 | Window    | New window                                   | `Mod+Shift+N`               | Desktop                  |
 | Window    | Find in window                               | `Mod+F`                     | Desktop                  |
 | Window    | Settings                                     | `Mod+,`                     | All clients              |
@@ -518,7 +518,7 @@ like the matching thread menu item.
 | Window    | Open local logs                              | Unassigned                  | Desktop                  |
 | Window    | Show all notifications                       | Unassigned                  | All clients              |
 | Plugins   | Turn plugin safe mode on / off               | Unassigned                  | All clients              |
-| Panel     | New tab / close tab / toggle                 | `Mod+T` / `Mod+W` / `Mod+J`; desktop `Mod+Alt+T` / `Mod+Alt+W` / `Mod+J` | All clients |
+| Panel     | New tab / close tab / toggle                 | `Mod+T` / `Mod+W` / `Mod+E`; desktop `Mod+Alt+T` / `Mod+Alt+W` / `Mod+E` | All clients |
 | Panel     | Reopen closed tab                            | `Mod+Alt+Shift+T`           | Desktop                  |
 | Workspace | Quick open file / toggle diff                | `Mod+P` / `Mod+D`           | All clients              |
 | Workspace | Open terminal                                | `Mod+Shift+Enter`           | All clients              |

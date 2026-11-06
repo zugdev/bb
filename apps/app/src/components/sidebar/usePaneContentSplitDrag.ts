@@ -30,8 +30,15 @@ import {
   shouldEngageSidebarSplitDrag,
   type SplitDragFallbackTarget,
 } from "@/lib/split-drag";
-import { paneContentRoute } from "@/views/thread-detail/splitThreadNavigation";
-import { seedSplitComposeProjectAtom } from "@/lib/split-layout/tabs";
+import {
+  focusedPaneRoute,
+  paneContentRoute,
+} from "@/views/thread-detail/splitThreadNavigation";
+import { createSplitTabHoverSwitch } from "@/views/thread-detail/SplitTabBar";
+import {
+  seedSplitComposeProjectAtom,
+  selectSplitTabAtom,
+} from "@/lib/split-layout/tabs";
 
 const SIDEBAR_SELECTOR = '[data-sidebar="sidebar"]';
 const MAIN_CONTENT_SELECTOR = "main";
@@ -152,17 +159,25 @@ export function beginSidebarPaneContentSplitDrag({
   const startLayout = store.get(splitLayoutAtom);
   const mentionsOnly = mentionThreads.length > 1;
   const fallback = mentionsOnly ? null : singlePaneFallback(startLayout);
+  const hoverSwitch = createSplitTabHoverSwitch((tabId) => {
+    const next = store.set(selectSplitTabAtom, tabId);
+    const route = next === null ? null : focusedPaneRoute(next);
+    if (route !== null) void navigate(route, { replace: true });
+  });
   beginSplitDrag({
     ghostLabel: label,
     cancelSidebarReorderOnEngage: true,
-    resolveAuxiliaryTarget:
-      mentionThreads.length > 0
-        ? (x, y) => resolveThreadMentionDropTarget(x, y, mentionThreads)
-        : undefined,
+    resolveAuxiliaryTarget: (x, y) => {
+      if (!mentionsOnly) hoverSwitch.update(x, y);
+      return mentionThreads.length > 0
+        ? resolveThreadMentionDropTarget(x, y, mentionThreads)
+        : null;
+    },
     sourceEl: rowEl,
     fadeSourceOnEngage: false,
     renderGhost: false,
     onEngage: onDragStart,
+    onEnd: () => hoverSwitch.cancel(),
     ...(fallback ? { fallback } : {}),
     shouldEngage: (x, y) =>
       dragActivation === "distance"

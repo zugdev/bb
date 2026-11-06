@@ -7,6 +7,7 @@ import { rootComposeProjectIdAtom } from "@/lib/root-compose-selection";
 import { getThreadRoutePath } from "@/lib/route-paths";
 import { maximizedPaneIdAtom, splitLayoutAtom } from "./atoms";
 import {
+  MAX_PANES,
   countPanes,
   findPane,
   findPaneByContent,
@@ -18,7 +19,7 @@ import {
   splitPane,
 } from "./ops";
 import { splitLayoutSchema } from "./persistence";
-import type { PaneContent, SplitLayout } from "./types";
+import type { PaneContent, SplitLayout, SplitSide } from "./types";
 
 export const SPLIT_TABS_STORAGE_KEY = "bb.splitTabs";
 const MAX_CLOSED_SPLIT_ITEMS = 20;
@@ -356,6 +357,95 @@ export const movePaneToTabAtom = atom(
       tab.id === target.id ? { ...tab, layout } : tab,
     );
     return activateTabLayout(set, { tabs, activeTabId: target.id }, layout);
+  },
+);
+
+export function moveSplitTab(
+  state: SplitTabsState,
+  tabId: string,
+  toIndex: number,
+): SplitTabsState | null {
+  const fromIndex = state.tabs.findIndex((tab) => tab.id === tabId);
+  const clamped = Math.max(0, Math.min(toIndex, state.tabs.length - 1));
+  if (fromIndex === -1 || fromIndex === clamped) return null;
+  const tabs = [...state.tabs];
+  const [moved] = tabs.splice(fromIndex, 1);
+  tabs.splice(clamped, 0, moved!);
+  return { ...state, tabs };
+}
+
+export const moveSplitTabAtom = atom(
+  null,
+  (get, set, move: { tabId: string; toIndex: number }) => {
+    const next = moveSplitTab(get(splitTabsAtom), move.tabId, move.toIndex);
+    if (next !== null) set(splitTabsAtom, next);
+  },
+);
+
+export interface CrossTabPaneMove {
+  sourceTabId: string;
+  paneId: string;
+  targetPaneId: string;
+  zone: SplitSide | "center";
+}
+
+function crossTabMoveSource(state: SplitTabsState, move: CrossTabPaneMove) {
+  if (move.sourceTabId === state.activeTabId) return null;
+  const source = state.tabs.find((tab) => tab.id === move.sourceTabId);
+  if (source?.layout == null) return null;
+  const pane = findPane(source.layout.root, move.paneId);
+  return pane === null ? null : { layout: source.layout, content: pane.content };
+}
+
+function placeMovedPane(
+  layout: SplitLayout,
+  move: CrossTabPaneMove,
+  content: PaneContent,
+): SplitLayout | null {
+  if (findPaneByContent(layout.root, content) !== null) return null;
+  if (move.zone === "center") {
+    return findPane(layout.root, move.targetPaneId)?.content.kind ===
+      "new-thread"
+      ? replacePaneContent(layout, move.targetPaneId, content)
+      : null;
+  }
+  if (countPanes(layout.root) >= MAX_PANES) return null;
+  const next = splitPane(layout, move.targetPaneId, move.zone, content);
+  return next === layout ? null : next;
+}
+
+export function canMovePaneAcrossTabs(
+  state: SplitTabsState,
+  activeLayout: SplitLayout | null,
+  move: CrossTabPaneMove,
+): boolean {
+  const source = crossTabMoveSource(state, move);
+  return (
+    source !== null &&
+    activeLayout !== null &&
+    placeMovedPane(activeLayout, move, source.content) !== null
+  );
+}
+
+export const movePaneAcrossTabsAtom = atom(
+  null,
+  (get, set, move: CrossTabPaneMove): SplitLayout | null => {
+    const state = get(splitTabsAtom);
+    const activeLayout = get(splitLayoutAtom);
+    const source = crossTabMoveSource(state, move);
+    if (source === null || activeLayout === null) return null;
+    const layout = placeMovedPane(activeLayout, move, source.content);
+    if (layout === null) return null;
+    const tabs = snapshotActiveTab(state, layout).flatMap((tab) => {
+      if (tab.id !== move.sourceTabId) return [tab];
+      if (countPanes(source.layout.root) === 1) return [];
+      return [{ ...tab, layout: removePane(source.layout, move.paneId) }];
+    });
+    return activateTabLayout(
+      set,
+      { tabs, activeTabId: state.activeTabId },
+      layout,
+    );
   },
 );
 

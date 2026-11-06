@@ -1,4 +1,5 @@
 import {
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -38,26 +39,18 @@ import { AppCommandShortcutHint } from "@/components/commands/AppCommandShortcut
 import { PINNED_TAB_ROUTE_PATH } from "@/lib/route-paths";
 import { usePinnedTabPanel } from "@/lib/pinned-tab";
 import type { AppShortcutPresentation } from "@/lib/app-keybindings";
-import {
-  useIsSidebarFramed,
-  useIsSidebarShowing,
-} from "@/components/ui/sidebar.js";
-import { useIsCompactViewport } from "@bb/shared-ui/hooks/use-compact-viewport";
+import { useIsSidebarFramed } from "@/components/ui/sidebar.js";
 import { useUsesSwipeChrome } from "@/components/layout/useUsesSwipeChrome";
 import {
   getBbDesktopInfo,
   MACOS_APP_REGION_NO_DRAG_CLASS,
-  MACOS_TITLE_BAR_COLLAPSED_SIDEBAR_RESERVE_CLASS,
   MACOS_TITLE_BAR_ROW_CLASS,
   MACOS_WINDOW_DRAG_CLASS,
   MACOS_WINDOW_NO_DRAG_CLASS,
   shouldUseMacosDesktopChrome,
 } from "@/lib/bb-desktop";
 import { splitLayoutAtom } from "@/lib/split-layout/atoms";
-import {
-  beginSplitDrag,
-  type AuxiliaryDropTarget,
-} from "@/lib/split-drag/splitDragSession";
+import type { AuxiliaryDropTarget } from "@/lib/split-drag/splitDragSession";
 import { countPanes, findPane, listPanes } from "@/lib/split-layout";
 import {
   mostUrgentThreadDot,
@@ -69,7 +62,7 @@ import { threadDot } from "@/components/thread/thread-dot";
 import type { PaneContent, SplitLayout } from "@/lib/split-layout";
 import {
   closeSplitTabAtom,
-  movePaneToTabAtom,
+  moveSplitTabAtom,
   renameSplitTabAtom,
   reopenClosedSplitItemAtom,
   selectSplitTabAtom,
@@ -169,6 +162,7 @@ function SplitTabTooltip({
 }
 
 const SPLIT_TAB_DROP_ATTR = "data-split-tab-drop";
+const SPLIT_TAB_ID_ATTR = "data-split-tab-id";
 const NEW_TAB_DROP_VALUE = "new";
 const TAB_DRAG_ENGAGE_DISTANCE_PX = 6;
 
@@ -176,7 +170,6 @@ export function resolveSplitTabDropTarget(
   x: number,
   y: number,
   drop: (tabId: string | null) => void,
-  { allowNewTab = true }: { allowNewTab?: boolean } = {},
 ): AuxiliaryDropTarget | null {
   for (const element of document.elementsFromPoint(x, y)) {
     const target =
@@ -186,7 +179,6 @@ export function resolveSplitTabDropTarget(
     const value = target?.getAttribute(SPLIT_TAB_DROP_ATTR);
     if (target == null || value == null) continue;
     const isNewTab = value === NEW_TAB_DROP_VALUE;
-    if (isNewTab && !allowNewTab) return null;
     return {
       element: target,
       label: isNewTab ? "Move to new tab" : "Move to tab",
@@ -194,6 +186,47 @@ export function resolveSplitTabDropTarget(
     };
   }
   return null;
+}
+
+const TAB_HOVER_SWITCH_DELAY_MS = 450;
+
+function splitTabIdAt(x: number, y: number): string | null {
+  for (const element of document.elementsFromPoint(x, y)) {
+    const value =
+      element instanceof HTMLElement
+        ? element
+            .closest<HTMLElement>(`[${SPLIT_TAB_DROP_ATTR}]`)
+            ?.getAttribute(SPLIT_TAB_DROP_ATTR)
+        : null;
+    if (value != null) return value === NEW_TAB_DROP_VALUE ? null : value;
+  }
+  return null;
+}
+
+export function createSplitTabHoverSwitch(switchTo: (tabId: string) => void) {
+  let hoveredTabId: string | null = null;
+  let timer: ReturnType<typeof setTimeout> | null = null;
+  const clear = () => {
+    if (timer !== null) clearTimeout(timer);
+    timer = null;
+  };
+  return {
+    update(x: number, y: number) {
+      const tabId = splitTabIdAt(x, y);
+      if (tabId === hoveredTabId) return;
+      clear();
+      hoveredTabId = tabId;
+      if (tabId === null) return;
+      timer = setTimeout(() => {
+        timer = null;
+        switchTo(tabId);
+      }, TAB_HOVER_SWITCH_DELAY_MS);
+    },
+    cancel() {
+      clear();
+      hoveredTabId = null;
+    },
+  };
 }
 
 export function useShowSplitTabLayout() {
@@ -371,6 +404,7 @@ function SplitTabItem({
       <TooltipTrigger asChild>
         <TabShell
           ref={isActive ? activeTabRef : undefined}
+          {...{ [SPLIT_TAB_ID_ATTR]: tab.id }}
           isActive={isActive}
           noDragClassName={noDragClassName}
           dropTabId={tab.id}
@@ -427,6 +461,27 @@ function SplitTabItem({
   );
 }
 
+const TRAFFIC_LIGHT_RESERVE_CLASS =
+  "pl-[max(0px,calc(var(--bb-window-title-bar-controls-end)_+_12px_-_1rem_-_var(--bb-split-tab-bar-left,0px)))]";
+
+function useWindowLeftEdgeVariable(enabled: boolean) {
+  const ref = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const bar = ref.current;
+    if (!enabled || bar === null) return;
+    const update = () =>
+      bar.style.setProperty(
+        "--bb-split-tab-bar-left",
+        `${bar.getBoundingClientRect().left}px`,
+      );
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(bar);
+    return () => observer.disconnect();
+  }, [enabled]);
+  return ref;
+}
+
 export function SplitTabBar() {
   const state = useAtomValue(splitTabsAtom);
   const activeLayout = useAtomValue(splitLayoutAtom);
@@ -439,32 +494,41 @@ export function SplitTabBar() {
   const isPinnedTab = location.pathname === PINNED_TAB_ROUTE_PATH;
   const [renamingTabId, setRenamingTabId] = useState<string | null>(null);
   const [isPickingProject, setIsPickingProject] = useState(false);
-  const beginTabDrag = (event: ReactPointerEvent, label: string) => {
-    const layout = store.get(splitLayoutAtom);
-    if (layout === null || countPanes(layout.root) !== 1) return;
-    const paneId = layout.focusedPaneId;
-    if (findPane(layout.root, paneId)?.content.kind === "new-thread") return;
+  const beginTabReorder = (event: ReactPointerEvent, tabId: string) => {
     const startX = event.clientX;
-    const startY = event.clientY;
-    beginSplitDrag({
-      ghostLabel: label,
-      shouldEngage: (x, y) =>
-        Math.hypot(x - startX, y - startY) > TAB_DRAG_ENGAGE_DISTANCE_PX,
-      resolveAuxiliaryTarget: (x, y) =>
-        resolveSplitTabDropTarget(
-          x,
-          y,
-          (tabId) => show(store.set(movePaneToTabAtom, { paneId, tabId })),
-          { allowNewTab: false },
-        ),
-      decide: () => null,
-      onDrop: () => undefined,
-    });
+    let engaged = false;
+    const handleMove = (move: PointerEvent) => {
+      if (!engaged) {
+        if (Math.abs(move.clientX - startX) <= TAB_DRAG_ENGAGE_DISTANCE_PX) {
+          return;
+        }
+        engaged = true;
+        document.body.style.cursor = "grabbing";
+      }
+      const others = [
+        ...(contentRef.current?.querySelectorAll<HTMLElement>(
+          `[${SPLIT_TAB_ID_ATTR}]`,
+        ) ?? []),
+      ].filter((element) => element.getAttribute(SPLIT_TAB_ID_ATTR) !== tabId);
+      const toIndex = others.filter((element) => {
+        const rect = element.getBoundingClientRect();
+        return rect.left + rect.width / 2 < move.clientX;
+      }).length;
+      store.set(moveSplitTabAtom, { tabId, toIndex });
+    };
+    const handleEnd = () => {
+      window.removeEventListener("pointermove", handleMove);
+      window.removeEventListener("pointerup", handleEnd);
+      window.removeEventListener("pointercancel", handleEnd);
+      if (engaged) document.body.style.cursor = "";
+    };
+    window.addEventListener("pointermove", handleMove);
+    window.addEventListener("pointerup", handleEnd);
+    window.addEventListener("pointercancel", handleEnd);
   };
   const pinnedTabCommand = SPLIT_TAB_SELECT_APP_COMMAND_IDS[0];
   const isInTitleBar = useIsSidebarFramed();
-  const isSidebarShowing = useIsSidebarShowing();
-  const isCompactViewport = useIsCompactViewport();
+  const barRef = useWindowLeftEdgeVariable(isInTitleBar);
   const hidesChromeToggles = useUsesSwipeChrome();
   const [desktopInfo] = useState(getBbDesktopInfo);
   const usesDesktopChrome = shouldUseMacosDesktopChrome(desktopInfo);
@@ -476,16 +540,13 @@ export function SplitTabBar() {
     });
   return (
     <div
+      ref={barRef}
       role="tablist"
       className={cn(
         "-mx-4 -mt-4 mb-4 flex shrink-0 items-stretch md:-mx-5 md:-mt-5 md:mb-5",
         !hidesChromeToggles && "pr-12",
         isInTitleBar
-          ? [
-              MACOS_TITLE_BAR_ROW_CLASS,
-              (isCompactViewport || !isSidebarShowing) &&
-                MACOS_TITLE_BAR_COLLAPSED_SIDEBAR_RESERVE_CLASS,
-            ]
+          ? [MACOS_TITLE_BAR_ROW_CLASS, TRAFFIC_LIGHT_RESERVE_CLASS]
           : "h-7 border-b border-border",
         usesDesktopChrome && MACOS_WINDOW_DRAG_CLASS,
       )}
@@ -550,9 +611,9 @@ export function SplitTabBar() {
                   canClose={state.tabs.length > 1}
                   isRenaming={renamingTabId === tab.id}
                   noDragClassName={noDragClassName}
-                  onSelect={(event, title) => {
+                  onSelect={(event) => {
                     show(store.set(selectSplitTabAtom, tab.id));
-                    beginTabDrag(event, title);
+                    beginTabReorder(event, tab.id);
                   }}
                   onRename={() => setRenamingTabId(tab.id)}
                   onRenameDone={(name) => {

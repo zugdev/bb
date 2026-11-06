@@ -7,7 +7,9 @@ import { rootComposeProjectIdAtom } from "@/lib/root-compose-selection";
 import {
   closeSplitTabAtom,
   focusThreadInOtherTabAtom,
+  movePaneAcrossTabsAtom,
   movePaneToTabAtom,
+  moveSplitTabAtom,
   openSplitTabAtom,
   openThreadInTab,
   openThreadInTabAtom,
@@ -240,6 +242,83 @@ describe("split tabs", () => {
     expect(
       store.set(movePaneToTabAtom, { paneId: "pane-1", tabId: null }),
     ).toBeNull();
+  });
+
+  it("reorders tabs and ignores a move to the same place", () => {
+    const store = createStore();
+    store.set(splitLayoutAtom, threadLayout("a"));
+    store.set(openThreadInTabAtom, { projectId: "p1", threadId: "b" });
+    store.set(openThreadInTabAtom, { projectId: "p1", threadId: "c" });
+    const [first, second, third] = store
+      .get(splitTabsAtom)
+      .tabs.map((tab) => tab.id);
+
+    store.set(moveSplitTabAtom, { tabId: third!, toIndex: 0 });
+    expect(store.get(splitTabsAtom).tabs.map((tab) => tab.id)).toEqual([
+      third,
+      first,
+      second,
+    ]);
+    store.set(moveSplitTabAtom, { tabId: second!, toIndex: 9 });
+    expect(store.get(splitTabsAtom).tabs.map((tab) => tab.id)).toEqual([
+      third,
+      first,
+      second,
+    ]);
+    expect(store.get(splitTabsAtom).activeTabId).toBe(third);
+  });
+
+  it("drops a pane from another tab into a split of the active tab", () => {
+    const store = createStore();
+    store.set(
+      splitLayoutAtom,
+      splitPane(threadLayout("a"), "pane-1", "right", {
+        kind: "thread",
+        projectId: "p1",
+        threadId: "b",
+      }),
+    );
+    const source = store.get(splitTabsAtom).activeTabId;
+    store.set(openThreadInTabAtom, { projectId: "p1", threadId: "c" });
+    const target = store.get(splitTabsAtom).activeTabId;
+    const threadsOf = (layout: SplitLayout | null | undefined) =>
+      layout == null
+        ? []
+        : listPanes(layout.root).map((pane) =>
+            pane.content.kind === "thread" ? pane.content.threadId : null,
+          );
+
+    const moved = store.set(movePaneAcrossTabsAtom, {
+      sourceTabId: source,
+      paneId: "pane-2",
+      targetPaneId: "pane-1",
+      zone: "left",
+    });
+    expect(threadsOf(moved)).toEqual(["b", "c"]);
+    expect(
+      threadsOf(
+        store.get(splitTabsAtom).tabs.find((tab) => tab.id === source)?.layout,
+      ),
+    ).toEqual(["a"]);
+    expect(
+      store.set(movePaneAcrossTabsAtom, {
+        sourceTabId: source,
+        paneId: "pane-1",
+        targetPaneId: "pane-1",
+        zone: "center",
+      }),
+    ).toBeNull();
+
+    store.set(movePaneAcrossTabsAtom, {
+      sourceTabId: source,
+      paneId: "pane-1",
+      targetPaneId: "pane-1",
+      zone: "bottom",
+    });
+    expect(store.get(splitTabsAtom).tabs.map((tab) => tab.id)).toEqual([
+      target,
+    ]);
+    expect(threadsOf(store.get(splitLayoutAtom))).toHaveLength(3);
   });
 
   it("falls back to one tab when the stored state is invalid", () => {
