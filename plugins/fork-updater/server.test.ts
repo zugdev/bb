@@ -111,13 +111,6 @@ describe("fork updater", () => {
     expect(await host.bb.storage.kv.get("built-commit")).toBe("bbbbbbb");
   });
 
-  it("swaps without reopening when asked", async () => {
-    const { host, steps } = setup(["pnpm-lock.yaml"]);
-    await plugin(host.bb);
-    await host.harness.runCli(["update", "--no-reopen"]);
-    expect(steps).toEqual(["fast-forward", "install", "package", "swap"]);
-  });
-
   it("keeps showing a failed swap until the next update starts", async () => {
     const { host, steps, report } = setup(["pnpm-lock.yaml"]);
     await plugin(host.bb);
@@ -127,7 +120,7 @@ describe("fork updater", () => {
     const status = await host.harness.callRpc("status", { refresh: true });
     expect(status).toMatchObject({ kind: "rebuild", progress: null, error: expect.stringContaining("did not start") });
 
-    await host.harness.callRpc("update", { reopen: true });
+    await host.harness.callRpc("update", {});
     await vi.waitFor(() => expect(steps).toContain("swap-and-reopen"));
     expect(await host.harness.callRpc("status", { refresh: false })).toMatchObject({ error: null });
   });

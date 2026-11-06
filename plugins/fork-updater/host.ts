@@ -125,12 +125,10 @@ async function runStep(checkoutPath: string, step: UpdateStep): Promise<void> {
       );
       await run(checkoutPath, "/bin/sh", [join(checkoutPath, "scripts", "fork-update.sh"), "--verify"]);
       return;
-    case "swap":
     case "swap-and-reopen": {
       log(`starting detached ${step}`);
       const output = openSync(LOG_PATH, "a");
       const args = [join(checkoutPath, "scripts", "fork-update.sh"), "--swap"];
-      if (step === "swap") args.push("--no-reopen");
       const child = spawn("/bin/sh", args, {
         cwd: checkoutPath,
         detached: true,

@@ -74,7 +74,7 @@ export function UpdatePanel() {
   }
   const busy = data.progress !== null || update.isPending;
   const failure = data.error ?? update.error?.message ?? null;
-  const run = (reopen: boolean) => void update.mutate({ reopen }).catch(() => undefined);
+  const run = () => void update.mutate({}).catch(() => undefined);
   return (
     <div className="flex flex-col gap-2 p-3 text-xs">
       <div className={failure === null ? "font-medium text-sidebar-foreground" : "font-medium text-destructive"}>
@@ -99,19 +99,10 @@ export function UpdatePanel() {
       {failure === null ? null : (
         <pre className="max-h-32 overflow-auto whitespace-pre-wrap text-destructive">{failure}</pre>
       )}
-      {data.kind === "up-to-date" ? null : data.kind === "plugins" ? (
-        <Button size="sm" className={ACCENT_BUTTON} disabled={busy} onClick={() => run(true)}>
-          {busy ? "Updating" : "Update"}
+      {data.kind === "up-to-date" ? null : (
+        <Button size="sm" className={ACCENT_BUTTON} disabled={busy} autoFocus onClick={run}>
+          {busy ? "Updating" : data.kind === "plugins" ? "Update" : "Update and reopen"}
         </Button>
-      ) : (
-        <div className="flex gap-2">
-          <Button size="sm" className={`flex-1 ${ACCENT_BUTTON}`} disabled={busy} autoFocus onClick={() => run(true)}>
-            {busy ? "Updating" : "Update and reopen"}
-          </Button>
-          <Button size="sm" variant="outline" disabled={busy} onClick={() => run(false)}>
-            Update
-          </Button>
-        </div>
       )}
     </div>
   );
