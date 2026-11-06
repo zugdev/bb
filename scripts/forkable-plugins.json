@@ -21,6 +21,7 @@
     "plugins/monaco-editor",
     "plugins/navigation",
     "plugins/pdf-preview",
+    "plugins/perf",
     "plugins/plugin-api-docs",
     "plugins/plugin-api-tester",
     "plugins/mcp",
