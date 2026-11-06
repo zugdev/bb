@@ -311,12 +311,11 @@ function SplitTabCommandHandlers({
   });
   const hasPinnedTab = usePinnedTabPanel() !== null;
   useIndexedAppCommandHandlers(SPLIT_TAB_SELECT_APP_COMMAND_IDS, (index) => {
-    if (index === 0) {
-      if (!hasPinnedTab) return false;
+    if (index === 0 && hasPinnedTab) {
       navigate(PINNED_TAB_ROUTE_PATH);
       return true;
     }
-    const tab = store.get(splitTabsAtom).tabs[index - 1];
+    const tab = store.get(splitTabsAtom).tabs[hasPinnedTab ? index - 1 : index];
     if (tab === undefined) return false;
     show(store.set(selectSplitTabAtom, tab.id));
     return true;
@@ -647,7 +646,10 @@ export function SplitTabBar() {
         >
           <div ref={contentRef} className="flex w-max items-center gap-1">
             {state.tabs.map((tab, index) => {
-              const command = SPLIT_TAB_SELECT_APP_COMMAND_IDS[index + 1];
+              const command =
+                SPLIT_TAB_SELECT_APP_COMMAND_IDS[
+                  pinnedTab === null ? index : index + 1
+                ];
               return (
                 <SplitTabItem
                   key={tab.id}
