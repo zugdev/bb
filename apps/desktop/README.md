@@ -460,11 +460,9 @@ npx bb-app@latest
 pnpm exec turbo run dev --filter=@bb/desktop
 ```
 
-The desktop supervisor handles normal quits plus `SIGINT` and `SIGTERM`, and it
-writes a PID file so the next launch can reap a stale Electron-owned `bb-app`
-launcher. Hard crashes such as process aborts, segfaults, or kernel-level kills
-cannot run cleanup in the crashing process; the startup PID-file reap is the
-recovery path for those cases.
+On macOS a normal quit leaves the Electron-owned `bb-app` launcher running, so agents keep working while the app is closed. The launcher writes its output to `bb-app-output.log` in Electron's user data directory, and the PID file at `owned-runtime.json` records the bridge file's modification time. The next launch attaches to that launcher without asking when the bridge file is unchanged and the server answers. Otherwise it stops the launcher and starts a new one, which is what happens after an update. **bb → Quit and Stop Agents**, installing an update, `SIGINT` and `SIGTERM` stop the launcher before the app exits. Windows and Linux always stop it on quit. When the launcher restarts, the server queues a `runtime-restarted` message for each thread whose turn the restart interrupted, so the agent picks the task back up.
+
+Hard crashes such as process aborts, segfaults, or kernel-level kills cannot run cleanup in the crashing process; the startup PID-file reap is the recovery path for those cases.
 
 ### Saved servers
 
@@ -579,7 +577,7 @@ sees a committed lock for a `moveId`, it switches the server target once:
 The app shows "Your bb server moved to <toHostName>" once for each `moveId`
 (`<userData>/server-move-notice.json`). It still starts its own `bb-app`
 launcher unless another bb process answers the local server port. The launcher
-runs this computer as a regular machine, and quitting the app stops it. If the
+runs this computer as a regular machine, and quitting the app stops it, except on macOS where it keeps running until **Quit and Stop Agents**. If the
 app has no stored bb Connect credential, it signs in to a connect target with
 the `x-bb-connect-machine` header that the move wrote to the data dir's
 `config.json`. The app logs a warning and ignores an invalid lock.

@@ -1,8 +1,9 @@
 import { randomUUID } from "node:crypto";
-import { mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rename, rm, stat, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import {
   createNodeVerifiedProcessOps,
+  isVerifiedProcessRunning,
   stopVerifiedProcess,
   type VerifiedProcessOps,
 } from "@bb/config/verified-process-stop";
@@ -12,6 +13,7 @@ const OWNED_RUNTIME_PID_FILE_NAME = "owned-runtime.json";
 const KILL_TIMEOUT_MS = 3_000;
 
 const ownedRuntimePidFileSchema = z.object({
+  bridgeModifiedAtMs: z.number().optional(),
   bridgePath: z.string().min(1),
   pid: z.number().int().positive(),
   serverUrl: z.string().min(1),
@@ -26,6 +28,7 @@ type ReapStaleOwnedRuntimeResult =
   | SkippedStaleOwnedRuntimeResult;
 
 interface OwnedRuntimePidFile {
+  bridgeModifiedAtMs?: number;
   bridgePath: string;
   pid: number;
   serverUrl: string;
@@ -44,6 +47,13 @@ interface ClearOwnedRuntimePidFileArgs {
 }
 
 interface ReadOwnedRuntimePidFileArgs {
+  userDataPath: string;
+}
+
+interface ReadAdoptableOwnedRuntimeArgs {
+  bridgePath: string;
+  processOps?: VerifiedProcessOps;
+  serverUrl: string;
   userDataPath: string;
 }
 
@@ -83,10 +93,21 @@ function ownedRuntimePidFilePath(userDataPath: string): string {
   return join(userDataPath, OWNED_RUNTIME_PID_FILE_NAME);
 }
 
+async function readBridgeModifiedAtMs(
+  bridgePath: string,
+): Promise<number | undefined> {
+  try {
+    return (await stat(bridgePath)).mtimeMs;
+  } catch {
+    return undefined;
+  }
+}
+
 export async function writeOwnedRuntimePidFile(
   args: WriteOwnedRuntimePidFileArgs,
 ): Promise<void> {
   const pidFile: OwnedRuntimePidFile = {
+    bridgeModifiedAtMs: await readBridgeModifiedAtMs(args.bridgePath),
     bridgePath: args.bridgePath,
     pid: args.pid,
     serverUrl: args.serverUrl,
@@ -129,6 +150,31 @@ export async function readOwnedRuntimePidFile(
   } catch {
     return null;
   }
+}
+
+export async function readAdoptableOwnedRuntime(
+  args: ReadAdoptableOwnedRuntimeArgs,
+): Promise<OwnedRuntimePidFile | null> {
+  const pidFile = await readOwnedRuntimePidFile({
+    userDataPath: args.userDataPath,
+  });
+  if (
+    pidFile === null ||
+    pidFile.bridgeModifiedAtMs === undefined ||
+    pidFile.bridgePath !== args.bridgePath ||
+    pidFile.serverUrl !== args.serverUrl ||
+    pidFile.bridgeModifiedAtMs !==
+      (await readBridgeModifiedAtMs(args.bridgePath))
+  ) {
+    return null;
+  }
+  const running = await isVerifiedProcessRunning({
+    pid: pidFile.pid,
+    processOps: args.processOps,
+    startedAt: pidFile.startedAt,
+    verifyTokens: [pidFile.bridgePath],
+  });
+  return running ? pidFile : null;
 }
 
 export async function reapStaleOwnedRuntime(

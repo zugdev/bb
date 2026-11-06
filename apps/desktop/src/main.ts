@@ -104,6 +104,7 @@ import {
 } from "./desktop-menu-shortcuts.js";
 import {
   clearOwnedRuntimePidFile,
+  readAdoptableOwnedRuntime,
   reapStaleOwnedRuntime,
   writeOwnedRuntimePidFile,
 } from "./owned-runtime-supervisor.js";
@@ -303,6 +304,7 @@ import {
 
 const OWNED_RUNTIME_STOP_TIMEOUT_MS = 6_000;
 const OWNED_RUNTIME_KILL_TIMEOUT_MS = 1_000;
+const OWNED_RUNTIME_OUTPUT_FILE_NAME = "bb-app-output.log";
 const FOREIGN_RUNTIME_STOP_TIMEOUT_MS = 15_000;
 const FOREIGN_RUNTIME_KILL_TIMEOUT_MS = 3_000;
 const WINDOWS_INSTALLER_WAIT_TIMEOUT_MS = 10 * 60 * 1000;
@@ -436,6 +438,7 @@ let connectSignInWindow: BrowserWindow | null = null;
 let stoppingForQuit = false;
 let appImageRelaunchPath: string | null = null;
 let quitting = false;
+let stopRuntimeOnQuit = process.platform !== "darwin";
 let serverTargetStore: ServerTargetStore | null = null;
 let connectServerSync: ConnectServerSync | null = null;
 let connectCredentialCache: ConnectCredentialCache | null = null;
@@ -909,6 +912,10 @@ function refreshApplicationMenu(): void {
     },
     openLocalLogs() {
       void openLocalLogs();
+    },
+    quitAndStopAgents() {
+      stopRuntimeOnQuit = true;
+      app.quit();
     },
     onServerMenuWillShow() {
       connectServerSync?.onListRequested();
@@ -2303,12 +2310,22 @@ async function stopOwnedRuntime(): Promise<void> {
 
   setCurrentRuntime(null);
   try {
-    await runtime.bbProcess?.stop({
-      killSignal: "SIGKILL",
-      killTimeoutMs: OWNED_RUNTIME_KILL_TIMEOUT_MS,
-      signal: "SIGTERM",
-      timeoutMs: OWNED_RUNTIME_STOP_TIMEOUT_MS,
-    });
+    if (runtime.bbProcess === null) {
+      if (runtime.userDataPath !== null) {
+        await reapStaleOwnedRuntime({
+          signal: "SIGTERM",
+          timeoutMs: OWNED_RUNTIME_STOP_TIMEOUT_MS,
+          userDataPath: runtime.userDataPath,
+        });
+      }
+    } else {
+      await runtime.bbProcess.stop({
+        killSignal: "SIGKILL",
+        killTimeoutMs: OWNED_RUNTIME_KILL_TIMEOUT_MS,
+        signal: "SIGTERM",
+        timeoutMs: OWNED_RUNTIME_STOP_TIMEOUT_MS,
+      });
+    }
   } finally {
     if (runtime.userDataPath !== null) {
       await clearOwnedRuntimePidFile({ userDataPath: runtime.userDataPath });
@@ -2358,7 +2375,9 @@ async function finishQuit(): Promise<void> {
   for (const browserWindow of BrowserWindow.getAllWindows()) {
     browserWindow.hide();
   }
-  await stopOwnedRuntime();
+  if (stopRuntimeOnQuit) {
+    await stopOwnedRuntime();
+  }
 }
 
 async function checkDesktopUpdates(): Promise<void> {
@@ -2382,6 +2401,7 @@ async function installDesktopUpdate(): Promise<void> {
     throw new Error("This AppImage cannot be replaced in place.");
   }
   await desktopWindowFactory?.persistOpenWindows();
+  stopRuntimeOnQuit = true;
   await desktopAutoUpdateService.installUpdate();
 }
 
@@ -2560,6 +2580,7 @@ async function spawnOwnedRuntime(
       [APP_SURFACE_ENV_NAME]: APP_SURFACE_DESKTOP,
     },
     logLineLimit: PROCESS_LOG_LINE_LIMIT,
+    outputPath: join(args.userDataPath, OWNED_RUNTIME_OUTPUT_FILE_NAME),
     runtime: resolveBbAppProcessRuntime({
       env: process.env,
       isPackaged: app.isPackaged,
@@ -2712,6 +2733,7 @@ async function startOwnedRuntime(
 }
 
 interface InitializeRuntimeArgs {
+  adoptOwnedRuntime: boolean;
   bridgePath: string;
   serverUrl: string;
   userDataPath: string;
@@ -2825,13 +2847,26 @@ async function decideOnExistingServer(
 }
 
 async function initializeRuntime(args: InitializeRuntimeArgs): Promise<void> {
-  const existingProbe = await probeBbServer({
+  let existingProbe = await probeBbServer({
     serverUrl: args.serverUrl,
     timeoutMs: ATTACH_PROBE_TIMEOUT_MS,
   });
+  if (args.adoptOwnedRuntime && existingProbe.kind !== "compatible") {
+    await reapStaleOwnedRuntime({
+      signal: "SIGTERM",
+      timeoutMs: OWNED_RUNTIME_STOP_TIMEOUT_MS,
+      userDataPath: args.userDataPath,
+    });
+    existingProbe = await probeBbServer({
+      serverUrl: args.serverUrl,
+      timeoutMs: ATTACH_PROBE_TIMEOUT_MS,
+    });
+  }
 
   if (existingProbe.kind === "compatible") {
-    const decision = await decideOnExistingServer(existingProbe);
+    const decision = args.adoptOwnedRuntime
+      ? "adopt"
+      : await decideOnExistingServer(existingProbe);
     if (decision === "quit") {
       app.quit();
       return;
@@ -2853,9 +2888,9 @@ async function initializeRuntime(args: InitializeRuntimeArgs): Promise<void> {
 
     setCurrentRuntime({
       bbProcess: null,
-      ownership: "attached",
+      ownership: decision === "adopt" ? "spawned" : "attached",
       serverUrl: existingProbe.serverUrl,
-      userDataPath: null,
+      userDataPath: decision === "adopt" ? args.userDataPath : null,
     });
     await loadBbApp(
       resolveDesktopWindowUrl({
@@ -3049,11 +3084,20 @@ async function runDesktopApp(): Promise<void> {
   if (process.platform === "darwin" && app.dock !== undefined && devIcon) {
     app.dock.setIcon(iconPath);
   }
-  await reapStaleOwnedRuntime({
-    signal: "SIGTERM",
-    timeoutMs: 5_000,
-    userDataPath,
-  });
+  const adoptOwnedRuntime =
+    !stopRuntimeOnQuit &&
+    (await readAdoptableOwnedRuntime({
+      bridgePath,
+      serverUrl,
+      userDataPath,
+    })) !== null;
+  if (!adoptOwnedRuntime) {
+    await reapStaleOwnedRuntime({
+      signal: "SIGTERM",
+      timeoutMs: 5_000,
+      userDataPath,
+    });
+  }
 
   serverTargetStore = createServerTargetStore({
     storagePath: join(userDataPath, SERVER_TARGET_FILE_NAME),
@@ -3407,7 +3451,12 @@ async function runDesktopApp(): Promise<void> {
     localServerMove === null
   ) {
     startServerMovedWatcher();
-    await initializeRuntime({ bridgePath, serverUrl, userDataPath });
+    await initializeRuntime({
+      adoptOwnedRuntime,
+      bridgePath,
+      serverUrl,
+      userDataPath,
+    });
   } else {
     await applyServerTarget();
     connectServerSync.syncNow().catch(() => {});

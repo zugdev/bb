@@ -236,6 +236,7 @@ process.stdout.write(\`grandchild=\${grandchild.pid}\\n\`);
           APPDIR: script.root,
         },
         logLineLimit: 20,
+        outputPath: null,
         runtime: {
           appDirPath: script.root,
           executablePath: process.execPath,
@@ -329,6 +330,32 @@ process.stdout.write(\`grandchild=\${grandchild.pid}\\n\`);
     });
   });
 
+  it("reads runtime output from the output file", async () => {
+    const script = await createTempScript({
+      contents:
+        'process.stdout.write("to file\\n"); console.error("err to file");\n',
+    });
+    const outputPath = join(script.root, "output.log");
+    const processEntry = startBbAppProcess({
+      bridgePath: script.path,
+      cwd: script.root,
+      env: process.env,
+      logLineLimit: 20,
+      outputPath,
+      runtime: {
+        executablePath: process.execPath,
+        kind: "direct",
+        mode: "node",
+      },
+    });
+    processes.push(processEntry);
+
+    await processEntry.exit;
+
+    expect(processEntry.childProcess.stdout).toBeNull();
+    expect(processEntry.logs.text()).toBe("to file\nerr to file");
+  });
+
   posixIt("escalates to SIGKILL when the bridge ignores SIGTERM", async () => {
     const script = await createTempScript({
       contents: `
@@ -344,6 +371,7 @@ setInterval(() => undefined, 1000);
       cwd: script.root,
       env: process.env,
       logLineLimit: 20,
+      outputPath: null,
       runtime: {
         executablePath: process.execPath,
         kind: "direct",

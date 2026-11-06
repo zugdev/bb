@@ -7,4 +7,4 @@ editingNotes: Keep it short and task-neutral; the agent already has the prior tu
 ---
 [bb system]
 
-bb restarted while your previous turn was running, so that turn was interrupted. Any command you had running was stopped. Check where you left off and continue the task.
+bb restarted, for example to install an update, while your previous turn was running. The user did not stop you. Commands you had running, including background ones, were stopped. Check where you left off, rerun what the task still needs, and continue the task.

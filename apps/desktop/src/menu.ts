@@ -11,6 +11,7 @@ import { builtinServerName } from "./server-target.js";
 import type { ConnectServerSyncSkipReason } from "./connect-server-sync.js";
 
 const LOCAL_LOGS_MENU_LABEL = "Local Logs";
+const QUIT_AND_STOP_AGENTS_MENU_LABEL = "Quit and Stop Agents";
 const OPEN_NEW_TAB_MENU_LABEL = "New Tab";
 const REOPEN_CLOSED_TAB_MENU_LABEL = "Reopen Closed Tab";
 const NEW_THREAD_MENU_LABEL = "New Thread";
@@ -65,6 +66,7 @@ export interface InstallApplicationMenuArgs {
   closeWindowOrSideTab(browserWindow: BaseWindow | undefined): void;
   createNewWindow(): void;
   openLocalLogs(): void;
+  quitAndStopAgents(): void;
   selectServer(serverId: string): void;
   setServerUrl(): void;
   signInToConnect(): void;
@@ -206,6 +208,16 @@ export function buildApplicationMenuTemplate(
             ]
           : []),
         { role: "quit" },
+        ...(args.isMac
+          ? [
+              {
+                label: QUIT_AND_STOP_AGENTS_MENU_LABEL,
+                click() {
+                  args.quitAndStopAgents();
+                },
+              },
+            ]
+          : []),
       ],
     },
     {
