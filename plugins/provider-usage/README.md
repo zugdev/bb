@@ -4,7 +4,7 @@ Shows usage from enabled usage-source plugins in the sidebar. When a location ha
 more than one provider, the card opens on an **All** tab that stacks every provider
 tab's accounts, each marked with its provider icon. Provider tabs use provider icons,
 with pooled accounts stacked under each provider. Each account shows its plan and,
-per usage window, a bar, the percent used, and the time until reset.
+per usage window, a bar, the percent used, and the percent expected at reset in parentheses. The expectation extrapolates the window's usage so far to its reset, so (120%) means you'd run out before the reset and (80%) means 20% would go unused. Windows without a known length show the time until reset instead, and clicking a row shows the reset time.
 The card lists account metadata cheaply, then fetches the accounts on the selected
 tab. Unopened tabs have no quota badge until measured, and a badge shows only while
 that provider's accounts are off screen. Shared sources such as Account Pooler are selected by default; an explicit
@@ -26,7 +26,7 @@ to inspect their published contracts. RPC calls accept JSON through
 
 Every 5 minutes the plugin reads usage for all usage providers on connected machines and shared sources, reusing measurements under 4 minutes old. When a window that was at 90% or more rolls over to a later reset time, it sends one notification through the Push notifications plugin, such as "Claude Code: Five-hour limit reset" with the account email as the body. The first reading of a window only records it. The `resetNotifications` setting (default `true`, labelled "Notify when a usage limit resets" on the plugin page) turns this off: `bb plugin config bb--provider-usage set resetNotifications false`. With Push notifications disabled, sends fail and are logged to `bb plugin logs bb--provider-usage`.
 
-The `sidebarWeeklyUsage` setting (default `false`, labelled "Show 7 day usage in the sidebar footer") replaces the footer icon with the Claude and Codex 7 day limits, each as the provider icon and the percent used, such as 42% and 17%. A provider that isn't signed in or has no weekly window is left out, and with neither the icon returns. It reads the same machine as the card and refreshes those two providers every 5 minutes. Open the card for reset times. Turn it on with `bb plugin config bb--provider-usage set sidebarWeeklyUsage true`.
+The `sidebarWeeklyUsage` setting (default `false`, labelled "Show 7 day usage in the sidebar footer") replaces the footer icon with the Claude and Codex 7 day limits, each as the provider icon, the percent used and the percent expected at reset in muted text, such as 42% (78%) and 17% (40%). A provider that isn't signed in or has no weekly window is left out, and with neither the icon returns. It reads the same machine as the card and refreshes those two providers every 5 minutes. Open the card for reset times. Turn it on with `bb plugin config bb--provider-usage set sidebarWeeklyUsage true`.
 
 `bb settings usage --json` and `bb.sdk.system.usageLimits()` remain the
 host-local provider-maintenance view; they do not aggregate shared pool accounts.
