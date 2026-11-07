@@ -1,0 +1,42 @@
+{
+  "name": "bb-plugin-ideas",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Queue prompts that start before the weekly usage limit resets, so unused subscription quota gets spent.",
+  "engines": {
+    "bb": ">=0.0",
+    "bbPluginSdk": ">=0.6.88"
+  },
+  "bb": {
+    "name": "Ideas",
+    "description": "Queue prompts that start before the weekly usage limit resets, so unused subscription quota gets spent.",
+    "branding": {
+      "icon": "Lightbulb"
+    },
+    "server": "./server.ts",
+    "app": "./app.tsx"
+  },
+  "keywords": [
+    "bb-plugin"
+  ],
+  "scripts": {
+    "test": "vitest run --config vitest.config.ts",
+    "typecheck": "tsrs --noEmit",
+    "lint": "oxlint --ignore-pattern node_modules --ignore-pattern dist .",
+    "prepare:bundled": "bb-plugin-build prepare-bundled"
+  },
+  "dependencies": {
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@bb/plugin-build": "workspace:*",
+    "@get-bb/plugin-sdk": "workspace:*",
+    "@types/node": "^22.0.0",
+    "@types/react": "^19.0.0",
+    "react": "^19.0.0",
+    "tsrs": "0.18.0-ts7.1.0-dev.20260929",
+    "typescript": "npm:@typescript/typescript6@^6.0.2",
+    "vitest": "^4.1.1"
+  }
+}
