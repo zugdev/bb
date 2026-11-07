@@ -1,6 +1,7 @@
 import { experimental_ProviderIcon as ProviderIcon } from "@get-bb/plugin-sdk/app";
 import { Icon } from "@/components/ui/icon";
 import { cn } from "@/lib/utils";
+import { projectedToneClass, projectedUsagePercent } from "./usage-format.js";
 import type { UsageMachine, UsageProvider } from "./usage-schema.js";
 
 export const READOUT_PROVIDER_IDS = ["claude-code", "codex"];
@@ -9,9 +10,13 @@ const WEEKLY_WINDOW_LABEL = "Weekly limit";
 export interface WeeklyReading {
   provider: UsageProvider;
   usedPercent: number;
+  projectedPercent: number | null;
 }
 
-export function weeklyReadings(machine: UsageMachine | null): WeeklyReading[] {
+export function weeklyReadings(
+  machine: UsageMachine | null,
+  now: number,
+): WeeklyReading[] {
   return READOUT_PROVIDER_IDS.flatMap((providerId) => {
     for (const provider of machine?.providers ?? []) {
       if (provider.providerId !== providerId) continue;
@@ -20,7 +25,13 @@ export function weeklyReadings(machine: UsageMachine | null): WeeklyReading[] {
         (candidate) => candidate.label === WEEKLY_WINDOW_LABEL,
       );
       if (window !== undefined)
-        return [{ provider, usedPercent: window.usedPercent }];
+        return [
+          {
+            provider,
+            usedPercent: window.usedPercent,
+            projectedPercent: projectedUsagePercent(window, now),
+          },
+        ];
     }
     return [];
   });
@@ -42,7 +53,7 @@ export function UsageReadout({ readings }: { readings: WeeklyReading[] }) {
       data-provider-usage-readout=""
       className="flex items-center gap-1.5 text-2xs tabular-nums"
     >
-      {readings.map(({ provider, usedPercent }) => (
+      {readings.map(({ provider, usedPercent, projectedPercent }) => (
         <span
           key={provider.providerId}
           className={cn(
@@ -58,6 +69,11 @@ export function UsageReadout({ readings }: { readings: WeeklyReading[] }) {
             aria-hidden="true"
           />
           {Math.round(usedPercent)}%
+          {projectedPercent === null ? null : (
+            <span className={projectedToneClass(projectedPercent)}>
+              ({Math.round(projectedPercent)}%)
+            </span>
+          )}
         </span>
       ))}
     </span>

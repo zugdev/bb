@@ -99,7 +99,7 @@ Core owns the outcome record, the report tool, the timeouts and the cascade rule
 6. Evaluation of agent output on workflows: golden tasks, a judge thread with a rubric, and the same task run on several models. Workflow calls are cached by prompt, model and permission (`plugins/workflows/src/cache.ts:170-192`), so reruns are deterministic.
 7. Approval routing. `interaction.pending` fires on every approval request (`docs/api_to_audit.md:765-775`), so a plugin can route it to whoever is on call in Slack and escalate on `expiresAt`. Recording who resolved it needs identity.
 8. Change sets across repos: link PRs in several repos so the merge queue lands them together or not at all, using lifecycle ownership across projects.
-9. Profiling: `plugins/perf` reads the `BB_PERF_DIAGNOSTICS` samples, stall CPU profiles and turn traces that span server and daemon, and serves them through a panel and `bb perf`. It's in progress and installs from the marketplace.
+9. Profiling: `plugins/perf` reads the `BB_PERF_DIAGNOSTICS` samples, stall CPU profiles and turn traces that span server and daemon, and serves them through `bb perf`. It's in progress and installs from the marketplace.
 
 ## 8. Order
 

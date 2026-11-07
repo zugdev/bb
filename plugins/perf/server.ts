@@ -1,5 +1,3 @@
-import { readFile } from "node:fs/promises";
-import { join } from "node:path";
 import {
   cliCommand,
   defineCli,
@@ -15,7 +13,6 @@ import {
   logsDirectory,
   parseStalls,
   parseTurnTraces,
-  PROFILE_NAME_PATTERN,
   profilesDirectory,
   readRecords,
   STALL_MESSAGES,
@@ -219,22 +216,6 @@ export default async function perfPlugin(bb: BbPluginApi): Promise<void> {
     stalls: ({ limit }) => stalls(limit),
   });
 
-  bb.http.route("GET", "/profile", async (context) => {
-    const name = context.req.query("name") ?? "";
-    if (!PROFILE_NAME_PATTERN.test(name))
-      return context.json({ error: "invalid profile name" }, 400);
-    try {
-      const contents = await readFile(join(profilesDirectory(dataDir), name));
-      return new Response(contents, {
-        headers: {
-          "content-type": "application/json",
-          "content-disposition": `attachment; filename="${name}"`,
-        },
-      });
-    } catch {
-      return context.json({ error: "profile not found" }, 404);
-    }
-  });
 
   bb.cli.register(
     defineCli({

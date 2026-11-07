@@ -1,10 +1,10 @@
-See where bb lags. The plugin reads the performance diagnostics bb already writes and shows them as a waterfall per sent message and a list of event loop stalls with their CPU profiles.
+See where bb lags. The plugin reads the performance diagnostics bb already writes and prints the turn traces and event loop stalls through `bb perf`.
 
 ## What you get
 
-- A Performance page with a waterfall for each turn trace, from the server receiving the message to the first streamed output, including every daemon call it waited on.
-- A list of event loop stalls with sampled stacks and a download link for the CPU profile that covers each one.
-- `bb perf status`, `bb perf turns [--thread <id>]` and `bb perf stalls`, all with `--json`.
+- `bb perf turns [--thread <id>]`: span timings for each turn trace, from the server receiving the message to the first streamed output, including every daemon call it waited on.
+- `bb perf stalls`: event loop stalls with sampled stacks and the CPU profile that covers each one.
+- `bb perf status`. All three take `--json`.
 
 ## Turning diagnostics on
 

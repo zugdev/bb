@@ -28,6 +28,8 @@ import {
 import { cn } from "@/lib/utils";
 import {
   formatUsageReset,
+  projectedToneClass,
+  projectedUsagePercent,
   formatUsdCents,
   usageBarColorClass,
 } from "./usage-format.js";
@@ -277,6 +279,7 @@ function UsageWindow({ window }: { window: UsageWindowValue }) {
   const [showReset, setShowReset] = useState(false);
   const reset = formatUsageReset(window.resetsAt);
   const countdown = formatResetCountdown(window.resetsAt);
+  const projected = projectedUsagePercent(window, Date.now());
   const value =
     window.cost === null
       ? Math.round(window.usedPercent) + "% used"
@@ -287,8 +290,8 @@ function UsageWindow({ window }: { window: UsageWindowValue }) {
     <button
       type="button"
       className="col-span-full grid grid-cols-subgrid rounded-sm text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring"
-      title={`${window.label} · ${reset ?? "Reset time not reported"}`}
-      aria-label={`${window.label}: ${value}. ${reset ?? "Reset time not reported"}`}
+      title={`${window.label} · ${projected === null ? "" : `${Math.round(projected)}% expected at reset · `}${reset ?? "Reset time not reported"}`}
+      aria-label={`${window.label}: ${value}.${projected === null ? "" : ` ${Math.round(projected)}% expected at reset.`} ${reset ?? "Reset time not reported"}`}
       aria-expanded={showReset}
       onClick={() => setShowReset((shown) => !shown)}
     >
@@ -317,14 +320,22 @@ function UsageWindow({ window }: { window: UsageWindowValue }) {
         </span>
         <span
           aria-hidden="true"
-          className="min-w-9 text-right tabular-nums text-subtle-foreground"
+          className={cn(
+            "min-w-9 text-right tabular-nums",
+            projected === null
+              ? "text-subtle-foreground"
+              : projectedToneClass(projected),
+          )}
         >
-          {countdown ?? "—"}
+          {projected === null
+            ? (countdown ?? "—")
+            : `(${Math.round(projected)}%)`}
         </span>
       </span>
       {showReset ? (
         <span className="col-span-full pb-1 text-2xs text-subtle-foreground">
           {reset ?? "Reset time not reported."}
+          {projected === null || countdown === null ? "" : ` (${countdown})`}
           {window.cost === null ? "" : ` · ${value}`}
         </span>
       ) : null}
@@ -965,7 +976,7 @@ function ProviderUsageButtonContent() {
     readSelectedMachine(machineSelectionStorageKey(pluginId)),
     threadMachineId,
   );
-  return <UsageReadout readings={enabled ? weeklyReadings(machine) : []} />;
+  return <UsageReadout readings={enabled ? weeklyReadings(machine, Date.now()) : []} />;
 }
 
 function ProviderUsageStatus(props: ExperimentalSidebarFooterDisclosureProps) {

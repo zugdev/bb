@@ -2,7 +2,6 @@
   "$comment": "Plugins that live only in the zugdev/bb fork: not bundled with bb, installed from the fork checkout by path. The fork-updater installs any entry missing from the running bb after an update. Add a plugin here when you move a feature out of core into plugins/<name>.",
   "plugins": [
     "plugins/assistant",
-    "plugins/ideas",
     "plugins/fork-updater",
     "plugins/home",
     "plugins/orchestrator",

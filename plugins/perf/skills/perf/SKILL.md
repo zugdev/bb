@@ -31,6 +31,4 @@ Only sends through the send API are traced; queue drains and retries are not.
 2. `observed` stalls come from `Event loop stalled` (over 500 ms, logged even with diagnostics off). `candidate` names the longest measured synchronous work; it is a hint and the stack is not sampled.
 3. `profile` is the retained `.cpuprofile` covering the stall. Load it in Chrome DevTools → Performance, select the stall window (UTC), and read the bottom-up view. Profiles are kept 12 hours, so copy the ones you need. They contain local paths and function names; ask before sharing them.
 
-The Performance page in the bb navigation shows the same data as a waterfall per turn and a stall list with profile downloads.
-
 Report findings with numbers: the span or RPC that took the time, its duration, the thread id and the UTC time.
