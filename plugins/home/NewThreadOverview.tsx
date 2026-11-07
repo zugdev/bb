@@ -11,7 +11,6 @@ import {
   filterHomeThreads,
   HOME_AGE_FILTERS,
   HOME_STATUS_FILTERS,
-  homeTopLevelThreads,
   lastMessageTime,
   liveThreadDescendants,
   NEEDS_YOU_LIMIT,
@@ -35,7 +34,8 @@ export interface NewThreadOverviewProps {
   cycleShortcutLabel: string | null;
   order: HomeThreadOrder;
   filter: HomeThreadFilter;
-  setFilter: (filter: HomeThreadFilter) => void;
+  setFilter: ((filter: HomeThreadFilter) => void) | null;
+  showArchived: boolean;
   onArchiveThreads: (threads: readonly PluginSidebarThread[]) => Promise<void>;
   pullRequests: readonly ProjectPullRequest[];
   onSelectPullRequest: (pr: ProjectPullRequest) => void;
@@ -65,6 +65,7 @@ export function NewThreadOverview({
   order,
   filter,
   setFilter,
+  showArchived,
   onArchiveThreads,
   pullRequests,
   onSelectPullRequest,
@@ -96,7 +97,9 @@ export function NewThreadOverview({
   );
   const archivable = useMemo(
     () =>
-      filter.olderThanDays === null ? [] : archivableHomeThreads(projectThreads),
+      filter.olderThanDays === null
+        ? []
+        : archivableHomeThreads(projectThreads),
     [filter.olderThanDays, projectThreads],
   );
   const needsYou = useMemo(
@@ -108,8 +111,9 @@ export function NewThreadOverview({
     const latestByProject = new Map<string, number>();
     const threadsByProject = new Map<string, PluginSidebarThread[]>();
     const waiting = new Set(needsYou.map((thread) => thread.id));
-    for (const thread of homeTopLevelThreads(projectThreads)) {
-      if (waiting.has(thread.id)) continue;
+    for (const thread of projectThreads) {
+      if (thread.parentThreadId !== null || waiting.has(thread.id)) continue;
+      if (thread.archivedAt !== null && !showArchived) continue;
       threadsByProject.set(thread.projectId, [
         ...(threadsByProject.get(thread.projectId) ?? []),
         thread,
@@ -135,7 +139,7 @@ export function NewThreadOverview({
         project,
         threads: threadsByProject.get(project.id) ?? [],
       }));
-  }, [needsYou, projectThreads, projects, selectedProject]);
+  }, [needsYou, projectThreads, projects, selectedProject, showArchived]);
   const projectNames = useMemo(
     () => new Map(projects.map((project) => [project.id, project.name])),
     [projects],
@@ -174,52 +178,54 @@ export function NewThreadOverview({
             </span>
           )}
         </div>
-        <div
-          role="group"
-          aria-label="Thread filters"
-          className="-mt-3 flex flex-wrap items-center gap-1.5"
-        >
-          {HOME_STATUS_FILTERS.map((option) => (
-            <button
-              key={option.value}
-              type="button"
-              aria-pressed={filter.status === option.value}
-              onClick={() => setFilter({ ...filter, status: option.value })}
-              className={pillClass(filter.status === option.value)}
-            >
-              {option.label}
-            </button>
-          ))}
-          <span className="mx-1 h-4 w-px bg-border" aria-hidden="true" />
-          {HOME_AGE_FILTERS.map((option) => (
-            <button
-              key={option.label}
-              type="button"
-              aria-pressed={filter.olderThanDays === option.value}
-              onClick={() =>
-                setFilter({ ...filter, olderThanDays: option.value })
-              }
-              className={pillClass(filter.olderThanDays === option.value)}
-            >
-              {option.label}
-            </button>
-          ))}
-          {archivable.length === 0 ? null : (
-            <button
-              type="button"
-              disabled={isArchiving}
-              onClick={() => {
-                setIsArchiving(true);
-                void onArchiveThreads(archivable).finally(() =>
-                  setIsArchiving(false),
-                );
-              }}
-              className={cn(pillClass(false), "ml-auto")}
-            >
-              Archive {archivable.length} idle
-            </button>
-          )}
-        </div>
+        {setFilter === null ? null : (
+          <div
+            role="group"
+            aria-label="Thread filters"
+            className="-mt-3 flex flex-wrap items-center gap-1.5"
+          >
+            {HOME_STATUS_FILTERS.map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                aria-pressed={filter.status === option.value}
+                onClick={() => setFilter({ ...filter, status: option.value })}
+                className={pillClass(filter.status === option.value)}
+              >
+                {option.label}
+              </button>
+            ))}
+            <span className="mx-1 h-4 w-px bg-border" aria-hidden="true" />
+            {HOME_AGE_FILTERS.map((option) => (
+              <button
+                key={option.label}
+                type="button"
+                aria-pressed={filter.olderThanDays === option.value}
+                onClick={() =>
+                  setFilter({ ...filter, olderThanDays: option.value })
+                }
+                className={pillClass(filter.olderThanDays === option.value)}
+              >
+                {option.label}
+              </button>
+            ))}
+            {archivable.length === 0 ? null : (
+              <button
+                type="button"
+                disabled={isArchiving}
+                onClick={() => {
+                  setIsArchiving(true);
+                  void onArchiveThreads(archivable).finally(() =>
+                    setIsArchiving(false),
+                  );
+                }}
+                className={cn(pillClass(false), "ml-auto")}
+              >
+                Archive {archivable.length} idle
+              </button>
+            )}
+          </div>
+        )}
         {needsYou.length === 0 && selectedProject === null ? null : (
           <section className="flex flex-col">
             <h2 className="flex items-baseline gap-2 pb-1.5 text-sm font-medium">

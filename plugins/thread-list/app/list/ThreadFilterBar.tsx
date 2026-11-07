@@ -165,6 +165,8 @@ export function ThreadFilterBar({
             </RadioItem>
           ))}
         </DropdownMenuGroup>
+        <DropdownMenuSeparator />
+        <SidebarViewItems page="filter" />
       </FilterChip>
       <FilterChip
         label={projectName ?? "All projects"}

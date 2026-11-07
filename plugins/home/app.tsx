@@ -8,6 +8,7 @@ import {
   useComposer,
   useBbNavigate,
   useSdk,
+  useSettings,
   type PluginComposerApi,
   type PluginHomepageSectionProps,
   type PluginSidebarThread,
@@ -52,7 +53,12 @@ function NewThreadOverviewSection({
   projectId,
   experimental_setProjectId: setProjectId,
 }: PluginHomepageSectionProps) {
-  const { threads, projects } = experimental_useSidebarThreads();
+  const settings = useSettings().values;
+  const showFilters = settings?.showFilters === true;
+  const showArchived = settings?.showArchived === true;
+  const { threads, projects } = experimental_useSidebarThreads({
+    experimental_lifecycles: showArchived ? ["active", "archived"] : ["active"],
+  });
   const navigate = useBbNavigate();
   const sdk = useSdk();
   const [filter, setFilter] = useStoredState<HomeThreadFilter>(
@@ -116,8 +122,9 @@ function NewThreadOverviewSection({
       setProjectId={setProjectId}
       cycleShortcutLabel={cycleShortcut?.label ?? null}
       order={order}
-      filter={filter}
-      setFilter={setFilter}
+      filter={showFilters ? filter : DEFAULT_HOME_THREAD_FILTER}
+      setFilter={showFilters ? setFilter : null}
+      showArchived={showArchived}
       onArchiveThreads={archiveThreads}
       pullRequests={
         projectId === null || pullRequestHostId === null

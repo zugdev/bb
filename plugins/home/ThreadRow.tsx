@@ -71,7 +71,14 @@ export function ThreadRow({
       <span className="flex size-4 shrink-0 items-center justify-center">
         <ThreadStatusDot dot={homeThreadDot(thread, descendants)} />
       </span>
-      <span className="min-w-0 flex-1 truncate">{thread.displayTitle}</span>
+      <span
+        className={cn(
+          "min-w-0 flex-1 truncate",
+          thread.archivedAt !== null && "text-muted-foreground",
+        )}
+      >
+        {thread.displayTitle}
+      </span>
       {projectName === null ? null : (
         <span className="max-w-32 shrink-0 truncate text-xs text-muted-foreground">
           {projectName}

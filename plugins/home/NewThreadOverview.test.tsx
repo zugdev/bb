@@ -35,6 +35,7 @@ function renderOverview(props: Partial<NewThreadOverviewProps>) {
       }}
       filter={DEFAULT_HOME_THREAD_FILTER}
       setFilter={() => undefined}
+      showArchived={false}
       onArchiveThreads={() => Promise.resolve()}
       pullRequests={[]}
       onSelectPullRequest={() => undefined}
@@ -216,8 +217,8 @@ describe("NewThreadOverview", () => {
   it("archives the idle threads older than the age filter", () => {
     const DAY = 86_400_000;
     const now = Date.now();
-    const onArchiveThreads = vi.fn(
-      (_threads: readonly PluginSidebarThread[]) => Promise.resolve(),
+    const onArchiveThreads = vi.fn((_threads: readonly PluginSidebarThread[]) =>
+      Promise.resolve(),
     );
     renderOverview({
       threads: [
@@ -239,6 +240,21 @@ describe("NewThreadOverview", () => {
     expect(onArchiveThreads.mock.calls[0]?.[0].map((t) => t.id)).toEqual([
       "stale",
     ]);
+  });
+
+  it("hides the filters without a setter and lists archived threads only when asked", () => {
+    const threads = [
+      makeThread({ id: "live" }),
+      makeThread({ id: "gone", archivedAt: 1 }),
+    ];
+    renderOverview({ threads, setFilter: null });
+    expect(screen.queryByRole("group", { name: "Thread filters" })).toBeNull();
+    expect(screen.getByText("live")).toBeTruthy();
+    expect(screen.queryByText("gone")).toBeNull();
+    cleanup();
+
+    renderOverview({ threads, showArchived: true });
+    expect(screen.getByText("gone")).toBeTruthy();
   });
 
   it("lists the selected project's pull requests and selects one on click", () => {
