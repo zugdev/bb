@@ -16,7 +16,7 @@ export default async function muonCopyPlugin(bb: BbPluginApi): Promise<void> {
       type: "string",
       label: "Muon root",
       description:
-        "Folder that holds tasks/<id>/instruction.md and state/<id>/survey.md.",
+        "Folder that holds tasks/<id>/instruction.md, state/<id>/survey.md and state/<id>/review-response.md.",
       default: DEFAULT_MUON_ROOT,
     },
   });
