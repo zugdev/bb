@@ -6,6 +6,9 @@ import type { ProviderUsage, UsageProvider } from "./usage-schema.js";
 
 installTestPluginRuntime();
 
+const NOW = Date.parse("2026-11-06T12:00:00Z");
+const DAY = 86_400_000;
+
 function provider(providerId: string, usage: ProviderUsage): UsageProvider {
   return {
     id: `source:${providerId}`,
@@ -52,6 +55,7 @@ describe("weeklyReadings", () => {
         provider("opencode", windows(1, 50)),
         provider("claude-code", windows(80, 42)),
       ]),
+      NOW,
     );
     expect(
       readings.map((reading) => [reading.provider.providerId, reading.usedPercent]),
@@ -67,6 +71,7 @@ describe("weeklyReadings", () => {
         provider("claude-code", { status: "unauthenticated" }),
         provider("codex", windows(5, 17)),
       ]),
+      NOW,
     );
     expect(readings.map((reading) => reading.provider.providerId)).toEqual([
       "codex",
@@ -83,12 +88,42 @@ describe("UsageReadout", () => {
             provider("claude-code", windows(80, 42)),
             provider("codex", windows(5, 17.4)),
           ]),
+          NOW,
         )}
       />,
     );
     expect(html).toContain("42%");
     expect(html).toContain("17%");
     expect(html).not.toContain("80%");
+    expect(html).not.toContain("(");
+  });
+
+  it("adds the usage expected at reset in parentheses", () => {
+    const html = renderToStaticMarkup(
+      <UsageReadout
+        readings={weeklyReadings(
+          machine([
+            provider("claude-code", {
+              status: "ok",
+              accountEmail: null,
+              planLabel: null,
+              windows: [
+                {
+                  label: "Weekly limit",
+                  usedPercent: 60,
+                  resetsAt: new Date(NOW + 3.5 * DAY).toISOString(),
+                  cost: null,
+                },
+              ],
+            }),
+          ]),
+          NOW,
+        )}
+      />,
+    );
+    expect(html).toContain("60%");
+    expect(html).toContain("(120%)");
+    expect(html).toContain("text-destructive");
   });
 
   it("falls back to the usage icon when nothing is signed in", () => {

@@ -61,6 +61,7 @@ function threadOnMachine(
     updatedAt: 1,
     lastReadAt: 1,
     latestAttentionAt: 1,
+    experimental_lastUserMessageAt: null,
   };
 }
 
@@ -411,7 +412,7 @@ describe("provider usage footer disclosure", () => {
     expect(slot.getAllByText("team@example.com")).toHaveLength(1);
     expect(slot.getAllByText("personal@example.com")).toHaveLength(1);
     expect(slot.getByText("46%")).toBeTruthy();
-    expect(slot.getByText("2d 3h")).toBeTruthy();
+    expect(slot.getByText("(118%)")).toBeTruthy();
     expect(
       slot.getAllByRole("heading").map((heading) => heading.textContent),
     ).toEqual(["team@example.com", "personal@example.com"]);

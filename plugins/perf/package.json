@@ -15,7 +15,6 @@
       "icon": "ChartColumn"
     },
     "server": "./server.ts",
-    "app": "./app.tsx",
     "skills": [
       "skills"
     ]
