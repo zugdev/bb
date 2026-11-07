@@ -68,12 +68,14 @@ export function UsageReadout({ readings }: { readings: WeeklyReading[] }) {
             className="size-3.5 shrink-0"
             aria-hidden="true"
           />
-          {Math.round(usedPercent)}%
-          {projectedPercent === null ? null : (
-            <span className={projectedToneClass(projectedPercent)}>
-              ({Math.round(projectedPercent)}%)
-            </span>
-          )}
+          <span className="flex flex-col items-start leading-none">
+            <span>{Math.round(usedPercent)}%</span>
+            {projectedPercent === null ? null : (
+              <span className={projectedToneClass(projectedPercent)}>
+                ({Math.round(projectedPercent)}%)
+              </span>
+            )}
+          </span>
         </span>
       ))}
     </span>
