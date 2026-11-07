@@ -68,6 +68,7 @@ function Stage({ initialProject }: { initialProject: string | null }) {
         order={{ sort, setSort, isOldestFirst, setIsOldestFirst }}
         filter={filter}
         setFilter={setFilter}
+        showArchived={false}
         pullRequests={[
           {
             number: 128,

@@ -251,7 +251,7 @@ export function sortAndFilterHomeThreads(
 ): PluginSidebarThread[] {
   const needle = query.trim().toLowerCase();
   const direction = isOldestFirst ? -1 : 1;
-  return homeTopLevelThreads(threads)
+  return threads
     .filter(
       (thread) =>
         needle.length === 0 ||
