@@ -10,8 +10,10 @@ export const openPullRequestSchema = z
     title: z.string(),
     headRefName: z.string().min(1),
     isDraft: z.boolean(),
+    checks: z.enum(["passing", "running", "failing", "none"]),
   })
   .strict();
+export type PullRequestChecks = z.infer<typeof openPullRequestSchema>["checks"];
 export type OpenPullRequest = z.infer<typeof openPullRequestSchema>;
 
 const projectPullRequestSchema = openPullRequestSchema

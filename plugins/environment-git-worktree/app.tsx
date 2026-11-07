@@ -429,19 +429,15 @@ function WorktreeInputsControl({
                       <BranchPickerRow
                         key={pr.number}
                         value={pullRequestRowValue(pr.number)}
-                        icon="GitPullRequest"
+                        icon={
+                          pr.isDraft ? "GitPullRequestDraft" : "GitPullRequest"
+                        }
                         selected={false}
-                        title={`#${pr.number} ${pr.title} (${pr.headRefName})`}
+                        title={`#${pr.number} ${pr.title}${pr.isDraft ? " (draft)" : ""}`}
                         onSelect={() => selectPullRequest(pr)}
                       >
-                        <span className="flex min-w-0 flex-1 flex-col">
-                          <span className="min-w-0 truncate">
-                            #{pr.number} {pr.title}
-                          </span>
-                          <span className="min-w-0 truncate text-xs text-muted-foreground">
-                            {pr.headRefName}
-                            {pr.isDraft ? " · draft" : ""}
-                          </span>
+                        <span className="min-w-0 flex-1 truncate">
+                          #{pr.number} {pr.title}
                         </span>
                       </BranchPickerRow>
                     ))}
