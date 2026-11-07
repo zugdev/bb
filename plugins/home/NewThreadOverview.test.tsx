@@ -264,6 +264,8 @@ describe("NewThreadOverview", () => {
       headRefName: "overview",
       isDraft: false,
       checks: "failing" as const,
+      review: "pending" as const,
+      url: "https://github.com/o/r/pull/1",
       worktreePath: null,
     };
     const onSelectPullRequest = vi.fn();
@@ -273,6 +275,10 @@ describe("NewThreadOverview", () => {
       onSelectPullRequest,
     });
     expect(screen.getByRole("img", { name: "Checks failed" })).toBeTruthy();
+    expect(screen.getByRole("img", { name: "Awaiting review" })).toBeTruthy();
+    expect(
+      screen.getByRole("link", { name: "Open #42 on GitHub" }).getAttribute("href"),
+    ).toBe("https://github.com/o/r/pull/1");
     fireEvent.click(screen.getByRole("button", { name: /Ship the overview/u }));
     expect(onSelectPullRequest).toHaveBeenCalledWith(pr);
     cleanup();

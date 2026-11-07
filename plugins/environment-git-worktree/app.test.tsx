@@ -45,6 +45,8 @@ const PULL_REQUESTS: JsonValue[] = [
     headRefName: "feature",
     isDraft: false,
     checks: "passing",
+    review: "pending" as const,
+    url: "https://github.com/o/r/pull/1",
     worktreePath: "/code/app-feature",
   },
   {
@@ -53,6 +55,8 @@ const PULL_REQUESTS: JsonValue[] = [
     headRefName: "fresh",
     isDraft: true,
     checks: "running",
+    review: "pending" as const,
+    url: "https://github.com/o/r/pull/1",
     worktreePath: null,
   },
 ];
