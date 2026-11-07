@@ -18,6 +18,7 @@ type CopyState =
 const LABELS: Record<FileKind, string> = {
   instruction: "Copy instruction",
   survey: "Copy survey answer",
+  review: "Copy review response",
 };
 
 async function writeClipboard(text: Promise<string>): Promise<void> {
@@ -76,6 +77,22 @@ function CopyButton({ task, file }: { task: string; file: FileKind }) {
   );
 }
 
+function ReviewButton({ task }: { task: string }) {
+  const rpc = useRpc<typeof muonCopyRpcContract>();
+  const [exists, setExists] = useState(false);
+  useEffect(() => {
+    let live = true;
+    rpc.call("read", { task, file: "review" }).then(
+      (result) => live && setExists(result.kind === "ok"),
+      () => live && setExists(false),
+    );
+    return () => {
+      live = false;
+    };
+  }, [rpc, task]);
+  return exists ? <CopyButton task={task} file="review" /> : null;
+}
+
 function MuonCopyFence({ code, status, Original }: ExperimentalCodeFenceRendererProps) {
   if (status !== "closed") return <Original />;
   let parsed: unknown;
@@ -106,6 +123,7 @@ function MuonCopyFence({ code, status, Original }: ExperimentalCodeFenceRenderer
       </span>
       <CopyButton task={block.data.task} file="instruction" />
       <CopyButton task={block.data.task} file="survey" />
+      <ReviewButton task={block.data.task} />
     </section>
   );
 }

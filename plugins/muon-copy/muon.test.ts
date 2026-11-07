@@ -6,12 +6,15 @@ import { blockSchema } from "./block";
 import { muonFilePath, readMuonFile } from "./muon";
 
 describe("muon paths", () => {
-  it("builds both paths under the root", () => {
+  it("builds all three paths under the root", () => {
     expect(muonFilePath("/m", "a_b.1-c", "instruction")).toBe(
       "/m/tasks/a_b.1-c/instruction.md",
     );
     expect(muonFilePath("/m", "a_b.1-c", "survey")).toBe(
       "/m/state/a_b.1-c/survey.md",
+    );
+    expect(muonFilePath("/m", "a_b.1-c", "review")).toBe(
+      "/m/state/a_b.1-c/review-response.md",
     );
   });
 
@@ -41,6 +44,12 @@ describe("muon paths", () => {
     expect(await readMuonFile(root, "t1", "survey")).toEqual({
       kind: "missing",
       path: join(root, "state", "t1", "survey.md"),
+    });
+    await mkdir(join(root, "state", "t1"), { recursive: true });
+    await writeFile(join(root, "state", "t1", "review-response.md"), "reply");
+    expect(await readMuonFile(root, "t1", "review")).toEqual({
+      kind: "ok",
+      text: "reply",
     });
   });
 });
