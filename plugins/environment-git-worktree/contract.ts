@@ -7,6 +7,7 @@ export {
   openPullRequestSchema,
   type OpenPullRequest,
   type PullRequestChecks,
+  type PullRequestReview,
 } from "./pull-requests-contract.js";
 
 export const worktreeBaseBranchSchema = z.discriminatedUnion("kind", [

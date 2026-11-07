@@ -76,6 +76,8 @@ function Stage({ initialProject }: { initialProject: string | null }) {
             headRefName: "home-open-prs",
             isDraft: false,
             checks: "passing",
+            review: "pending" as const,
+            url: "https://github.com/o/r/pull/1",
             worktreePath: null,
           },
           {
@@ -84,6 +86,8 @@ function Stage({ initialProject }: { initialProject: string | null }) {
             headRefName: "split-pane-tabs",
             isDraft: true,
             checks: "running",
+            review: "pending" as const,
+            url: "https://github.com/o/r/pull/1",
             worktreePath: "/code/bb-split",
           },
         ]}

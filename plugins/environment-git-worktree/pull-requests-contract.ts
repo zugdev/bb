@@ -11,9 +11,12 @@ export const openPullRequestSchema = z
     headRefName: z.string().min(1),
     isDraft: z.boolean(),
     checks: z.enum(["passing", "running", "failing", "none"]),
+    review: z.enum(["approved", "changes-requested", "pending"]),
+    url: z.string().url(),
   })
   .strict();
 export type PullRequestChecks = z.infer<typeof openPullRequestSchema>["checks"];
+export type PullRequestReview = z.infer<typeof openPullRequestSchema>["review"];
 export type OpenPullRequest = z.infer<typeof openPullRequestSchema>;
 
 const projectPullRequestSchema = openPullRequestSchema

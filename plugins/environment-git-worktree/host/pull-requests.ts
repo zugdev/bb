@@ -1,7 +1,11 @@
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { z } from "zod";
-import type { OpenPullRequest, PullRequestChecks } from "../contract.js";
+import type {
+  OpenPullRequest,
+  PullRequestChecks,
+  PullRequestReview,
+} from "../contract.js";
 
 const execFileAsync = promisify(execFile);
 const GH_TIMEOUT_MS = 15_000;
@@ -13,6 +17,8 @@ const ghPullRequestListSchema = z.array(
     headRefName: z.string().min(1),
     isDraft: z.boolean(),
     isCrossRepository: z.boolean(),
+    url: z.string().url(),
+    reviewDecision: z.string().nullish(),
     statusCheckRollup: z
       .array(
         z.object({
@@ -35,6 +41,12 @@ const FAILED = new Set([
 ]);
 const RUNNING = new Set(["PENDING", "EXPECTED"]);
 
+export function summarizeReview(decision: string | null): PullRequestReview {
+  if (decision === "APPROVED") return "approved";
+  if (decision === "CHANGES_REQUESTED") return "changes-requested";
+  return "pending";
+}
+
 export function summarizeChecks(
   rollup: ReadonlyArray<{
     status?: string;
@@ -56,12 +68,14 @@ export function parseOpenPullRequests(stdout: string): OpenPullRequest[] {
   return ghPullRequestListSchema
     .parse(JSON.parse(stdout))
     .filter((pr) => !pr.isCrossRepository)
-    .map(({ number, title, headRefName, isDraft, statusCheckRollup }) => ({
-      number,
-      title,
-      headRefName,
-      isDraft,
-      checks: summarizeChecks(statusCheckRollup ?? null),
+    .map((pr) => ({
+      number: pr.number,
+      title: pr.title,
+      headRefName: pr.headRefName,
+      isDraft: pr.isDraft,
+      checks: summarizeChecks(pr.statusCheckRollup ?? null),
+      review: summarizeReview(pr.reviewDecision ?? null),
+      url: pr.url,
     }));
 }
 
@@ -80,7 +94,7 @@ export async function listOpenPullRequests(
       "--limit",
       "50",
       "--json",
-      "number,title,headRefName,isDraft,isCrossRepository,statusCheckRollup",
+      "number,title,headRefName,isDraft,isCrossRepository,url,reviewDecision,statusCheckRollup",
     ],
     { cwd: sourcePath, timeout: GH_TIMEOUT_MS },
   );
