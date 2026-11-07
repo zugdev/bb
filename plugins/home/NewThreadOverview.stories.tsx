@@ -74,6 +74,7 @@ function Stage({ initialProject }: { initialProject: string | null }) {
             title: "Show open pull requests on New thread",
             headRefName: "home-open-prs",
             isDraft: false,
+            checks: "passing",
             worktreePath: null,
           },
           {
@@ -81,6 +82,7 @@ function Stage({ initialProject }: { initialProject: string | null }) {
             title: "Draft: split pane tabs",
             headRefName: "split-pane-tabs",
             isDraft: true,
+            checks: "running",
             worktreePath: "/code/bb-split",
           },
         ]}

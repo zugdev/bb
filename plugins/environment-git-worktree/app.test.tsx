@@ -44,6 +44,7 @@ const PULL_REQUESTS: JsonValue[] = [
     title: "Ship feature",
     headRefName: "feature",
     isDraft: false,
+    checks: "passing",
     worktreePath: "/code/app-feature",
   },
   {
@@ -51,6 +52,7 @@ const PULL_REQUESTS: JsonValue[] = [
     title: "Fresh work",
     headRefName: "fresh",
     isDraft: true,
+    checks: "running",
     worktreePath: null,
   },
 ];

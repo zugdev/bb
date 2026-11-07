@@ -3,7 +3,11 @@ import { z } from "zod";
 import { environmentHostProgressSchema } from "bb-environment-provider-host/progress";
 import { openPullRequestSchema } from "./pull-requests-contract.js";
 
-export { openPullRequestSchema, type OpenPullRequest } from "./pull-requests-contract.js";
+export {
+  openPullRequestSchema,
+  type OpenPullRequest,
+  type PullRequestChecks,
+} from "./pull-requests-contract.js";
 
 export const worktreeBaseBranchSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("named"), name: z.string().min(1) }).strict(),

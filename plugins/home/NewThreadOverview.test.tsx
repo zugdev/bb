@@ -247,6 +247,7 @@ describe("NewThreadOverview", () => {
       title: "Ship the overview",
       headRefName: "overview",
       isDraft: false,
+      checks: "failing" as const,
       worktreePath: null,
     };
     const onSelectPullRequest = vi.fn();
@@ -255,6 +256,7 @@ describe("NewThreadOverview", () => {
       pullRequests: [pr],
       onSelectPullRequest,
     });
+    expect(screen.getByRole("img", { name: "Checks failed" })).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: /Ship the overview/u }));
     expect(onSelectPullRequest).toHaveBeenCalledWith(pr);
     cleanup();
