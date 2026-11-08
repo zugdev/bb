@@ -70,7 +70,7 @@ import {
   renameSplitTabAtom,
   reopenClosedSplitItemAtom,
   selectSplitTabAtom,
-  sharedThreadProjectId,
+  tabProjectId,
   splitTabsAtom,
   type SplitTab,
 } from "@/lib/split-layout/tabs";
@@ -98,17 +98,19 @@ function PaneTitle({ content }: { content: PaneContent }) {
   return <>{usePaneTitle(content)}</>;
 }
 
-function useSplitTabTitle(layout: SplitLayout | null, name: string | null) {
+function useSplitTabTitle(
+  layout: SplitLayout | null,
+  name: string | null,
+  projectId: string | null,
+) {
   const focused =
     layout === null ? null : findPane(layout.root, layout.focusedPaneId);
   const focusedTitle = usePaneTitle(focused?.content ?? null);
-  const projectName = useProjectDisplayName(
-    sharedThreadProjectId(layout) ?? undefined,
-  );
-  if (name !== null) return { title: name, isProjectName: false };
+  const projectName = useProjectDisplayName(projectId ?? undefined);
   if (projectName !== undefined) {
     return { title: projectName, isProjectName: true };
   }
+  if (name !== null) return { title: name, isProjectName: false };
   return { title: focusedTitle, isProjectName: false };
 }
 
@@ -396,10 +398,13 @@ function SplitTabItem({
   onCloseRight: () => void;
 }) {
   const isFocus = tab.kind === "focus";
+  const projectId = tabProjectId(tab, layout);
   const { title, isProjectName } = useSplitTabTitle(
     layout,
     tab.name ?? (isFocus ? "Focus" : null),
+    projectId,
   );
+  const canRename = projectId === null;
   const dot = useSplitTabDot(layout);
   const focusQueueLength = useFocusQueueLength();
   const extraPanes = layout === null ? 0 : countPanes(layout.root) - 1;
@@ -424,7 +429,7 @@ function SplitTabItem({
               onSelect={(event) => {
                 if (!isRenaming) onSelect(event);
               }}
-              onDoubleClick={onRename}
+              onDoubleClick={canRename ? onRename : undefined}
             >
               {isRenaming ? (
                 <div
@@ -471,7 +476,9 @@ function SplitTabItem({
         )}
       </Tooltip>
       <ContextMenuContent aria-label={`${title} tab actions`}>
-        <ContextMenuItem onSelect={onRename}>Rename tab</ContextMenuItem>
+        {canRename ? (
+          <ContextMenuItem onSelect={onRename}>Rename tab</ContextMenuItem>
+        ) : null}
         <ContextMenuItem onSelect={onClose}>Close tab</ContextMenuItem>
         <ContextMenuSeparator />
         <ContextMenuItem disabled={!hasOtherTabs} onSelect={onCloseOthers}>

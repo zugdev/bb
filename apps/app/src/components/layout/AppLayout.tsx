@@ -131,6 +131,7 @@ import { isIOSWebKit } from "@/lib/ios-webkit";
 import { wsManager } from "@/lib/ws";
 import { splitLayoutAtom } from "@/lib/split-layout/atoms";
 import { findPaneByThread } from "@/lib/split-layout";
+import { activeTabAcceptsContent } from "@/lib/split-layout/tabs";
 import {
   applyThreadOpenToLayout,
   paneContentForPathname,
@@ -527,6 +528,14 @@ function AppLayoutContent({ children }: AppLayoutProps) {
           threadId: signal.threadId,
         });
         const current = store.get(splitLayoutAtom);
+        const thread = {
+          projectId: signal.projectId,
+          threadId: signal.threadId,
+        };
+        if (!activeTabAcceptsContent(store, { kind: "thread", ...thread })) {
+          void navigate(route);
+          return;
+        }
         const alreadyOpen =
           current !== null &&
           findPaneByThread(current.root, signal.projectId, signal.threadId) !==

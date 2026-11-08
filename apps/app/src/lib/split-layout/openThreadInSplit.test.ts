@@ -1,4 +1,6 @@
+import { createStore } from "jotai";
 import { describe, expect, it, vi } from "vitest";
+import { splitLayoutAtom } from "./atoms";
 import { openThreadInSplit } from "./openThreadInSplit";
 import { countPanes, findPaneByThread, type SplitLayout } from "./index";
 
@@ -33,17 +35,24 @@ function eightPanes(): SplitLayout {
   };
 }
 
+function storeWith(initial: SplitLayout) {
+  const store = createStore();
+  store.set(splitLayoutAtom, initial);
+  return store;
+}
+
+function currentLayout(store: ReturnType<typeof createStore>): SplitLayout {
+  const current = store.get(splitLayoutAtom);
+  if (current === null) throw new Error("expected a split layout");
+  return current;
+}
+
 describe("openThreadInSplit", () => {
   it("preserves search deep-link state when creating a split", () => {
-    let current = layout();
+    const store = storeWith(layout());
     const navigate = vi.fn();
     openThreadInSplit({
-      store: {
-        get: () => current,
-        set: (_atom, value) => {
-          current = value;
-        },
-      },
+      store,
       navigate,
       projectId: "project-1",
       threadId: "thread-2",
@@ -51,7 +60,7 @@ describe("openThreadInSplit", () => {
       state: { searchMessageSeq: 42, searchThreadId: "thread-2" },
     });
 
-    expect(current.root.type).toBe("split");
+    expect(currentLayout(store).root.type).toBe("split");
     expect(navigate).toHaveBeenCalledWith(
       "/projects/project-1/threads/thread-2",
       {
@@ -61,10 +70,10 @@ describe("openThreadInSplit", () => {
   });
 
   it("keeps replace semantics and state when the result is already open", () => {
-    const current = layout("thread-2");
+    const store = storeWith(layout("thread-2"));
     const navigate = vi.fn();
     openThreadInSplit({
-      store: { get: () => current, set: vi.fn() },
+      store,
       navigate,
       projectId: "project-1",
       threadId: "thread-2",
@@ -82,21 +91,17 @@ describe("openThreadInSplit", () => {
   });
 
   it("coerces to a replace of the focused pane at the eight-pane cap", () => {
-    let current = eightPanes();
+    const store = storeWith(eightPanes());
     const navigate = vi.fn();
     openThreadInSplit({
-      store: {
-        get: () => current,
-        set: (_atom, value) => {
-          current = value;
-        },
-      },
+      store,
       navigate,
       projectId: "project-1",
       threadId: "thread-9",
       isCompact: false,
     });
 
+    const current = currentLayout(store);
     expect(countPanes(current.root)).toBe(8);
     expect(
       findPaneByThread(current.root, "project-1", "thread-9")?.paneId,
@@ -108,21 +113,26 @@ describe("openThreadInSplit", () => {
     );
   });
 
-  it("plain-navigates without touching the layout on compact viewports", () => {
-    const set = vi.fn();
-    const navigate = vi.fn();
-    openThreadInSplit({
-      store: { get: () => layout(), set },
-      navigate,
-      projectId: "project-1",
-      threadId: "thread-9",
-      isCompact: true,
-    });
+  it("plain-navigates without touching the layout on compact viewports or for another project's thread", () => {
+    for (const [projectId, isCompact] of [
+      ["project-1", true],
+      ["project-2", false],
+    ] as const) {
+      const store = storeWith(layout());
+      const navigate = vi.fn();
+      openThreadInSplit({
+        store,
+        navigate,
+        projectId,
+        threadId: "thread-9",
+        isCompact,
+      });
 
-    expect(set).not.toHaveBeenCalled();
-    expect(navigate).toHaveBeenCalledWith(
-      "/projects/project-1/threads/thread-9",
-      undefined,
-    );
+      expect(store.get(splitLayoutAtom)).toEqual(layout());
+      expect(navigate).toHaveBeenCalledWith(
+        `/projects/${projectId}/threads/thread-9`,
+        undefined,
+      );
+    }
   });
 });

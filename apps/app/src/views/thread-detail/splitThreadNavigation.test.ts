@@ -15,6 +15,7 @@ import {
   createSinglePaneLayout,
   focusedPaneRoute,
   placeThreadBesideSplit,
+  placeThreadInProjectTab,
   reconcileLayoutForContent,
 } from "./splitThreadNavigation";
 
@@ -298,7 +299,7 @@ describe("placeThreadBesideSplit", () => {
     });
   });
 
-  it("reuses the first single pane tab instead of adding another", () => {
+  it("reuses the first single pane tab of the same project instead of adding another", () => {
     const split = twoPaneLayout();
     const browse = createSinglePaneLayout({
       projectId: "p2",
@@ -312,13 +313,13 @@ describe("placeThreadBesideSplit", () => {
     );
 
     expect(result?.state.tabs).toHaveLength(4);
-    expect(result?.state.activeTabId).toBe("tab-3");
+    expect(result?.state.activeTabId).toBe("tab-4");
     expect(result?.state.tabs[0]?.layout).toBe(split);
-    expect(result?.state.tabs[2]).toMatchObject({
+    expect(result?.state.tabs[2]?.layout).toBe(browse);
+    expect(result?.state.tabs[3]).toMatchObject({
       layout: createSinglePaneLayout(picked),
       projectId: "p1",
     });
-    expect(result?.state.tabs[3]?.layout).toBeNull();
   });
 });
 
@@ -365,5 +366,62 @@ describe("thread panel tab panes", () => {
       ...diffPane,
       tabId: "terminal-1",
     });
+  });
+});
+
+describe("placeThreadInProjectTab", () => {
+  const p1Layout = createSinglePaneLayout({ projectId: "p1", threadId: "a" });
+  const p2Layout = createSinglePaneLayout({ projectId: "p2", threadId: "b" });
+  const picked = { projectId: "p2", threadId: "c" };
+
+  function tabs(...layouts: SplitLayout[]): SplitTabsState {
+    return {
+      tabs: layouts.map((layout, index) => ({
+        id: `tab-${index + 1}`,
+        layout,
+        projectId: null,
+        name: null,
+      })),
+      activeTabId: "tab-1",
+    };
+  }
+
+  it("leaves a thread from the active tab's project to the usual placement", () => {
+    expect(
+      placeThreadInProjectTab(tabs(p2Layout), p2Layout, picked),
+    ).toBeNull();
+  });
+
+  it("switches to the tab of the thread's project and replaces its focused pane", () => {
+    const placed = placeThreadInProjectTab(
+      tabs(p1Layout, p2Layout),
+      p1Layout,
+      picked,
+    );
+    expect(placed?.state.activeTabId).toBe("tab-2");
+    expect(placed?.layout).toEqual(createSinglePaneLayout(picked));
+    expect(placed?.state.tabs.map((tab) => tab.projectId)).toEqual([
+      "p1",
+      "p2",
+    ]);
+  });
+
+  it("opens a new tab bound to the project when no tab of it has room", () => {
+    const p2Split = splitPane(p2Layout, "pane-1", "right", {
+      kind: "thread",
+      projectId: "p2",
+      threadId: "d",
+    });
+    const placed = placeThreadInProjectTab(
+      tabs(p1Layout, p2Split),
+      p1Layout,
+      picked,
+    );
+    expect(placed?.state.tabs).toHaveLength(3);
+    const active = placed?.state.tabs.find(
+      (tab) => tab.id === placed.state.activeTabId,
+    );
+    expect(active?.projectId).toBe("p2");
+    expect(placed?.layout).toEqual(createSinglePaneLayout(picked));
   });
 });

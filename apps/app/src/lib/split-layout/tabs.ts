@@ -114,14 +114,81 @@ function nextTabId(tabs: readonly SplitTab[]): string {
   return id;
 }
 
+function contentProjectId(content: PaneContent): string | null {
+  return content.kind === "thread" || content.kind === "thread-panel-tab"
+    ? content.projectId
+    : null;
+}
+
+function firstThreadProjectId(layout: SplitLayout | null): string | null {
+  if (layout === null) return null;
+  for (const pane of listPanes(layout.root)) {
+    const projectId = contentProjectId(pane.content);
+    if (projectId !== null) return projectId;
+  }
+  return null;
+}
+
+export function tabProjectId(
+  tab: SplitTab,
+  layout: SplitLayout | null = tab.layout,
+): string | null {
+  if (tab.kind === "focus") return null;
+  return tab.projectId ?? firstThreadProjectId(layout);
+}
+
+export function tabAcceptsContent(
+  tab: SplitTab,
+  layout: SplitLayout | null,
+  content: PaneContent,
+): boolean {
+  const incoming = contentProjectId(content);
+  const bound = tabProjectId(tab, layout);
+  return incoming === null || bound === null || bound === incoming;
+}
+
+export function activeTabAcceptsContent(
+  store: Pick<ReturnType<typeof useStore>, "get">,
+  content: PaneContent,
+): boolean {
+  const state = store.get(splitTabsAtom);
+  const active = state.tabs.find((tab) => tab.id === state.activeTabId);
+  return (
+    active === undefined ||
+    tabAcceptsContent(active, store.get(splitLayoutAtom), content)
+  );
+}
+
 function snapshotActiveTab(
   state: SplitTabsState,
   activeLayout: SplitLayout | null,
 ): SplitTab[] {
   return state.tabs.map((tab) =>
-    tab.id === state.activeTabId ? { ...tab, layout: activeLayout } : tab,
+    tab.id === state.activeTabId
+      ? {
+          ...tab,
+          layout: activeLayout,
+          projectId: tabProjectId(tab, activeLayout),
+        }
+      : tab,
   );
 }
+
+export const bindActiveTabProjectAtom = atom(
+  null,
+  (get, set, projectId: string) => {
+    const state = get(splitTabsAtom);
+    const active = state.tabs.find((tab) => tab.id === state.activeTabId);
+    if (active === undefined || active.kind === "focus") return;
+    if (active.projectId !== null) return;
+    set(splitTabsAtom, {
+      ...state,
+      tabs: state.tabs.map((tab) =>
+        tab.id === active.id ? { ...tab, projectId } : tab,
+      ),
+    });
+  },
+);
 
 export function insertSplitTab(
   state: SplitTabsState,
@@ -416,6 +483,12 @@ export const movePaneToTabAtom = atom(
         ? null
         : state.tabs.find((tab) => tab.id === move.tabId);
     if (target === undefined) return null;
+    if (
+      target !== null &&
+      !tabAcceptsContent(target, target.layout, pane.content)
+    ) {
+      return null;
+    }
     const layout = placeInLayout(target?.layout ?? null, pane.content);
     if (layout === null) return null;
     const projectId =
@@ -468,14 +541,20 @@ export interface CrossTabPaneMove {
   zone: SplitSide | "center";
 }
 
-function crossTabMoveSource(state: SplitTabsState, move: CrossTabPaneMove) {
+function crossTabMoveSource(
+  state: SplitTabsState,
+  activeLayout: SplitLayout | null,
+  move: CrossTabPaneMove,
+) {
   if (move.sourceTabId === state.activeTabId) return null;
   const source = state.tabs.find((tab) => tab.id === move.sourceTabId);
-  if (source?.layout == null) return null;
+  const active = state.tabs.find((tab) => tab.id === state.activeTabId);
+  if (source?.layout == null || active === undefined) return null;
   const pane = findPane(source.layout.root, move.paneId);
-  return pane === null
-    ? null
-    : { layout: source.layout, content: pane.content };
+  if (pane === null || !tabAcceptsContent(active, activeLayout, pane.content)) {
+    return null;
+  }
+  return { layout: source.layout, content: pane.content };
 }
 
 function placeMovedPane(
@@ -500,7 +579,7 @@ export function canMovePaneAcrossTabs(
   activeLayout: SplitLayout | null,
   move: CrossTabPaneMove,
 ): boolean {
-  const source = crossTabMoveSource(state, move);
+  const source = crossTabMoveSource(state, activeLayout, move);
   return (
     source !== null &&
     activeLayout !== null &&
@@ -513,7 +592,7 @@ export const movePaneAcrossTabsAtom = atom(
   (get, set, move: CrossTabPaneMove): SplitLayout | null => {
     const state = get(splitTabsAtom);
     const activeLayout = get(splitLayoutAtom);
-    const source = crossTabMoveSource(state, move);
+    const source = crossTabMoveSource(state, activeLayout, move);
     if (source === null || activeLayout === null) return null;
     const layout = placeMovedPane(activeLayout, move, source.content);
     if (layout === null) return null;
@@ -529,21 +608,6 @@ export const movePaneAcrossTabsAtom = atom(
     );
   },
 );
-
-export function sharedThreadProjectId(
-  layout: SplitLayout | null,
-): string | null {
-  if (layout === null) return null;
-  const panes = listPanes(layout.root);
-  if (panes.length < 2) return null;
-  const projectIds = new Set(
-    panes.map((pane) =>
-      pane.content.kind === "thread" ? pane.content.projectId : null,
-    ),
-  );
-  const [projectId] = projectIds;
-  return projectIds.size === 1 && projectId !== undefined ? projectId : null;
-}
 
 export function renameSplitTab(
   state: SplitTabsState,
