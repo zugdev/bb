@@ -41,3 +41,22 @@ export function appendNotification(
 ): AssistantNotification[] {
   return [notification, ...log].slice(0, NOTIFICATION_LOG_LIMIT);
 }
+
+const relativeDay = new Intl.RelativeTimeFormat(undefined, { numeric: "auto" });
+const timeFormat = new Intl.DateTimeFormat(undefined, { hour: "2-digit", minute: "2-digit" });
+const weekdayFormat = new Intl.DateTimeFormat(undefined, { weekday: "short" });
+const dateFormat = new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric" });
+
+function startOfDay(at: number): number {
+  const date = new Date(at);
+  date.setHours(0, 0, 0, 0);
+  return date.getTime();
+}
+
+export function formatUpcoming(at: number, now: number = Date.now()): string {
+  const days = Math.round((startOfDay(at) - startOfDay(now)) / 86_400_000);
+  const time = timeFormat.format(at);
+  if (days <= 1) return `${relativeDay.format(Math.max(days, 0), "day")} ${time}`;
+  if (days < 7) return `${weekdayFormat.format(at)} ${time}`;
+  return `${dateFormat.format(at)} ${time}`;
+}
