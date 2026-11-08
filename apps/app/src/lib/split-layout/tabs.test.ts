@@ -5,6 +5,8 @@ import { splitLayoutAtom } from "./atoms";
 import { findPane, listPanes, splitPane } from "./ops";
 import { rootComposeProjectIdAtom } from "@/lib/root-compose-selection";
 import {
+  activeTabAcceptsContent,
+  bindActiveTabProjectAtom,
   closeSplitTabAtom,
   focusThreadInOtherTabAtom,
   movePaneAcrossTabsAtom,
@@ -21,8 +23,8 @@ import {
   reopenClosedSplitItemAtom,
   seedSplitComposeProjectAtom,
   selectSplitTabAtom,
-  sharedThreadProjectId,
   splitTabsAtom,
+  tabProjectId,
 } from "./tabs";
 import type { SplitLayout } from "./types";
 
@@ -119,7 +121,7 @@ describe("split tabs", () => {
 
     store.set(openThreadInTabAtom, thread);
     const afterOpen = store.get(splitTabsAtom);
-    expect(afterOpen.tabs.map((tab) => tab.projectId)).toEqual([null, "p1"]);
+    expect(afterOpen.tabs.map((tab) => tab.projectId)).toEqual(["p1", "p1"]);
     store.set(selectSplitTabAtom, afterOpen.tabs[0]!.id);
     store.set(openThreadInTabAtom, thread);
     expect(store.get(splitTabsAtom).tabs).toHaveLength(2);
@@ -404,29 +406,46 @@ describe("split tabs", () => {
   });
 });
 
-describe("sharedThreadProjectId", () => {
-  const withRightPane = (
-    content: Parameters<typeof splitPane>[3],
-  ): SplitLayout => splitPane(threadLayout("a"), "pane-1", "right", content);
+describe("project bound tabs", () => {
+  const p2Thread = { kind: "thread", projectId: "p2", threadId: "x" } as const;
 
-  it("names a tab of two or more threads from one project after it", () => {
-    expect(
-      sharedThreadProjectId(
-        withRightPane({ kind: "thread", projectId: "p1", threadId: "b" }),
-      ),
-    ).toBe("p1");
+  it("binds a tab to the project of its first thread and keeps it after the thread closes", () => {
+    const store = createStore();
+    store.set(splitLayoutAtom, threadLayout("a"));
+    store.set(openSplitTabAtom);
+    const [first] = store.get(splitTabsAtom).tabs;
+    expect(tabProjectId(first!)).toBe("p1");
+
+    store.set(bindActiveTabProjectAtom, "p2");
+    store.set(bindActiveTabProjectAtom, "p1");
+    expect(store.get(splitTabsAtom).tabs[1]?.projectId).toBe("p2");
   });
 
-  it("keeps the thread rule for single panes, mixed projects and non-thread panes", () => {
-    expect(sharedThreadProjectId(null)).toBeNull();
-    expect(sharedThreadProjectId(threadLayout("a"))).toBeNull();
+  it("refuses panes from another project in moves between tabs", () => {
+    const store = createStore();
+    store.set(
+      splitLayoutAtom,
+      splitPane(threadLayout("a"), "pane-1", "right", p2Thread),
+    );
+    const source = store.get(splitTabsAtom).activeTabId;
+    store.set(openThreadInTabAtom, { projectId: "p1", threadId: "c" });
+    const target = store.get(splitTabsAtom).activeTabId;
+
     expect(
-      sharedThreadProjectId(
-        withRightPane({ kind: "thread", projectId: "p2", threadId: "b" }),
-      ),
+      store.set(movePaneAcrossTabsAtom, {
+        sourceTabId: source,
+        paneId: "pane-2",
+        targetPaneId: "pane-1",
+        zone: "left",
+      }),
     ).toBeNull();
+    store.set(selectSplitTabAtom, source);
     expect(
-      sharedThreadProjectId(withRightPane({ kind: "new-thread" })),
+      store.set(movePaneToTabAtom, { paneId: "pane-2", tabId: target }),
     ).toBeNull();
+    expect(activeTabAcceptsContent(store, p2Thread)).toBe(false);
+    expect(
+      activeTabAcceptsContent(store, { ...p2Thread, projectId: "p1" }),
+    ).toBe(true);
   });
 });

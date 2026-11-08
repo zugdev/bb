@@ -17,6 +17,9 @@ import {
   openFocusTabAtom,
   openSplitTabAtom,
   selectSplitTab,
+  tabAcceptsContent,
+  tabProjectId,
+  type SplitTab,
   type SplitTabsState,
 } from "@/lib/split-layout/tabs";
 import { decideThreadDrop, type SplitZone } from "@/lib/split-drag";
@@ -185,10 +188,13 @@ export function placeThreadBesideSplit(
   const focused = findPane(activeLayout.root, activeLayout.focusedPaneId);
   if (focused === null || focused.content.kind === "new-thread") return null;
   const layout = createSinglePaneLayout(thread);
+  const content = threadPaneContent(thread);
   const target = state.tabs.find(
     (tab) =>
       tab.id !== state.activeTabId &&
-      (tab.layout === null || countPanes(tab.layout.root) === 1),
+      tab.kind !== "focus" &&
+      tabAcceptsContent(tab, tab.layout, content) &&
+      hasRoomForThread(tab),
   );
   const next =
     target === undefined
@@ -200,6 +206,50 @@ export function placeThreadBesideSplit(
       ...next,
       tabs: next.tabs.map((tab) =>
         tab.id === next.activeTabId
+          ? { ...tab, layout, projectId: thread.projectId }
+          : tab,
+      ),
+    },
+    layout,
+  };
+}
+
+function hasRoomForThread(tab: SplitTab): boolean {
+  return tab.layout === null || countPanes(tab.layout.root) === 1;
+}
+
+export function placeThreadInProjectTab(
+  state: SplitTabsState,
+  activeLayout: SplitLayout | null,
+  thread: ThreadRoutePathArgs,
+): { state: SplitTabsState; layout: SplitLayout } | null {
+  const active = state.tabs.find((tab) => tab.id === state.activeTabId);
+  const content = threadPaneContent(thread);
+  if (
+    active === undefined ||
+    tabAcceptsContent(active, activeLayout, content)
+  ) {
+    return null;
+  }
+  const target = state.tabs.find(
+    (tab) =>
+      tab.id !== state.activeTabId &&
+      tabProjectId(tab) === thread.projectId &&
+      hasRoomForThread(tab),
+  );
+  if (target === undefined) {
+    const layout = createSinglePaneLayout(thread);
+    const next = insertSplitTab(state, activeLayout, layout, thread.projectId);
+    return next === null ? null : { state: next, layout };
+  }
+  const layout = reconcileLayoutForContent(target.layout, content);
+  const next = selectSplitTab(state, activeLayout, target.id);
+  if (next === null) return null;
+  return {
+    state: {
+      ...next,
+      tabs: next.tabs.map((tab) =>
+        tab.id === target.id
           ? { ...tab, layout, projectId: thread.projectId }
           : tab,
       ),

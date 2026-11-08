@@ -38,6 +38,7 @@ import {
 } from "@/lib/split-layout/atoms";
 import {
   activateSplitTabsAtom,
+  bindActiveTabProjectAtom,
   canMovePaneAcrossTabs,
   closeSplitTabAtom,
   focusThreadInOtherTabAtom,
@@ -124,6 +125,7 @@ import {
   focusedPaneRoute,
   paneContentRoute,
   placeThreadBesideSplit,
+  placeThreadInProjectTab,
   reconcileLayoutForContent,
   replaceOriginPaneContent,
   threadPaneContent,
@@ -322,6 +324,17 @@ function SplitThreadAreaContent({ routeContent }: SplitThreadAreaProps) {
     if (currentContent.kind === "thread") {
       if (store.set(focusThreadInOtherTabAtom, currentContent)) return;
       if (store.set(openOutsideFocusTabAtom, currentContent)) return;
+      const projectTab = splitWorkspaceActive
+        ? placeThreadInProjectTab(
+            store.get(splitTabsAtom),
+            store.get(splitLayoutAtom),
+            currentContent,
+          )
+        : null;
+      if (projectTab !== null) {
+        store.set(activateSplitTabsAtom, projectTab);
+        return;
+      }
       const beside = splitWorkspaceActive
         ? placeThreadBesideSplit(
             store.get(splitTabsAtom),
@@ -333,6 +346,7 @@ function SplitThreadAreaContent({ routeContent }: SplitThreadAreaProps) {
         store.set(activateSplitTabsAtom, beside);
         return;
       }
+      store.set(bindActiveTabProjectAtom, currentContent.projectId);
     }
     setLayout((previous) =>
       reconcileLayoutForContent(previous, currentContent),

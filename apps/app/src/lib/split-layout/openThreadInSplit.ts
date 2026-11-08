@@ -1,6 +1,8 @@
 import { getThreadRoutePath } from "@/lib/route-paths";
 import { decideThreadDrop } from "@/lib/split-drag";
+import type { useStore } from "jotai";
 import { splitLayoutAtom } from "./atoms";
+import { activeTabAcceptsContent } from "./tabs";
 import {
   countPanes,
   findPaneByThread,
@@ -9,16 +11,10 @@ import {
   setFocus,
   splitPane,
   type PaneContent,
-  type SplitLayout,
 } from "./index";
 
-interface SplitLayoutStore {
-  get(atom: typeof splitLayoutAtom): SplitLayout | null;
-  set(atom: typeof splitLayoutAtom, value: SplitLayout): void;
-}
-
 interface OpenThreadInSplitArgs {
-  store: SplitLayoutStore;
+  store: ReturnType<typeof useStore>;
   navigate: (
     route: string,
     options?: { replace?: boolean; state?: Record<string, unknown> },
@@ -39,7 +35,12 @@ export function openThreadInSplit({
 }: OpenThreadInSplitArgs): void {
   const route = getThreadRoutePath({ projectId, threadId });
   const layout = store.get(splitLayoutAtom);
-  if (isCompact || layout === null) {
+  const content: PaneContent = { kind: "thread", projectId, threadId };
+  if (
+    isCompact ||
+    layout === null ||
+    !activeTabAcceptsContent(store, content)
+  ) {
     navigate(route, state === undefined ? undefined : { state });
     return;
   }
@@ -60,7 +61,6 @@ export function openThreadInSplit({
     threadAlreadyOpen: false,
     atMaxPanes: countPanes(layout.root) >= MAX_PANES,
   });
-  const content: PaneContent = { kind: "thread", projectId, threadId };
   const next =
     decision.zone === "center"
       ? replacePaneContent(layout, layout.focusedPaneId, content)
