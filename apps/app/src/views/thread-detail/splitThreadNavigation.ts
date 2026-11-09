@@ -14,7 +14,7 @@ import {
 import type { useStore } from "jotai";
 import {
   insertSplitTab,
-  openFocusTabAtom,
+  openInboxTabAtom,
   openSplitTabAtom,
   selectSplitTab,
   tabAcceptsContent,
@@ -192,7 +192,7 @@ export function placeThreadBesideSplit(
   const target = state.tabs.find(
     (tab) =>
       tab.id !== state.activeTabId &&
-      tab.kind !== "focus" &&
+      tab.kind !== "inbox" &&
       tabAcceptsContent(tab, tab.layout, content) &&
       hasRoomForThread(tab),
   );
@@ -284,11 +284,11 @@ export function openComposeTab(
   if (route !== null) navigate(route, { replace: true });
 }
 
-export function openFocusTab(
+export function openInboxTab(
   store: ReturnType<typeof useStore>,
   navigate: (route: string, options: { replace: true }) => void,
 ): void {
-  const layout = store.set(openFocusTabAtom);
+  const layout = store.set(openInboxTabAtom);
   const route = layout === null ? null : focusedPaneRoute(layout);
   if (route !== null) navigate(route, { replace: true });
 }

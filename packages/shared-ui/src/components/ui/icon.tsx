@@ -37,6 +37,8 @@ import FolderSyncIcon from "@hugeicons/core-free-icons/FolderSyncIcon";
 import FolderUnknownIcon from "@hugeicons/core-free-icons/FolderUnknownIcon";
 import HelpCircleIcon from "@hugeicons/core-free-icons/HelpCircleIcon";
 import Home07Icon from "@hugeicons/core-free-icons/Home07Icon";
+import AlarmClockIcon from "@hugeicons/core-free-icons/AlarmClockIcon";
+import InboxIcon from "@hugeicons/core-free-icons/InboxIcon";
 import InformationCircleIcon from "@hugeicons/core-free-icons/InformationCircleIcon";
 import Loading03Icon from "@hugeicons/core-free-icons/Loading03Icon";
 import MessageQuestionIcon from "@hugeicons/core-free-icons/MessageQuestionIcon";
@@ -157,6 +159,7 @@ const SectionMoveStrokeRoundedIcon: IconSvgElement = [
 const CORE_ICON_MAP = {
   AlertCircle: AlertCircleIcon,
   AlertTriangle: Alert02Icon,
+  AlarmClock: AlarmClockIcon,
   Archive: Archive03Icon,
   Bot: BotIcon,
   Bug: Bug01Icon,
@@ -190,6 +193,7 @@ const CORE_ICON_MAP = {
   Loading: Loading03Icon,
   MessageQuestion: MessageQuestionIcon,
   MessageCirclePlus: BubbleChatAddIcon,
+  Inbox: InboxIcon,
   MessageSquarePlus: BubbleChatAddIcon,
   MessageSquare: BubbleChatIcon,
   MoreHorizontal: MoreHorizontalIcon,

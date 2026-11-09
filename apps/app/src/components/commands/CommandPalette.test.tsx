@@ -300,6 +300,7 @@ function makeThread(
     parentNotifications: "auto",
     archivedAt: null,
     pinnedAt: null,
+    snoozedUntil: null,
     pinSortKey: null,
     deletedAt: null,
     lastReadAt: null,
@@ -1794,7 +1795,12 @@ describe("CommandPalette", () => {
       for (const [title, label, icon, iconSize] of [
         ["Title working", "Thread working", "Loading", "size-3.5"],
         ["Title draft", "Thread has unsubmitted draft", "Edit", "size-2"],
-        ["Title waiting", "Thread needs user input", "CircleQuestion", "size-3.5"],
+        [
+          "Title waiting",
+          "Thread needs user input",
+          "CircleQuestion",
+          "size-3.5",
+        ],
         ["Title workflow", "Workflow running", "Workflow", "size-3.5"],
       ]) {
         const row = within(results).getByRole("option", {
@@ -1814,10 +1820,7 @@ describe("CommandPalette", () => {
         expect(separator?.getAttribute("aria-hidden")).toBe("true");
         expect(separator?.nextElementSibling).toBe(status);
         expectClasses(status, "size-3.5", "shrink-0", "cursor-default");
-        expectClasses(
-          status.querySelector(`[data-icon="${icon}"]`),
-          iconSize,
-        );
+        expectClasses(status.querySelector(`[data-icon="${icon}"]`), iconSize);
         expect(status.hasAttribute("tabindex")).toBe(false);
         expect(status.closest('button, [role="button"]')).toBeNull();
         expect(

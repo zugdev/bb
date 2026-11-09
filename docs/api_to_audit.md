@@ -1295,6 +1295,15 @@ Docs: `backend-sdk.md`, `bb guide thread-messaging`.
 2. **Result shape.** The call returns the updated thread; decide whether callers
    need the generating service or a preview that does not apply the title.
 
+## `bb.sdk.threads.experimental_snooze`
+
+`POST /threads/:id/snooze` with `{ until }` sets `threads.snoozed_until` to a millisecond timestamp, or clears it with `null`. The Inbox hides a snoozed thread until that time and lists it again as a new arrival. The server clears the snooze when a status change gives the thread new attention, and a pending question or approval always shows in the Inbox even while snoozed. Core callers: the Snooze thread action (thread menu, row actions, the Inbox header bar) and `bb thread snooze` / `bb thread unsnooze`.
+
+**Audit before stabilizing.**
+
+1. **Wake rules.** Only status changes that set `latestAttentionAt` clear a snooze; decide whether new child thread activity or plugin signals should too.
+2. **Argument shape.** `until` is an absolute timestamp; decide whether callers also want relative durations or a "until the agent finishes" mode.
+
 ## `PluginSettingDescriptor.experimental_optionLabels`
 
 A `type: "select"` descriptor record from option value to display label,

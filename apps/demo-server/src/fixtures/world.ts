@@ -59,6 +59,7 @@ export function threadListEntry(
     parentNotifications: "auto",
     archivedAt: null,
     pinnedAt: null,
+    snoozedUntil: null,
     deletedAt: null,
     lastReadAt: now,
     latestAttentionAt: updatedAt,

@@ -646,6 +646,7 @@ export const threads = sqliteTable(
     archivedAt: integer("archived_at"),
     pinnedAt: integer("pinned_at"),
     pinSortKey: text("pin_sort_key"),
+    snoozedUntil: integer("snoozed_until"),
     deletedAt: integer("deleted_at"),
     storageDeletedAt: integer("storage_deleted_at"),
     lastReadAt: integer("last_read_at"),

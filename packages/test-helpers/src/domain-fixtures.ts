@@ -145,6 +145,7 @@ export function makeThread(overrides: Partial<Thread> = {}): Thread {
     parentNotifications: "auto",
     archivedAt: null,
     pinnedAt: null,
+    snoozedUntil: null,
     deletedAt: null,
     lastReadAt: 100,
     latestAttentionAt: 100,

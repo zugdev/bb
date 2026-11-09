@@ -23,6 +23,7 @@ export const THREAD_CHANGE_KINDS = [
   "queue-changed",
   "archived-changed",
   "pin-state-changed",
+  "snooze-changed",
   "parent-changed",
   "environment-changed",
   "read-state-changed",

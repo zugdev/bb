@@ -10,6 +10,7 @@ import {
   reorderQueuedThreadMessage,
   setQueuedThreadMessageGroupBoundary,
   unarchiveThread,
+  snoozeThread,
   unpinThread,
   updateQueuedThreadMessage,
   updateThread,
@@ -566,6 +567,18 @@ export function registerThreadActionRoutes(app: Hono, deps: AppDeps): void {
     const publicThread = requirePublicThread(deps.db, context.req.param("id"));
     const thread = unpinThread(deps.db, deps.hub, {
       threadId: publicThread.id,
+    });
+    if (!thread) {
+      throw new ApiError(404, "thread_not_found", "Thread not found");
+    }
+    return context.json(toThreadResponseFromThread(deps, { thread }));
+  });
+
+  post(routes.snooze, (context, payload) => {
+    const publicThread = requirePublicThread(deps.db, context.req.param("id"));
+    const thread = snoozeThread(deps.db, deps.hub, {
+      threadId: publicThread.id,
+      until: payload.until,
     });
     if (!thread) {
       throw new ApiError(404, "thread_not_found", "Thread not found");

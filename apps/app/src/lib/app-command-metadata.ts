@@ -237,9 +237,9 @@ export const APP_COMMAND_GROUPS: readonly AppCommandGroup[] = [
         "Pick a project and open a tab for it. The sidebar shows only that project's threads while the tab is active.",
       ),
       command(
-        "splitTab.newFocus",
-        "Focus on threads that need a reply",
-        "Open the Focus tab. It shows the oldest thread waiting on your reply and moves to the next one when you reply or archive.",
+        "splitTab.openInbox",
+        "Open Inbox",
+        "Open the Inbox tab. The sidebar lists threads that need an answer, threads waiting on your reply, agents still working, and snoozed threads. The tab shows the oldest thread first and moves to the next one when you reply, archive, or snooze.",
       ),
       command(
         "splitTab.reopenClosed",

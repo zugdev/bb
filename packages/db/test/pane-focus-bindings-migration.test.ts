@@ -14,6 +14,7 @@ import {
   dropThreadParentNotificationsColumn,
   dropQueuedMessageDeliveryColumns,
   dropThreadLastUserMessageAtColumn,
+  dropThreadSnoozedUntilColumn,
   dropQueuedMessageEditHeldUntilColumn,
 } from "./helpers/rewind.js";
 
@@ -58,6 +59,7 @@ function upgradeDatabase(overrides: AppKeybindingOverrides | undefined) {
   dropThreadParentNotificationsColumn(db);
   dropQueuedMessageDeliveryColumns(db);
   dropThreadLastUserMessageAtColumn(db);
+  dropThreadSnoozedUntilColumn(db);
   db.$client
     .prepare("DELETE FROM __drizzle_migrations WHERE created_at >= ?")
     .run(migrationTimestamp);

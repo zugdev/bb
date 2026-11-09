@@ -186,6 +186,7 @@ import {
   type PromptHistoryListQuery,
   type PromptHistoryListResponse,
   type ReorderPinnedThreadRequest,
+  type SnoozeThreadRequest,
   type ReorderProjectRequest,
   type ReorderQueuedMessageRequest,
   type QueuedMessageEditHoldResponse,
@@ -357,6 +358,7 @@ import {
   promptHistoryQuerySchema,
   promptHistoryListQuerySchema,
   reorderPinnedThreadRequestSchema,
+  snoozeThreadRequestSchema,
   reorderProjectRequestSchema,
   reorderQueuedMessageRequestSchema,
   resolvePendingInteractionRequestSchema,
@@ -1670,6 +1672,14 @@ export const publicApiRoutes = {
       path: "/threads/:id/unpin",
       method: "post",
       request: noRequest<PathId>(),
+      response: jsonResponse<ThreadResponse>(),
+    }),
+    snooze: defineRoute({
+      path: "/threads/:id/snooze",
+      method: "post",
+      request: jsonRequest<PathId, SnoozeThreadRequest>(
+        snoozeThreadRequestSchema,
+      ),
       response: jsonResponse<ThreadResponse>(),
     }),
     /**

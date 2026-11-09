@@ -12,8 +12,8 @@ import {
   movePaneAcrossTabsAtom,
   movePaneToTabAtom,
   moveSplitTabAtom,
-  openFocusTabAtom,
-  openOutsideFocusTabAtom,
+  openInboxTabAtom,
+  openOutsideInboxTabAtom,
   openSplitTabAtom,
   openThreadInTab,
   openThreadInTabAtom,
@@ -86,24 +86,24 @@ describe("split tabs", () => {
     expect(store.set(reopenClosedSplitItemAtom)).toBeNull();
   });
 
-  it("opens threads picked outside Focus in their own tab and leaves the Focus tab alone", () => {
+  it("opens threads picked outside Inbox in their own tab and leaves the Inbox tab alone", () => {
     const store = createStore();
     const other = { kind: "thread", projectId: "p1", threadId: "b" } as const;
-    expect(store.set(openOutsideFocusTabAtom, other)).toBe(false);
+    expect(store.set(openOutsideInboxTabAtom, other)).toBe(false);
 
     store.set(splitLayoutAtom, threadLayout("a"));
-    store.set(openFocusTabAtom);
+    store.set(openInboxTabAtom);
     store.set(splitLayoutAtom, threadLayout("a"));
     const focusTabId = store.get(splitTabsAtom).activeTabId;
     expect(
-      store.set(openOutsideFocusTabAtom, {
+      store.set(openOutsideInboxTabAtom, {
         kind: "thread",
         projectId: "p1",
         threadId: "a",
       }),
     ).toBe(false);
 
-    expect(store.set(openOutsideFocusTabAtom, other)).toBe(true);
+    expect(store.set(openOutsideInboxTabAtom, other)).toBe(true);
     const { tabs, activeTabId } = store.get(splitTabsAtom);
     expect(activeTabId).not.toBe(focusTabId);
     expect(listPanes(store.get(splitLayoutAtom)!.root)[0]?.content).toEqual(

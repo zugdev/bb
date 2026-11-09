@@ -165,6 +165,7 @@ function toPublicThread(thread: Thread): Thread {
     parentNotifications: thread.parentNotifications,
     archivedAt: thread.archivedAt,
     pinnedAt: thread.pinnedAt,
+    snoozedUntil: thread.snoozedUntil,
     deletedAt: thread.deletedAt,
     lastReadAt: thread.lastReadAt,
     latestAttentionAt: thread.latestAttentionAt,

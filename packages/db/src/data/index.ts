@@ -102,6 +102,7 @@ export {
   archiveThread,
   markThreadDeleted,
   markThreadStorageDeleted,
+  snoozeThread,
   unpinThread,
   unarchiveThread,
   applyThreadLifecycleEvent,

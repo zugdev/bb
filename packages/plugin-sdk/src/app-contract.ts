@@ -268,6 +268,7 @@ export type ExperimentalSidebarNavigationAction =
   | { kind: "search-threads" }
   | { kind: "open-extensions" }
   | { kind: "open-skills" }
+  | { kind: "open-inbox" }
   | {
       kind: "open-plugin-panel";
       pluginId: string;
@@ -280,14 +281,17 @@ export type ExperimentalSidebarNavigationAction =
  * artwork, including panel icons with plugin branding as their fallback.
  */
 export type ExperimentalSidebarNavigationIcon =
-  | { kind: "host"; name: "new-thread" | "search" | "extensions" | "skills" }
+  | {
+      kind: "host";
+      name: "new-thread" | "search" | "inbox" | "extensions" | "skills";
+    }
   | { kind: "plugin"; pluginId: string; icon: string | null };
 
 /** One host-owned destination or action a navigation provider arranges. */
 export interface ExperimentalSidebarNavigationItem {
   /**
    * Arrangement key, stable across reloads: `__bb__/new-thread`,
-   * `__bb__/search-threads`, `__bb__/extensions`, `__bb__/skills`,
+   * `__bb__/search-threads`, `__bb__/inbox`, `__bb__/extensions`, `__bb__/skills`,
    * `__bb__/automations`, or `<pluginId>/<panelId>`. The same keys appear in
    * the `sidebar.pluginPanelOrder` and `sidebar.visiblePluginPanels`
    * settings.

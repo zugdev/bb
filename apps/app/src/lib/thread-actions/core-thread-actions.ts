@@ -8,7 +8,10 @@ import {
   type PluginThreadActionRegistration,
   type PluginThreadActionTarget,
 } from "@get-bb/plugin-sdk";
-import { threadParentNotificationsSchema } from "@bb/domain";
+import {
+  threadParentNotificationsSchema,
+  type ThreadListEntry,
+} from "@bb/domain";
 import { useIsCompactViewport } from "@bb/shared-ui/hooks/use-compact-viewport";
 import { useThreadActions } from "@/components/thread/ThreadActionsProvider";
 import { useRouteState } from "@/hooks/useRouteState";
@@ -18,6 +21,12 @@ import { showMutationErrorToast } from "@/lib/mutation-errors";
 import { resolveThread } from "@/lib/cached-thread";
 import { PARENT_NOTIFICATIONS_OPTIONS } from "@/lib/parent-notifications";
 import { getThreadRoutePath } from "@/lib/route-paths";
+import {
+  formatSnoozeWake,
+  SNOOZE_PRESETS,
+  snoozePresetUntil,
+} from "@/lib/snooze";
+import { useThreadEntriesById } from "@/components/thread/ThreadStatusDot";
 import { countPanes, listPanes } from "@/lib/split-layout";
 import { splitLayoutAtom } from "@/lib/split-layout/atoms";
 
@@ -142,6 +151,58 @@ function parentNotificationsAction(
         children.length === 1
           ? "Failed to change parent notifications."
           : "Failed to change parent notifications for some threads.",
+      );
+    },
+  };
+}
+
+const UNSNOOZE_CHOICE = "unsnooze";
+
+function snoozeAction(
+  threads: readonly PluginThreadActionTarget[],
+  entries: ReadonlyMap<string, ThreadListEntry>,
+  sdk: PluginThreadActionItemInput<unknown>["sdk"],
+): PluginThreadAction {
+  const now = Date.now();
+  const wakes = threads.map((thread) => {
+    const until = entries.get(thread.id)?.snoozedUntil ?? null;
+    return until !== null && until > now ? until : null;
+  });
+  const sharedWake = wakes.every((wake) => wake === wakes[0])
+    ? (wakes[0] ?? null)
+    : null;
+  const anySnoozed = wakes.some((wake) => wake !== null);
+  return {
+    label: "Snooze",
+    ...(sharedWake === null
+      ? {}
+      : { detail: `until ${formatSnoozeWake(sharedWake, now)}` }),
+    icon: "AlarmClock",
+    choices: {
+      items: [
+        ...SNOOZE_PRESETS.map((preset) => ({
+          id: preset.id,
+          label: preset.label,
+          selected: false,
+        })),
+        ...(anySnoozed
+          ? [{ id: UNSNOOZE_CHOICE, label: "Unsnooze", selected: false }]
+          : []),
+      ],
+    },
+    run: async ({ value }) => {
+      const until =
+        value === UNSNOOZE_CHOICE
+          ? null
+          : snoozePresetUntil(String(value), Date.now());
+      if (until === null && value !== UNSNOOZE_CHOICE) return;
+      await runForEach(
+        threads,
+        (thread) =>
+          sdk.threads.experimental_snooze({ threadId: thread.id, until }),
+        until === null
+          ? "Failed to unsnooze thread."
+          : "Failed to snooze thread.",
       );
     },
   };
@@ -373,6 +434,17 @@ export const CORE_THREAD_ACTIONS: readonly PluginThreadActionRegistration<unknow
           },
         };
       },
+    }),
+    coreThreadAction({
+      id: "snooze",
+      group: GROUPS.state,
+      order: 40,
+      title: "Snooze",
+      icon: "AlarmClock",
+      useData: useThreadEntriesById,
+      item: ({ thread, data, sdk }) => snoozeAction([thread], data, sdk),
+      experimental_bulkItem: ({ threads, data, sdk }) =>
+        snoozeAction(threads, data, sdk),
     }),
     coreThreadAction({
       id: "parentNotifications",

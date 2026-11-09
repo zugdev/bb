@@ -17,6 +17,7 @@ import {
   dropThreadParentNotificationsColumn,
   dropQueuedMessageDeliveryColumns,
   dropThreadLastUserMessageAtColumn,
+  dropThreadSnoozedUntilColumn,
   dropQueuedMessageEditHeldUntilColumn,
 } from "./helpers/rewind.js";
 
@@ -122,6 +123,7 @@ it.each([false, true])(
       dropThreadParentNotificationsColumn(db);
       dropQueuedMessageDeliveryColumns(db);
       dropThreadLastUserMessageAtColumn(db);
+      dropThreadSnoozedUntilColumn(db);
       migrate(db);
       migrate(db);
 

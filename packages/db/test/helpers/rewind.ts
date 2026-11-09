@@ -65,6 +65,15 @@ export function dropThreadLastUserMessageAtColumn(db: DbConnection): void {
   }
 }
 
+export function dropThreadSnoozedUntilColumn(db: DbConnection): void {
+  const columns = db.$client
+    .prepare<[], { name: string }>("PRAGMA table_info(threads)")
+    .all();
+  if (columns.some((column) => column.name === "snoozed_until")) {
+    db.$client.exec("ALTER TABLE threads DROP COLUMN snoozed_until");
+  }
+}
+
 export function dropThreadParentNotificationsColumn(db: DbConnection): void {
   const columns = db.$client
     .prepare<[], { name: string }>("PRAGMA table_info(threads)")

@@ -124,6 +124,7 @@ export function makeThread(overrides: MakeThreadArgs): Thread {
     parentNotifications: "auto",
     archivedAt: null,
     pinnedAt: null,
+    snoozedUntil: null,
     deletedAt: null,
     lastReadAt: null,
     latestAttentionAt: Date.now(),
