@@ -722,6 +722,13 @@ export interface MessageDispatchHookContext {
   origin: ThreadCreateOrigin | "mixed" | null;
   originPluginId: string | "mixed" | null;
   parentThreadId: string | null;
+  /**
+   * The bb app client whose request is dispatching this message, from its
+   * `x-bb-client-id` header. Absent for the CLI, the SDK, agents, and
+   * attempts core drives outside a request, such as a queued row draining.
+   * Experimental: see docs/api_to_audit.md.
+   */
+  experimental_clientId?: string;
 }
 
 /**

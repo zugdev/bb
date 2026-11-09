@@ -1,11 +1,16 @@
+import { randomUUID } from "node:crypto";
 import { cliCommand, defineCli, type BbPluginApi } from "@get-bb/plugin-sdk";
 import { z } from "zod";
 import { assistantRpcContract } from "./contract.js";
 import {
   appendNotification,
+  completeTodo,
   HOME_ITEM_LIMIT,
+  openTodos,
+  todoSchema,
   upcomingReminders,
   type AssistantNotification,
+  type Todo,
 } from "./home.js";
 import {
   fetchNewUnread,
@@ -29,6 +34,7 @@ const PERSONAL_PROJECT_ID = "proj_personal";
 const THREAD_KEY = "threadId";
 const UNSEEN_KEY = "unseen";
 const NOTIFICATIONS_KEY = "notifications";
+const TODOS_KEY = "todos";
 const PANEL_KEY = "assistant/assistant";
 const BUILT_IN_NAVIGATION_KEYS = [
   "__bb__/new-thread",
@@ -52,10 +58,11 @@ function assistantInstructions(threadId: string): string {
 1. Triage. bb posts new Slack mentions, DMs and unread emails here as they arrive. Sort each batch into needs the user now, needs a reply later, and FYI, one line per FYI item. Use slack_search, slack_thread, email_search and email_read for context first.
 2. Notify. Call assistant_notify when something needs the user soon: a direct question, a deadline today, a meeting about to start, someone blocked on them, or a work thread you started that finished or failed. Each call also bumps the count on the Assistant sidebar entry. Never notify for newsletters, automated mail or FYI.
 3. Calendar. Use the Google Calendar connector tools when they are loaded and add events the user asks for directly. If they are missing, tell the user to connect Google Calendar under claude.ai Settings, Connectors.
-4. Schedule. For anything recurring or later ("check my email every day at 9am", "remind me Friday"), run \`bb automation create --project proj_personal --target-thread ${threadId} --name <name> --cron "<cron>" --timezone <IANA zone> --prompt "<task>" --provider <your provider id> --model <your model>\`, or \`--at <ISO time>\` or \`--in <duration>\` for one off reminders. The name shows on the bb home page, so write it as a short title in the language the user wrote in, such as "Pay rent", never a slug. \`bb automation list --project proj_personal\` shows them.
-5. Orchestrate. You may start work in any project when the user asks: \`bb project list --json\` for ids, then \`bb thread spawn --project <id> --new-environment worktree --prompt-file -\` for code work, \`bb thread wait <id>\` and \`bb thread output <id>\` to follow it, \`bb thread tell <id>\` to steer it. Keep a short ledger in your replies of threads you started and their state, and notify when one needs the user.
-6. Memory. You own the user's long term memory. Search it with \`bb memory search <words> --scope all\` before answering questions about people, projects or preferences, and save durable facts with \`bb memory add --scope global\`: people and how the user works with them, their timezone, routines and preferences.
-7. You never send Slack messages or email. When a reply is due, write a draft for the user to copy.`;
+4. To-dos. Anything the user has to do themselves, such as "pay rent" or "call Ana", is a to-do: call todo_add with a short title in the language the user wrote in, plus dueAt when it has a date. To-dos stay on the bb home page with a checkbox until the user or todo_done checks them off. When a to-do also needs a nudge at a time, add a one off automation for the notification too. Read todo_list before adding so you never add one twice.
+5. Schedule. For anything recurring or later ("check my email every day at 9am", "remind me Friday"), run \`bb automation create --project proj_personal --target-thread ${threadId} --name <name> --cron "<cron>" --timezone <IANA zone> --prompt "<task>" --provider <your provider id> --model <your model>\`, or \`--at <ISO time>\` or \`--in <duration>\` for one off reminders. The name shows on the bb home page, so write it as a short title in the language the user wrote in, such as "Pay rent", never a slug. \`bb automation list --project proj_personal\` shows them.
+6. Orchestrate. You may start work in any project when the user asks: \`bb project list --json\` for ids, then \`bb thread spawn --project <id> --new-environment worktree --prompt-file -\` for code work, \`bb thread wait <id>\` and \`bb thread output <id>\` to follow it, \`bb thread tell <id>\` to steer it. Keep a short ledger in your replies of threads you started and their state, and notify when one needs the user.
+7. Memory. You own the user's long term memory. Search it with \`bb memory search <words> --scope all\` before answering questions about people, projects or preferences, and save durable facts with \`bb memory add --scope global\`: people and how the user works with them, their timezone, routines and preferences.
+8. You never send Slack messages or email. When a reply is due, write a draft for the user to copy.`;
 }
 
 export default async function plugin(bb: BbPluginApi) {
@@ -149,6 +156,26 @@ export default async function plugin(bb: BbPluginApi) {
     const log = (await bb.storage.kv.get<AssistantNotification[]>(NOTIFICATIONS_KEY)) ?? [];
     await bb.storage.kv.set(NOTIFICATIONS_KEY, appendNotification(log, notification));
     bb.rpc.experimental_invalidate(["home"]);
+  }
+
+  async function readTodos(): Promise<Todo[]> {
+    const parsed = todoSchema.array().safeParse(await bb.storage.kv.get<unknown>(TODOS_KEY));
+    return parsed.success ? parsed.data : [];
+  }
+
+  async function writeTodos(todos: Todo[]): Promise<void> {
+    await bb.storage.kv.set(TODOS_KEY, todos);
+    bb.rpc.experimental_invalidate(["home"]);
+  }
+
+  async function addTodo(title: string, dueAt: number | null): Promise<Todo> {
+    const todo: Todo = { id: randomUUID().slice(0, 8), title, dueAt, doneAt: null };
+    await writeTodos([...(await readTodos()), todo]);
+    return todo;
+  }
+
+  async function finishTodo(id: string): Promise<void> {
+    await writeTodos(completeTodo(await readTodos(), id, Date.now()));
   }
 
   async function assistantReminders() {
@@ -289,6 +316,39 @@ export default async function plugin(bb: BbPluginApi) {
   });
 
   bb.agents.registerTool({
+    name: "todo_add",
+    description:
+      "Add a to-do the user has to do themselves. It shows on the bb home page with a checkbox until it is done.",
+    parameters: z.object({
+      title: z.string().min(1).max(80),
+      dueAt: z.string().datetime({ offset: true }).optional(),
+    }),
+    async execute({ title, dueAt }) {
+      const todo = await addTodo(title, dueAt === undefined ? null : Date.parse(dueAt));
+      return `Added to-do ${todo.id}.`;
+    },
+  });
+
+  bb.agents.registerTool({
+    name: "todo_done",
+    description: "Check off a to-do by its id from todo_list.",
+    parameters: z.object({ id: z.string() }),
+    async execute({ id }) {
+      await finishTodo(id);
+      return `Checked off ${id}.`;
+    },
+  });
+
+  bb.agents.registerTool({
+    name: "todo_list",
+    description: "List open to-dos and those checked off in the last week, with ids and due times.",
+    parameters: z.object({}),
+    async execute() {
+      return JSON.stringify(await readTodos());
+    },
+  });
+
+  bb.agents.registerTool({
     name: "slack_search",
     description:
       "Search Slack messages across every connected workspace using Slack search syntax, for example `from:@ana in:#launch deadline`.",
@@ -343,7 +403,7 @@ export default async function plugin(bb: BbPluginApi) {
   bb.agents.configure((context) =>
     context.thread.id === threadId
       ? {
-          tools: ["assistant_notify", "slack_search", "slack_thread", "email_search", "email_read"],
+          tools: ["assistant_notify", "todo_add", "todo_done", "todo_list", "slack_search", "slack_thread", "email_search", "email_read"],
           skills: [],
           instructions: assistantInstructions(context.thread.id),
         }
@@ -361,9 +421,14 @@ export default async function plugin(bb: BbPluginApi) {
     async "assistant.home"() {
       const notifications = (await bb.storage.kv.get<AssistantNotification[]>(NOTIFICATIONS_KEY)) ?? [];
       return {
+        todos: openTodos(await readTodos()),
         reminders: await assistantReminders(),
         notifications: notifications.slice(0, HOME_ITEM_LIMIT),
       };
+    },
+    async "assistant.todoDone"({ id }) {
+      await finishTodo(id);
+      return { ok: true as const };
     },
     async "assistant.check"() {
       return checkSources();
@@ -395,6 +460,35 @@ export default async function plugin(bb: BbPluginApi) {
           summary: "Print the assistant thread id, starting the thread if needed",
           async run() {
             return { exitCode: 0, stdout: await ensureThread() };
+          },
+        }),
+        todos: cliCommand({
+          summary: "List open to-dos",
+          async run() {
+            const todos = openTodos(await readTodos());
+            const lines = todos.map(
+              (todo) => `${todo.id}  ${todo.title}${todo.dueAt === null ? "" : `  due ${new Date(todo.dueAt).toISOString()}`}`,
+            );
+            return { exitCode: 0, stdout: lines.length === 0 ? "No open to-dos." : lines.join("\n") };
+          },
+        }),
+        "todo-add": cliCommand({
+          summary: "Add a to-do to the home page",
+          positionals: [{ name: "title", description: "What to do", required: true }],
+          options: { due: { type: "string", description: "Due time as an ISO date, for example 2026-12-01T09:00-03:00" } },
+          async run(input) {
+            const dueAt = input.options.due === undefined ? null : Date.parse(input.options.due);
+            if (Number.isNaN(dueAt)) return { exitCode: 1, stderr: `Not a date: ${input.options.due}` };
+            const todo = await addTodo(input.positionals.title, dueAt);
+            return { exitCode: 0, stdout: todo.id };
+          },
+        }),
+        "todo-done": cliCommand({
+          summary: "Check off a to-do by id",
+          positionals: [{ name: "id", description: "To-do id from bb assistant todos", required: true }],
+          async run(input) {
+            await finishTodo(input.positionals.id);
+            return { exitCode: 0, stdout: `Checked off ${input.positionals.id}.` };
           },
         }),
         check: cliCommand({

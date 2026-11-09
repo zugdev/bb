@@ -5344,6 +5344,9 @@ export interface BbNavigate {
    * as an `experimental_threadHeaderLeading` component, replaces that pane's
    * thread, or focuses the split pane that already shows the thread. Outside
    * a pane it navigates as without options.
+   * `experimental_replace: true` swaps the current history entry on plain
+   * navigation, for a panel that redirects to a thread so back does not
+   * bounce.
    */
   toThread(
     threadId: string,
@@ -5351,6 +5354,7 @@ export interface BbNavigate {
       split?: boolean;
       experimental_tab?: boolean;
       experimental_inPane?: boolean;
+      experimental_replace?: boolean;
     },
   ): void;
   toProject(projectId: string): void;

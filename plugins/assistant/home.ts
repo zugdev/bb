@@ -2,6 +2,7 @@ import { z } from "zod";
 
 export const HOME_ITEM_LIMIT = 5;
 export const NOTIFICATION_LOG_LIMIT = 20;
+const DONE_TODO_KEEP_MS = 7 * 86_400_000;
 
 export const reminderSchema = z.object({
   id: z.string(),
@@ -33,6 +34,27 @@ export function upcomingReminders(rows: readonly unknown[]): Reminder[] {
     })
     .sort((a, b) => a.nextRunAt - b.nextRunAt)
     .slice(0, HOME_ITEM_LIMIT);
+}
+
+export const todoSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  dueAt: z.number().nullable(),
+  doneAt: z.number().nullable(),
+});
+export type Todo = z.infer<typeof todoSchema>;
+
+export function openTodos(todos: readonly Todo[]): Todo[] {
+  return todos
+    .filter((todo) => todo.doneAt === null)
+    .sort((a, b) => (a.dueAt ?? Infinity) - (b.dueAt ?? Infinity));
+}
+
+export function completeTodo(todos: readonly Todo[], id: string, at: number): Todo[] {
+  if (!todos.some((todo) => todo.id === id)) throw new Error(`No to-do with id ${id}.`);
+  return todos
+    .map((todo) => (todo.id === id ? { ...todo, doneAt: at } : todo))
+    .filter((todo) => todo.doneAt === null || at - todo.doneAt < DONE_TODO_KEEP_MS);
 }
 
 export function appendNotification(

@@ -1,10 +1,9 @@
-import { useEffect, type ReactNode } from "react";
+import { useEffect } from "react";
 import {
   definePluginApp,
   experimental_Icon as Icon,
   experimental_useRpcMutation,
   experimental_useRpcQuery,
-  ThreadChat,
   useBbNavigate,
   type ExperimentalBadge,
 } from "@get-bb/plugin-sdk/app";
@@ -26,37 +25,27 @@ function useAssistantBadge(): ExperimentalBadge | null {
 }
 
 function AssistantPanel() {
+  const navigate = useBbNavigate();
   const { data, error } = experimental_useRpcQuery({
     contract: assistantRpcContract,
     method: "assistant.thread",
-    input: {},
-  });
-  const { data: badge } = experimental_useRpcQuery({
-    contract: assistantRpcContract,
-    method: "assistant.badge",
     input: {},
   });
   const seen = experimental_useRpcMutation({
     contract: assistantRpcContract,
     method: "assistant.seen",
   });
-  const unseen = badge?.unseen ?? 0;
   const markSeen = seen.mutate;
+  const threadId = data?.threadId;
   useEffect(() => {
-    if (unseen > 0) void markSeen({});
-  }, [unseen, markSeen]);
+    if (threadId === undefined) return;
+    void markSeen({});
+    navigate.toThread(threadId, { experimental_replace: true });
+  }, [threadId, markSeen, navigate]);
   if (error !== null) {
     return <p className="p-4 text-sm text-muted-foreground">{error.message}</p>;
   }
-  if (data === undefined) return null;
-  return (
-    <ThreadChat
-      threadId={data.threadId}
-      variant="full"
-      layout="contained"
-      className="min-h-0 flex-1"
-    />
-  );
+  return null;
 }
 
 const relativeTime = new Intl.RelativeTimeFormat(undefined, { numeric: "auto" });
@@ -77,39 +66,10 @@ const ROW_CLASS =
   "-mx-2 flex h-7 min-w-0 items-center gap-2.5 rounded-md px-2 text-left text-sm transition-colors hover:bg-state-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
 const ACTION_CLASS =
   "flex h-7 shrink-0 items-center gap-1.5 rounded-md px-2 text-xs text-muted-foreground transition-colors hover:bg-state-hover hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
+const WHEN_CLASS = "shrink-0 text-xs text-muted-foreground tabular-nums";
 
-interface AssistantListRow {
-  key: string;
-  label: string;
-  when: string;
-  detail?: string;
-}
-
-function AssistantList({
-  title,
-  rows,
-  onOpen,
-  action,
-}: {
-  title: string;
-  rows: AssistantListRow[];
-  onOpen: () => void;
-  action?: ReactNode;
-}) {
-  return (
-    <div className="flex min-w-0 flex-col">
-      <div className="-mr-2 flex h-7 items-center justify-between gap-2">
-        <h3 className="text-sm font-medium">{title}</h3>
-        {action}
-      </div>
-      {rows.map((row) => (
-        <button key={row.key} type="button" className={ROW_CLASS} onClick={onOpen} aria-label={row.detail ? `${row.label}: ${row.detail}` : row.label}>
-          <span className="min-w-0 flex-1 truncate">{row.label}</span>
-          <span className="shrink-0 text-xs text-muted-foreground tabular-nums">{row.when}</span>
-        </button>
-      ))}
-    </div>
-  );
+function ListTitle({ children }: { children: string }) {
+  return <h3 className="flex h-7 items-center text-xs font-medium text-muted-foreground">{children}</h3>;
 }
 
 function AssistantHomeSection() {
@@ -119,42 +79,84 @@ function AssistantHomeSection() {
     method: "assistant.home",
     input: {},
   });
+  const done = experimental_useRpcMutation({
+    contract: assistantRpcContract,
+    method: "assistant.todoDone",
+  });
   const openAssistant = () => navigate.toPluginPanel("assistant");
-  const reminders = (data?.reminders ?? []).map((reminder) => ({
-    key: reminder.id,
-    label: reminder.name,
-    when: formatUpcoming(reminder.nextRunAt),
-  }));
-  const notifications = (data?.notifications ?? []).map((notification) => ({
-    key: `${notification.at}-${notification.title}`,
-    label: notification.title,
-    when: formatRelative(notification.at),
-    detail: notification.body,
-  }));
-  const openButton = (
-    <button type="button" className={ACTION_CLASS} onClick={openAssistant}>
-      <Icon name="Bot" className="size-3.5" aria-hidden />
-      Open Assistant
-    </button>
-  );
-  if (reminders.length === 0 && notifications.length === 0) {
-    return (
-      <div className="flex min-h-11 items-center gap-3 rounded-xl bg-surface-recessed py-2 pl-4 pr-2">
-        <p className="min-w-0 flex-1 truncate text-xs text-muted-foreground">
-          Nothing scheduled. Ask the assistant for a reminder or a daily inbox check.
-        </p>
-        {openButton}
-      </div>
-    );
-  }
-  const both = reminders.length > 0 && notifications.length > 0;
+  const todos = data?.todos ?? [];
+  const reminders = data?.reminders ?? [];
+  const notifications = data?.notifications ?? [];
+  const empty = todos.length === 0 && reminders.length === 0 && notifications.length === 0;
   return (
-    <div className={`grid gap-x-8 gap-y-3 rounded-xl bg-surface-recessed px-4 py-2.5 ${both ? "md:grid-cols-2" : ""}`}>
-      {reminders.length > 0 ? (
-        <AssistantList title="Upcoming reminders" rows={reminders} onOpen={openAssistant} action={both ? undefined : openButton} />
+    <div className="flex flex-col rounded-xl bg-surface-recessed px-4 py-2.5">
+      <div className="-mr-2 flex h-7 items-center gap-2">
+        <Icon name="Bot" className="size-4 text-muted-foreground" aria-hidden />
+        <h2 className="min-w-0 flex-1 text-sm font-medium">
+          {empty ? (
+            <span className="font-normal text-muted-foreground">
+              Nothing to do. Ask the assistant for a to-do, a reminder or a daily inbox check.
+            </span>
+          ) : (
+            "Assistant"
+          )}
+        </h2>
+        <button type="button" className={ACTION_CLASS} onClick={openAssistant}>
+          Open
+        </button>
+      </div>
+      {todos.length > 0 || reminders.length > 0 ? (
+        <div className={`grid gap-x-8 ${todos.length > 0 && reminders.length > 0 ? "md:grid-cols-2" : ""}`}>
+          {todos.length > 0 ? (
+            <div className="flex min-w-0 flex-col">
+              <ListTitle>To do</ListTitle>
+              {todos.map((todo) => (
+                <label key={todo.id} className={`${ROW_CLASS} cursor-pointer`}>
+                  <input
+                    type="checkbox"
+                    className="size-3.5 shrink-0 accent-current"
+                    disabled={done.isPending}
+                    onChange={() => void done.mutate({ id: todo.id })}
+                  />
+                  <span className="min-w-0 flex-1 truncate">{todo.title}</span>
+                  {todo.dueAt === null ? null : (
+                    <span className={todo.dueAt < Date.now() ? "shrink-0 text-xs text-destructive-text tabular-nums" : WHEN_CLASS}>
+                      {formatUpcoming(todo.dueAt)}
+                    </span>
+                  )}
+                </label>
+              ))}
+            </div>
+          ) : null}
+          {reminders.length > 0 ? (
+            <div className="flex min-w-0 flex-col">
+              <ListTitle>Reminders</ListTitle>
+              {reminders.map((reminder) => (
+                <button key={reminder.id} type="button" className={ROW_CLASS} onClick={openAssistant}>
+                  <span className="min-w-0 flex-1 truncate">{reminder.name}</span>
+                  <span className={WHEN_CLASS}>{formatUpcoming(reminder.nextRunAt)}</span>
+                </button>
+              ))}
+            </div>
+          ) : null}
+        </div>
       ) : null}
       {notifications.length > 0 ? (
-        <AssistantList title="Latest notifications" rows={notifications} onOpen={openAssistant} action={openButton} />
+        <div className="flex min-w-0 flex-col">
+          <ListTitle>Notified</ListTitle>
+          {notifications.map((notification) => (
+            <button
+              key={`${notification.at}-${notification.title}`}
+              type="button"
+              className={ROW_CLASS}
+              onClick={openAssistant}
+              aria-label={notification.body ? `${notification.title}: ${notification.body}` : notification.title}
+            >
+              <span className="min-w-0 flex-1 truncate">{notification.title}</span>
+              <span className={WHEN_CLASS}>{formatRelative(notification.at)}</span>
+            </button>
+          ))}
+        </div>
       ) : null}
     </div>
   );

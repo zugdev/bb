@@ -1,6 +1,7 @@
 import type { PluginThreadEventPayloads } from "@get-bb/plugin-sdk";
 import {
   createFakePluginHost,
+  makeMessageDispatchHookContext,
   makeThreadResponse,
 } from "@get-bb/plugin-sdk/testing";
 import { EnvHttpProxyAgent } from "undici";
@@ -293,6 +294,26 @@ async function setup(options: SetupOptions = {}) {
     return thread;
   }
 
+  async function phoneThread(overrides: Partial<ThreadResponse> = {}) {
+    await registerClient("phone-webview", {
+      kind: "mobile",
+      canNotify: false,
+      pushSubscriptionId: "subscription-1",
+    });
+    return createThread(overrides, "phone-webview");
+  }
+
+  async function dispatchFrom(thread: ThreadResponse, clientId: string) {
+    const hook = fake.harness.registrations.hooks["message.dispatch"];
+    if (hook === null) throw new Error("message.dispatch hook is missing");
+    return hook(
+      makeMessageDispatchHookContext({
+        thread,
+        experimental_clientId: clientId,
+      }),
+    );
+  }
+
   function signals(channel: string) {
     return fake.harness.realtimeSignals.filter(
       (signal) => signal.channel === channel,
@@ -304,6 +325,8 @@ async function setup(options: SetupOptions = {}) {
     addSubscription,
     cleanup,
     createThread,
+    dispatchFrom,
+    phoneThread,
     registerClient,
     clientSignals: () => signals(CLIENT_NOTIFICATION_CHANNEL),
     expo,
@@ -489,12 +512,12 @@ describe("push subscription RPC and CLI", () => {
 });
 
 describe("push sender", () => {
-  it("sends a root idle preview to each device and reads the relay setting at flush", async () => {
+  it("sends a root idle preview to the phone that started it and reads the relay setting at flush", async () => {
     const host = await setup();
     try {
       await host.addSubscription();
       await host.addSubscription("ExponentPushToken[tablet]", "Tablet");
-      const thread = host.setThread();
+      const thread = await host.phoneThread();
 
       await host.harness.behavior.emitThreadEvent("thread.idle", {
         thread,
@@ -506,7 +529,7 @@ describe("push sender", () => {
 
       await vi.waitFor(() => expect(host.expo.requests).toHaveLength(1));
       expect(host.expo.urls).toEqual(["http://expo.test/changed"]);
-      expect(host.expo.requests[0]).toHaveLength(2);
+      expect(host.expo.requests[0]).toHaveLength(1);
       expect(host.expo.requests[0]?.[0]).toMatchObject({
         title: "Fix the flaky test",
         body: "Done: the timer race is fixed. More details.",
@@ -518,16 +541,17 @@ describe("push sender", () => {
         sound: "default",
         channelId: "threads",
         priority: "high",
+        interruptionLevel: "active",
       });
       expect(host.expo.requests[0]?.[0]?.data).not.toHaveProperty("serverUrl");
       expect(
         host.expo.requests[0]?.map((message) => message.data.subscriptionId),
-      ).toEqual(["subscription-1", "subscription-2"]);
+      ).toEqual(["subscription-1"]);
       await vi.waitFor(async () => {
         const result = await host.harness.behavior.runCli(["status", "--json"]);
         expect(JSON.parse(result.stdout).lastSendOutcome).toMatchObject({
           status: "sent",
-          sentCount: 2,
+          sentCount: 1,
         });
       });
     } finally {
@@ -545,7 +569,7 @@ describe("push sender", () => {
         title:
           "Compare bb in-app terminal against Moshi, Termius, and Blink Shell",
       });
-      const thread = host.setThread({ title: "Discord Dude" });
+      const thread = await host.phoneThread({ title: "Discord Dude" });
 
       await host.harness.behavior.emitThreadEvent("thread.idle", {
         thread,
@@ -600,7 +624,7 @@ describe("push sender", () => {
       };
       for (const [title, lines] of Object.entries(previews)) {
         await host.harness.behavior.emitThreadEvent("thread.idle", {
-          thread: host.setThread({ title }),
+          thread: await host.phoneThread({ title }),
           lastAssistantText: lines.join("\n"),
         });
       }
@@ -627,7 +651,7 @@ describe("push sender", () => {
     const host = await setup({ appUrl: "https://bb.example.test" });
     try {
       await host.addSubscription();
-      const thread = host.setThread();
+      const thread = await host.phoneThread();
 
       await host.harness.behavior.emitThreadEvent("thread.idle", {
         thread,
@@ -710,7 +734,10 @@ describe("push sender", () => {
     const host = await setup();
     try {
       await host.addSubscription();
-      const thread = host.setThread({ status: "active", title: "Release" });
+      const thread = await host.phoneThread({
+        status: "active",
+        title: "Release",
+      });
       const interaction = pendingQuestion(
         thread.id,
         "Ship to staging or production?",
@@ -735,7 +762,7 @@ describe("push sender", () => {
         }),
       ]);
 
-      const answered = host.setThread({ id: "thread-answered" });
+      const answered = await host.phoneThread({ id: "thread-answered" });
       const answeredInteraction = pendingQuestion(answered.id, "Continue?");
       host.interactions.set(answered.id, [answeredInteraction]);
       await host.harness.behavior.emitThreadEvent("interaction.pending", {
@@ -763,10 +790,9 @@ describe("push sender", () => {
         "ExponentPushToken[device-100]",
         "DeviceNotRegistered",
       );
-      const thread = host.setThread({ status: "error" });
-      await host.harness.behavior.emitThreadEvent("thread.failed", {
-        thread,
-        error: "Provider exited with code 1\nStack",
+      await host.harness.behavior.callRpc("notifications.send", {
+        title: "Pay rent",
+        body: "",
       });
 
       await vi.waitFor(() => expect(host.expo.requests).toHaveLength(2));
@@ -796,7 +822,7 @@ describe("push sender", () => {
     try {
       await host.addSubscription();
       const trigger = async (id: string) => {
-        const thread = host.setThread({ id, status: "error" });
+        const thread = await host.phoneThread({ id, status: "error" });
         await host.harness.behavior.emitThreadEvent("thread.failed", {
           thread,
           error: "Provider failed",
@@ -973,7 +999,7 @@ describe("device routing", () => {
     }
   });
 
-  it("falls back to every device when the origin has no channel", async () => {
+  it("falls back to web and desktop when the origin has no channel", async () => {
     let now = 1_000;
     const host = await setup({ now: () => now });
     try {
@@ -1006,7 +1032,40 @@ describe("device routing", () => {
           }),
         ),
       );
-      expect(host.expo.requests).toHaveLength(cases.length);
+      expect(host.expo.requests).toHaveLength(0);
+    } finally {
+      await host.cleanup();
+    }
+  });
+
+  it("follows the client that sent the latest message", async () => {
+    const host = await setup();
+    try {
+      await host.addSubscription();
+      await host.registerClient("laptop-browser", { kind: "web" });
+      await host.registerClient("phone-webview", {
+        kind: "mobile",
+        canNotify: false,
+        pushSubscriptionId: "subscription-1",
+      });
+      const thread = await host.createThread({}, "laptop-browser");
+
+      await expect(host.dispatchFrom(thread, "phone-webview")).resolves.toEqual({
+        action: "proceed",
+      });
+      await idle(host, thread);
+      expect(host.expo.requests).toHaveLength(1);
+      expect(host.clientSignals()).toHaveLength(0);
+
+      await host.dispatchFrom(thread, "laptop-browser");
+      await idle(host, thread);
+      expect(host.expo.requests).toHaveLength(1);
+      expect(host.clientSignals()).toEqual([
+        {
+          channel: "notification",
+          payload: expect.objectContaining({ targetClientId: "laptop-browser" }),
+        },
+      ]);
     } finally {
       await host.cleanup();
     }
@@ -1184,6 +1243,7 @@ describe("sending notifications", () => {
         to: "ExponentPushToken[phone]",
         body: "Production is down",
         channelId: "threads",
+        interruptionLevel: "time-sensitive",
       });
       expect(message?.data).toEqual({
         subscriptionId: "subscription-1",

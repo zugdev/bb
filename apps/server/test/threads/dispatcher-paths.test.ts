@@ -26,6 +26,7 @@ import {
   releaseStaleQueuedMessageDispatchClaims,
   sendNextQueuedMessageIfPresent,
 } from "../../src/services/threads/queued-messages.js";
+import { runWithRequestClientId } from "../../src/request-context.js";
 import { applyLoggedThreadLifecycleEvent } from "../../src/services/threads/lifecycle-outcome.js";
 import { runQueuedMessageDispatch } from "../../src/services/threads/queued-message-dispatch.js";
 import { createThreadFromRequest } from "../../src/services/threads/thread-create.js";
@@ -178,6 +179,38 @@ describe("first message of a pending thread", () => {
       });
       expect(firstText(request)).toContain(sender.id);
       expect(firstText(request)).toContain("Please review the plan");
+    });
+  });
+});
+
+describe("the app client that sent a message", () => {
+  it("reaches the dispatch hook only when an app request sent it", async () => {
+    await withTestHarness(async (harness) => {
+      const { thread } = seedRunnableThread(harness, {
+        hostId: "host-client-id",
+        status: "idle",
+      });
+      const seen: (string | undefined)[] = [];
+      installDispatchHook((context) => {
+        seen.push(context.experimental_clientId);
+        return { action: "proceed" };
+      });
+      await runWithRequestClientId(
+        { req: { header: () => "phone-webview-1" } },
+        () =>
+          acceptThreadSendRequest(harness.deps, {
+            payload: { input: textInput("From the phone"), mode: "auto" },
+            thread,
+          }),
+      );
+      await acceptThreadSendRequest(harness.deps, {
+        payload: { input: textInput("From the CLI"), mode: "auto" },
+        thread,
+      });
+
+      expect(seen[0]).toBe("phone-webview-1");
+      expect(seen.slice(1)).toEqual(seen.slice(1).map(() => undefined));
+      expect(seen.length).toBeGreaterThan(1);
     });
   });
 });

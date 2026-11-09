@@ -7,7 +7,7 @@ description: "Register mobile devices, toggle mobile, web, and desktop notificat
 
 The plugin notifies when a thread asks a question, finishes a turn, or stops on
 an error, and anyone can send their own through the same channels. A thread's
-notifications go only to the device that started it; see "Which device gets a
+notifications go only to the device that last messaged it; see "Which device gets a
 thread notification" below. Mobile devices receive Expo push messages even when the app is
 closed. Web and desktop clients receive system notifications only while a bb
 tab or app window stays open, and each browser grants permission separately in
@@ -65,17 +65,18 @@ bb plugin config push-notifications set expoPushUrl <url>
 ## Which device gets a thread notification
 
 The bb app sends a client id with every request, one per browser profile,
-desktop app, or mobile app. A thread records the client that created it, and a
-child thread created by an agent inherits its parent's client. Thread
-notifications (questions, approvals, errors, finished turns) then go only to
-that client: the browser or desktop app that started it, or the phone's push
-subscription when it was started in the mobile app. Notifications fall back to
-every device when the thread was started from the CLI, SDK, or a plugin, when
-the originating browser or desktop app has not allowed notifications, has its
-channel off, or has not checked in for 5 minutes, and when the phone has no
-push registration on this server (mobile builds older than this change never
-report one). `send` without `--device` always reaches every device, so the
-assistant's `assistant_notify` and other plugin messages are unaffected.
+desktop app, or mobile app. A thread records the client that created it or
+last sent it a message from the app, and a child thread created by an agent
+inherits its parent's client. Thread notifications (questions, approvals,
+errors, finished turns) then go only to that client: the browser or desktop
+app, or the phone's push subscription when that client was the mobile app.
+They fall back to web and desktop, never the phone, when the thread was
+started from the CLI, SDK, or a plugin, when the browser or desktop app has
+not allowed notifications, has its channel off, or has not checked in for 5
+minutes, and when the phone has no push registration on this server. `send`
+without `--device` always reaches every device, phone included, and goes out
+as an iOS time-sensitive notification, so the assistant's `assistant_notify`
+and its reminders break through Focus where the app allows it.
 
 A plugin sends the same notification from its server code with:
 

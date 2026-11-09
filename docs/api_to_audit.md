@@ -492,13 +492,15 @@ plugins' memory make the token a meaningful boundary for third-party plugins.
 bb account relies on it to keep `/api/connect/` requests, credential reads,
 refused-credential reports, and credential adoption to the connect plugin.
 
-## App client id (`experimental_caller.experimental_clientId`, `thread.created` `experimental_clientId`)
+## App client id (`experimental_caller.experimental_clientId`, `thread.created` and `message.dispatch` `experimental_clientId`)
 
 The bb app sends `x-bb-client-id` on every request: a random id kept in
 localStorage (`bb.client-id`), so one per browser profile, desktop app, or
 mobile WebView, stable across reloads. The server keeps it in request context.
 A `{ kind: "client" }` RPC caller carries it as `experimental_clientId`, and
-`thread.created` carries it for threads created by an app request. The CLI,
+`thread.created` carries it for threads created by an app request, and the
+`message.dispatch` hook context carries it for a message an app request sends.
+The CLI,
 the SDK, agents, and core's own creations carry none. Values that are not 8 to
 64 characters of `[A-Za-z0-9_-]` are dropped.
 
@@ -507,11 +509,12 @@ Docs: `backend-events.md`, `backend-sdk.md`.
 Core path: `apps/app/src/lib/app-surface.ts` sets the header next to
 `x-bb-app-surface`; `apps/server/src/request-context.ts` parses it. The
 push-notifications plugin is the only caller: it records which client started
-a thread and sends that thread's notifications only to that device. Before
+a thread or last sent it a message, and sends that thread's notifications only
+to that device, with mobile reached only when the phone was that client. Before
 stabilizing, decide whether the id should be persisted on the thread row so
 history survives a plugin reinstall, whether a client can forge another
 client's id (any client that learns an id can send it), and whether other
-events (messages sent, interactions answered) need it too.
+events (interactions answered) need it too.
 
 ## RPC cancellation (`ExperimentalPluginRpcHandlerContext.experimental_signal`)
 
@@ -4002,6 +4005,16 @@ Core caller: `useBbNavigate` in `apps/app/src/lib/plugin-navigation-hooks.ts`, w
 
 1. **Options shape.** Decide whether `split`, `experimental_tab` and `experimental_inPane` should merge into one `target` option.
 2. **Core use.** Core's own header controls don't call `useBbNavigate`; decide whether the timeline's thread links should route through this option.
+
+## Replacing history when opening a thread
+
+`BbNavigate.toThread(threadId, { experimental_replace: true })` swaps the current history entry on plain navigation, the same as `toPluginPanel`'s `replace`. A nav panel that redirects to a thread uses it so back returns to the page before the panel. It has no effect with `split`, `experimental_tab` or `experimental_inPane`.
+
+Core caller: `useBbNavigate` in `apps/app/src/lib/plugin-navigation-hooks.ts`. First plugin: `plugins/assistant` (fork), whose Assistant panel opens the assistant thread.
+
+**Audit before stabilizing.**
+
+1. **Options shape.** Fold into the `target` option proposed above, or drop the prefix to match `toPluginPanel`'s `replace`.
 
 ## `PluginThreadActionRegistration.experimental_headerLead`
 

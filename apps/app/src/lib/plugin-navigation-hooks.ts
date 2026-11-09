@@ -99,7 +99,10 @@ export function useBbNavigate(): BbNavigate {
           pane.navigateInPane({ projectId, threadId });
           return;
         }
-        void navigate(getThreadRoutePath({ projectId, threadId }));
+        void navigate(
+          getThreadRoutePath({ projectId, threadId }),
+          options?.experimental_replace ? { replace: true } : undefined,
+        );
       };
       const cached = lookupCachedThread(queryClient, threadId);
       if (cached !== null) {
@@ -109,7 +112,12 @@ export function useBbNavigate(): BbNavigate {
       void sdk.threads
         .get({ threadId })
         .then((thread) => open(thread.projectId))
-        .catch(() => navigate(`/threads/${threadId}`));
+        .catch(() =>
+          navigate(
+            `/threads/${threadId}`,
+            options?.experimental_replace ? { replace: true } : undefined,
+          ),
+        );
     },
     [isCompact, navigate, onNavigate, pane, queryClient, store],
   );
