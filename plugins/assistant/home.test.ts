@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { appendNotification, formatUpcoming, NOTIFICATION_LOG_LIMIT, upcomingReminders } from "./home.js";
+import { appendNotification, completeTodo, formatUpcoming, NOTIFICATION_LOG_LIMIT, openTodos, upcomingReminders } from "./home.js";
 
 describe("upcomingReminders", () => {
   it("keeps enabled automations with a next run, soonest first, and skips read problems", () => {
@@ -38,5 +38,27 @@ describe("formatUpcoming", () => {
     expect(formatUpcoming(nextMorning, now).startsWith(days.format(1, "day"))).toBe(true);
     expect(formatUpcoming(thursday, now).startsWith(weekday.format(thursday))).toBe(true);
     expect(formatUpcoming(nextMonth, now).startsWith(weekday.format(nextMonth))).toBe(false);
+  });
+});
+
+describe("to-dos", () => {
+  const day = 86_400_000;
+  const todos = [
+    { id: "someday", title: "Read the RFC", dueAt: null, doneAt: null },
+    { id: "rent", title: "Pay rent", dueAt: 20 * day, doneAt: null },
+    { id: "old", title: "Renew passport", dueAt: null, doneAt: 1 },
+  ];
+
+  it("lists open to-dos with a due date first, soonest first", () => {
+    expect(openTodos(todos).map((todo) => todo.id)).toEqual(["rent", "someday"]);
+  });
+
+  it("marks one done, drops ones done over a week ago, and rejects unknown ids", () => {
+    const next = completeTodo(todos, "rent", 10 * day);
+    expect(next.map((todo) => [todo.id, todo.doneAt])).toEqual([
+      ["someday", null],
+      ["rent", 10 * day],
+    ]);
+    expect(() => completeTodo(todos, "missing", 0)).toThrow("missing");
   });
 });

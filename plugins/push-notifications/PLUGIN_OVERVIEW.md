@@ -4,7 +4,7 @@ Get a notification when an agent asks a question, finishes a turn, or stops on a
 
 Mobile devices receive push messages through Expo, including when the app is closed. Web browsers and the desktop app receive system notifications over bb's live connection while a tab or window stays open; web delivery needs HTTPS (or localhost) and notification permission. Mobile WebViews use mobile push only.
 
-A thread's notifications go only to the device that started it, and a child thread inherits its parent's device. A browser or desktop app qualifies while it has permission, its channel is on, and it checked in within 5 minutes; a phone qualifies through its push subscription. Otherwise, as for threads started from the CLI, SDK, or a plugin, every device is notified.
+A thread's notifications go only to the device that started it or last sent it a message, and a child thread inherits its parent's device. A browser or desktop app qualifies while it has permission, its channel is on, and it checked in within 5 minutes; a phone qualifies through its push subscription. Otherwise, as for threads started from the CLI, SDK, or a plugin, web and desktop are notified and the phone is not. Notifications sent with `notifications.send`, such as the assistant's, reach every device and go out as iOS time-sensitive.
 
 Each thread has a level: `all` (questions, approvals, errors, finished turns), `input-only` (no finished turns), or `muted`. A thread uses its own level, else `childLevel` if it has a parent, else `defaultLevel`; every ancestor's own level caps it. Muting a parent mutes its whole subtree, but a parent never makes workers louder. The level applies on top of the suppressions below.
 

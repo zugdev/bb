@@ -663,6 +663,15 @@ export function createPushNotificationsPlugin(
         if (origin !== null) await clients.setThreadOrigin(thread.id, origin);
       },
     );
+    bb.experimental_hooks.on("message.dispatch", async (context) => {
+      if (context.experimental_clientId !== undefined) {
+        await clients.setThreadOrigin(
+          context.thread.id,
+          context.experimental_clientId,
+        );
+      }
+      return { action: "proceed" };
+    });
     bb.events.on("thread.deleted", ({ thread }) =>
       clients.forgetThread(thread.id),
     );

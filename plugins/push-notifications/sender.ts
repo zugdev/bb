@@ -106,6 +106,7 @@ export class SendNotificationError extends Error {
 
 type DeliveryTarget =
   | { kind: "all" }
+  | { kind: "web-and-desktop" }
   | { kind: "client"; clientId: string; channel: "web" | "desktop" }
   | { kind: "subscription"; subscriptionId: string };
 
@@ -125,6 +126,7 @@ export interface ExpoPushMessage {
   sound: "default";
   channelId: "threads";
   priority: "high";
+  interruptionLevel: "active" | "time-sensitive";
 }
 
 export type PushSenderFetch = (
@@ -359,26 +361,25 @@ export function createPushSender(args: CreatePushSenderArgs): PushSender {
   }
 
   async function originTarget(threadId: string): Promise<DeliveryTarget> {
+    const fallback: DeliveryTarget = { kind: "web-and-desktop" };
     const clientId = await clients.getThreadOrigin(threadId);
-    if (clientId === null) return { kind: "all" };
+    if (clientId === null) return fallback;
     const client = await clients.get(clientId);
-    if (client === null) return { kind: "all" };
+    if (client === null) return fallback;
     const config = await args.getDeliverySettings();
     if (client.kind === "mobile") {
       const subscriptionId = client.pushSubscriptionId;
-      if (!config.mobileEnabled || subscriptionId === null) {
-        return { kind: "all" };
-      }
+      if (!config.mobileEnabled || subscriptionId === null) return fallback;
       const rows = await subscriptions.list();
       return rows.some((row) => row.id === subscriptionId)
         ? { kind: "subscription", subscriptionId }
-        : { kind: "all" };
+        : fallback;
     }
     const enabled =
       client.kind === "web" ? config.webEnabled : config.desktopEnabled;
     return enabled && client.canNotify && clients.isOnline(client)
       ? { kind: "client", clientId, channel: client.kind }
-      : { kind: "all" };
+      : fallback;
   }
 
   async function deviceTarget(deviceId: string): Promise<DeliveryTarget> {
@@ -451,7 +452,7 @@ export function createPushSender(args: CreatePushSenderArgs): PushSender {
       ) {
         channels.push(target.channel);
       }
-    } else if (target.kind === "all") {
+    } else if (target.kind === "all" || target.kind === "web-and-desktop") {
       if (config.webEnabled) channels.push("web");
       if (config.desktopEnabled) channels.push("desktop");
     }
@@ -465,7 +466,13 @@ export function createPushSender(args: CreatePushSenderArgs): PushSender {
         targetClientId: target.kind === "client" ? target.clientId : null,
       } satisfies ClientNotification);
     }
-    if (!config.mobileEnabled || target.kind === "client") return channels;
+    if (
+      !config.mobileEnabled ||
+      target.kind === "client" ||
+      target.kind === "web-and-desktop"
+    ) {
+      return channels;
+    }
     const rows = (await subscriptions.list()).filter(
       (row) => target.kind === "all" || row.id === target.subscriptionId,
     );
@@ -491,6 +498,10 @@ export function createPushSender(args: CreatePushSenderArgs): PushSender {
         sound: "default",
         channelId: "threads",
         priority: "high",
+        interruptionLevel:
+          notification.kind === SENT_NOTIFICATION_KIND
+            ? "time-sensitive"
+            : "active",
       },
     }));
     let sentCount = 0;

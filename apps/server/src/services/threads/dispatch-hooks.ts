@@ -28,6 +28,7 @@ import { ApiError } from "../../errors.js";
 import type { AppDeps } from "../../types.js";
 import { toEnvironmentResponse } from "../environments/environment-response.js";
 import { getNonDestroyedHostWithStatus } from "../lib/entity-lookup.js";
+import { getRequestClientId } from "../../request-context.js";
 import { pluginHookProvider } from "../plugins/plugin-hook-registry.js";
 
 type DispatchHookDeps = Pick<AppDeps, "db" | "hub">;
@@ -349,6 +350,7 @@ function buildHookContext(
     deps,
     request.environmentId,
   );
+  const clientId = getRequestClientId();
   const droppedFromContractStillEmitted: DroppedFromContractStillEmitted = {
     startedOnBehalfOf: request.startedOnBehalfOf,
     queuedMessage: request.queuedMessages[0] ?? null,
@@ -375,6 +377,7 @@ function buildHookContext(
     parentThreadId: request.parentThreadId,
     queuedMessages: request.queuedMessages,
     experimental_submission: request.pluginSubmission,
+    ...(clientId === null ? {} : { experimental_clientId: clientId }),
   };
 }
 
