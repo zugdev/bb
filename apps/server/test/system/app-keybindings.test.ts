@@ -851,6 +851,7 @@ describe("app keybindings", () => {
           [command, key, false, shift, true],
         ]),
         ["splitTab.newForProject", "o", false, false, true],
+        ["splitTab.openInbox", "i", false, false, true],
         ...SPLIT_TAB_SELECT_APP_COMMAND_IDS.flatMap((command, index) => [
           [command, String(index + 1), true, false, false],
           [command, String(index + 1), false, false, true],

@@ -18,7 +18,8 @@ import {
   nextSnoozeWake,
   type InboxSections,
 } from "./inbox-queue";
-import { paneContentRoute } from "./splitThreadNavigation";
+import { openInboxTab, paneContentRoute } from "./splitThreadNavigation";
+import { useAppCommandHandler } from "@/components/commands/AppCommandProvider";
 import { Button } from "@bb/shared-ui/button";
 import { Icon } from "@bb/shared-ui/icon";
 import {
@@ -266,6 +267,19 @@ export function InboxTabController() {
     focused?.content.kind === "thread" ? focused.content.threadId : null;
   const showsCompose =
     focused === null || focused.content.kind === "new-thread";
+
+  useAppCommandHandler("splitTab.openInbox", () => {
+    openInboxTab(store, navigate);
+    const top = queue[0];
+    if (top !== undefined) {
+      showInInboxTab(store, navigate, {
+        kind: "thread",
+        projectId: top.projectId,
+        threadId: top.id,
+      });
+    }
+    return true;
+  });
 
   useEffect(() => {
     if (!isLoaded || !isInboxTab) return;
