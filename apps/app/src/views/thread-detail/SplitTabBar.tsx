@@ -78,7 +78,6 @@ import {
 import {
   focusedPaneRoute,
   openComposeTab,
-  openInboxTab,
 } from "./splitThreadNavigation";
 import { InboxTabController, useInboxQueueLength } from "./InboxTabController";
 
@@ -313,10 +312,6 @@ function SplitTabCommandHandlers({
   const show = useShowSplitTabLayout();
   useAppCommandHandler("splitTab.new", () => {
     openComposeTab(store, navigate);
-    return true;
-  });
-  useAppCommandHandler("splitTab.openInbox", () => {
-    openInboxTab(store, navigate);
     return true;
   });
   useAppCommandHandler("splitTab.newForProject", () => {

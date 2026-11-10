@@ -8,7 +8,6 @@ import { asking, makeProject, makeThread, PERSONAL, WEB } from "./fixtures";
 import {
   DEFAULT_HOME_THREAD_FILTER,
   NEEDS_YOU_LIMIT,
-  RECENT_PROJECT_LIMIT,
 } from "./home-overview";
 import {
   NewThreadOverview,
@@ -36,8 +35,11 @@ function renderOverview(props: Partial<NewThreadOverviewProps>) {
       filter={DEFAULT_HOME_THREAD_FILTER}
       setFilter={() => undefined}
       showArchived={false}
+      setShowArchived={() => undefined}
       onArchiveThreads={() => Promise.resolve()}
       pullRequests={[]}
+      pullRequestsExpanded={true}
+      setPullRequestsExpanded={() => undefined}
       onSelectPullRequest={() => undefined}
       onOpenThread={() => undefined}
       {...props}
@@ -125,15 +127,18 @@ describe("NewThreadOverview", () => {
       .filter(
         (button) =>
           button.hasAttribute("aria-pressed") &&
+          button.textContent !== "Archived" &&
           button.closest('[aria-label="Thread filters"]') === null,
       );
     expect(chips.map((chip) => chip.textContent)).toEqual(
-      ["newest", "recent", "mid", "older"].slice(0, RECENT_PROJECT_LIMIT),
+      ["newest", "recent", "mid", "older", "old", "never"],
     );
     expect(chips.map((chip) => chip.getAttribute("aria-pressed"))).toEqual([
       "false",
       "false",
       "true",
+      "false",
+      "false",
       "false",
     ]);
     expect(screen.getByText("⌥ O")).toBeTruthy();
@@ -255,6 +260,12 @@ describe("NewThreadOverview", () => {
 
     renderOverview({ threads, showArchived: true });
     expect(screen.getByText("gone")).toBeTruthy();
+    cleanup();
+
+    const setShowArchived = vi.fn();
+    renderOverview({ threads, setShowArchived });
+    fireEvent.click(screen.getByRole("button", { name: "Archived" }));
+    expect(setShowArchived).toHaveBeenCalledWith(true);
   });
 
   it("lists the selected project's pull requests and selects one on click", () => {
@@ -285,5 +296,17 @@ describe("NewThreadOverview", () => {
 
     renderOverview({ projectId: null, pullRequests: [pr] });
     expect(screen.queryByText("Your pull requests")).toBeNull();
+    cleanup();
+
+    const setPullRequestsExpanded = vi.fn();
+    renderOverview({
+      projectId: WEB.id,
+      pullRequests: null,
+      pullRequestsExpanded: false,
+      setPullRequestsExpanded,
+    });
+    expect(screen.queryByText("Loading…")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: /Your pull requests/u }));
+    expect(setPullRequestsExpanded).toHaveBeenCalledWith(true);
   });
 });
