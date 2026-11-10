@@ -5,7 +5,6 @@ import {
 } from "@get-bb/plugin-sdk/app";
 
 export const NEEDS_YOU_LIMIT = 3;
-export const RECENT_PROJECT_LIMIT = 4;
 
 const SIDE_CHAT_PLUGIN_ID = "side-chat";
 
@@ -182,16 +181,12 @@ export function recentProjects(
       lastMessageByProject.set(thread.projectId, sentAt);
   }
   return projects
-    .filter(
-      (project) =>
-        !project.isPersonal && (lastMessageByProject.get(project.id) ?? 0) > 0,
-    )
+    .filter((project) => !project.isPersonal)
     .sort(
       (a, b) =>
         (lastMessageByProject.get(b.id) ?? 0) -
         (lastMessageByProject.get(a.id) ?? 0),
-    )
-    .slice(0, RECENT_PROJECT_LIMIT);
+    );
 }
 
 export function nextCycledProject(

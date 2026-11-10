@@ -55,7 +55,12 @@ function NewThreadOverviewSection({
 }: PluginHomepageSectionProps) {
   const settings = useSettings().values;
   const showFilters = settings?.showFilters === true;
-  const showArchived = settings?.showArchived === true;
+  const [showArchived, setShowArchived] = useStoredState(
+    HOME_SHOW_ARCHIVED_KEY,
+    isBoolean,
+    false,
+  );
+  const [pullRequestsExpanded, setPullRequestsExpanded] = useState(false);
   const { threads, projects } = experimental_useSidebarThreads({
     experimental_lifecycles: showArchived ? ["active", "archived"] : ["active"],
   });
@@ -85,7 +90,7 @@ function NewThreadOverviewSection({
     pluginId: GIT_WORKTREE_PLUGIN_ID,
     method: "listOpenPullRequests",
     input: { projectId: projectId ?? "", hostId: null },
-    enabled: projectId !== null && setProjectId !== null,
+    enabled: projectId !== null && setProjectId !== null && pullRequestsExpanded,
   });
   const pullRequestHostId = pullRequestsQuery.data?.hostId ?? null;
   const cycleShortcut = experimental_useCommandShortcut(
@@ -125,12 +130,19 @@ function NewThreadOverviewSection({
       filter={showFilters ? filter : DEFAULT_HOME_THREAD_FILTER}
       setFilter={showFilters ? setFilter : null}
       showArchived={showArchived}
+      setShowArchived={setShowArchived}
       onArchiveThreads={archiveThreads}
       pullRequests={
-        projectId === null || pullRequestHostId === null
-          ? []
-          : (pullRequestsQuery.data?.pullRequests ?? [])
+        pullRequestsQuery.data === undefined
+          ? pullRequestsQuery.error === null
+            ? null
+            : []
+          : pullRequestHostId === null
+            ? []
+            : pullRequestsQuery.data.pullRequests
       }
+      pullRequestsExpanded={pullRequestsExpanded}
+      setPullRequestsExpanded={setPullRequestsExpanded}
       onSelectPullRequest={(pr) => {
         if (pullRequestHostId === null) return;
         void composer
@@ -166,6 +178,7 @@ function NewThreadOverviewSection({
 export const HOME_THREAD_FILTER_KEY = "bb.home.threadFilter";
 const HOME_THREAD_SORT_KEY = "bb.home.threadSort";
 const HOME_THREAD_OLDEST_FIRST_KEY = "bb.home.threadOldestFirst";
+const HOME_SHOW_ARCHIVED_KEY = "bb.home.showArchived";
 
 function readStored<T>(
   key: string,
