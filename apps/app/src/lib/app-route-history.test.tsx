@@ -12,7 +12,7 @@ import {
 import { afterEach, describe, expect, it } from "vitest";
 import { MemoryRouter, useLocation, useNavigate } from "react-router-dom";
 import { PluginContext } from "@/components/plugin/plugin-context";
-import { SidebarHistoryNavigationControls } from "@/components/sidebar/SidebarHistoryNavigationControls";
+import { HistoryNavigationButtons } from "@/test/history-navigation-buttons";
 import { useBbNavigate } from "./plugin-sdk-hooks";
 import {
   AUTOMATIONS_PLUGIN_ID,
@@ -49,7 +49,7 @@ function RemountableSidebarControlsHarness() {
       <button type="button" onClick={() => navigate("/")}>
         go-home
       </button>
-      {mounted ? <SidebarHistoryNavigationControls /> : null}
+      {mounted ? <HistoryNavigationButtons /> : null}
       {TOOL_ROUTE_SEQUENCE.map((path) => (
         <button key={path} type="button" onClick={() => navigate(path)}>
           {path}

@@ -11,6 +11,7 @@ import { useLocation } from "react-router-dom";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSetAtom } from "jotai";
 import { appToast } from "@/components/ui/app-toast";
+import { showUndoToast } from "@/components/ui/undo-toast";
 import type { ClosePanesForThreadsResult } from "@/lib/split-layout/atoms";
 import { closeThreadsInAllTabsAtom } from "@/lib/split-layout/tabs";
 import type { Thread } from "@bb/domain";
@@ -96,7 +97,6 @@ function describeThreadCount(count: number): string {
   return count === 1 ? "1 thread" : `${count} threads`;
 }
 
-const ARCHIVE_UNDO_TOAST_DURATION_MS = 10_000;
 
 export function ThreadActionsProvider({
   children,
@@ -325,7 +325,7 @@ export function ThreadActionsProvider({
         : null;
       const previousRoute = viewedRouteRef.current;
       if (destination !== null) viewedRouteRef.current = destination;
-      appToast.success(
+      showUndoToast(
         singleThread !== null || archivedThreadIds.length === 1
           ? "Thread archived"
           : "Threads archived",
@@ -347,28 +347,24 @@ export function ThreadActionsProvider({
           ) : (
             `Archived ${describeThreadCount(archivedThreadIds.length)}`
           ),
-          cancel: {
-            label: "Undo",
-            onClick: () => {
-              void (async () => {
-                try {
-                  for (const threadId of [...archivedThreadIds].reverse())
-                    await browserSdk.threads.unarchive({ threadId });
-                  if (
-                    destination !== null &&
-                    viewedRouteRef.current === destination
-                  )
-                    navigate(previousRoute);
-                } catch (error) {
-                  showMutationErrorToast({
-                    error,
-                    fallbackMessage: "Failed to restore archived threads",
-                  });
-                }
-              })();
-            },
+          undo: () => {
+            void (async () => {
+              try {
+                for (const threadId of [...archivedThreadIds].reverse())
+                  await browserSdk.threads.unarchive({ threadId });
+                if (
+                  destination !== null &&
+                  viewedRouteRef.current === destination
+                )
+                  navigate(previousRoute);
+              } catch (error) {
+                showMutationErrorToast({
+                  error,
+                  fallbackMessage: "Failed to restore archived threads",
+                });
+              }
+            })();
           },
-          duration: ARCHIVE_UNDO_TOAST_DURATION_MS,
           id: toastId,
         },
       );

@@ -116,7 +116,6 @@ import { AppLayoutSidebar } from "./AppLayoutSidebar";
 import { resolveRouteSidebar } from "./routeSidebar";
 import { NAV_RAIL_COLLAPSED_SIDEBAR_WIDTH } from "@/components/sidebar/navRailWidth";
 import { useSidebarNavigationPlacement } from "@/components/sidebar/sidebarNavigationProvider";
-import { SidebarHistoryNavigationControls } from "@/components/sidebar/SidebarHistoryNavigationControls";
 import {
   SidebarTitleBarSlotProvider,
   SidebarTitleBarSlotTarget,
@@ -294,7 +293,6 @@ function SidebarTriggerOverlay({
             MACOS_CHROME_CONTROL_NO_DRAG_CLASS,
           )}
         >
-          <SidebarHistoryNavigationControls className="gap-0" />
           <SidebarTrigger {...triggerProps} />
           <SidebarTitleBarSlotTarget />
         </div>

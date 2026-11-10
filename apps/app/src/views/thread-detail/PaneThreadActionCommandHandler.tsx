@@ -10,13 +10,17 @@ const PANE_THREAD_ACTION_COMMANDS = [
   "thread.pin",
   "thread.markRead",
   "thread.archive",
+  "thread.snooze",
 ] as const;
 
 const PANE_THREAD_ACTION_KEYS = [
   `${CORE_THREAD_ACTION_OWNER}/pin`,
   `${CORE_THREAD_ACTION_OWNER}/read`,
   `${CORE_THREAD_ACTION_OWNER}/archive`,
+  `${CORE_THREAD_ACTION_OWNER}/snooze`,
 ];
+
+const SNOOZE_SHORTCUT_PRESET = "1h";
 
 export function PaneThreadActionCommandHandler({
   thread,
@@ -43,7 +47,11 @@ export function PaneThreadActionCommandHandler({
     (index) => {
       const entry = entryFor(index);
       if (entry === undefined) return false;
-      void entry.action.run();
+      void entry.action.run(
+        PANE_THREAD_ACTION_COMMANDS[index] === "thread.snooze"
+          ? SNOOZE_SHORTCUT_PRESET
+          : undefined,
+      );
       return true;
     },
     0,

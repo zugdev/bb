@@ -8,21 +8,16 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import { cn } from "@bb/shared-ui/lib/utils";
-import {
-  useCloseMobileSidebar,
-  useIsSidebarFramed,
-} from "@/components/ui/sidebar.js";
+import { useIsSidebarFramed } from "@/components/ui/sidebar.js";
 import {
   CHROME_ROW_CLASS,
   getBbDesktopInfo,
   MACOS_CHROME_CONTROL_AXIS_CLASS,
-  MACOS_CHROME_CONTROL_NO_DRAG_CLASS,
   MACOS_WINDOW_DRAG_CLASS,
   shouldReserveMacosTrafficLights,
   shouldUseMacosDesktopChrome,
 } from "@/lib/bb-desktop";
 import { useDesktopWindowState } from "@/hooks/useDesktopWindowState";
-import { SidebarHistoryNavigationControls } from "./SidebarHistoryNavigationControls";
 import { useSidebarNavigationPlacement } from "./sidebarNavigationProvider";
 
 const FRAMED_CARD_TOP_BORDER_OFFSET_CLASS = "-mt-px";
@@ -88,7 +83,6 @@ export function SidebarTopReserveRow({
   testId: string;
   headerSlot?: ReactNode;
 }) {
-  const closeOnMobile = useCloseMobileSidebar();
   const isFramed = useIsSidebarFramed();
   const [desktopInfo] = useState(getBbDesktopInfo);
   const desktopWindowState = useDesktopWindowState();
@@ -130,15 +124,6 @@ export function SidebarTopReserveRow({
         >
           {headerSlot}
         </div>
-      )}
-      {isFramed ? null : (
-        <SidebarHistoryNavigationControls
-          onNavigate={closeOnMobile}
-          className={cn(
-            "shrink-0",
-            usesDesktopChrome && MACOS_CHROME_CONTROL_NO_DRAG_CLASS,
-          )}
-        />
       )}
     </div>
   );

@@ -17,6 +17,7 @@ import { useThreadActions } from "@/components/thread/ThreadActionsProvider";
 import { useRouteState } from "@/hooks/useRouteState";
 import { copyToClipboardWithToast } from "@/lib/clipboard";
 import { appToast } from "@/components/ui/app-toast";
+import { showUndoToast } from "@/components/ui/undo-toast";
 import { showMutationErrorToast } from "@/lib/mutation-errors";
 import { resolveThread } from "@/lib/cached-thread";
 import { PARENT_NOTIFICATIONS_OPTIONS } from "@/lib/parent-notifications";
@@ -95,14 +96,15 @@ function describeThreadCount(count: number): string {
 
 async function runForEach(
   threads: readonly PluginThreadActionTarget[],
-  run: (thread: PluginThreadActionTarget) => Promise<unknown>,
+  run: (thread: PluginThreadActionTarget, index: number) => Promise<unknown>,
   fallbackMessage: string,
-): Promise<void> {
+): Promise<boolean> {
   const results = await Promise.allSettled(threads.map(run));
   const failure = results.find((result) => result.status === "rejected");
   if (failure !== undefined) {
     showMutationErrorToast({ error: failure.reason, fallbackMessage });
   }
+  return failure === undefined;
 }
 
 function parentNotificationsAction(
@@ -196,13 +198,30 @@ function snoozeAction(
           ? null
           : snoozePresetUntil(String(value), Date.now());
       if (until === null && value !== UNSNOOZE_CHOICE) return;
-      await runForEach(
+      const snoozed = await runForEach(
         threads,
         (thread) =>
           sdk.threads.experimental_snooze({ threadId: thread.id, until }),
         until === null
           ? "Failed to unsnooze thread."
           : "Failed to snooze thread.",
+      );
+      if (!snoozed || until === null) return;
+      showUndoToast(
+        threads.length === 1 ? "Thread snoozed" : "Threads snoozed",
+        {
+          description: `Until ${formatSnoozeWake(until, Date.now())}`,
+          undo: () =>
+            void runForEach(
+              threads,
+              (thread, index) =>
+                sdk.threads.experimental_snooze({
+                  threadId: thread.id,
+                  until: wakes[index] ?? null,
+                }),
+              "Failed to unsnooze thread.",
+            ),
+        },
       );
     },
   };
@@ -362,8 +381,8 @@ export const CORE_THREAD_ACTIONS: readonly PluginThreadActionRegistration<unknow
         return {
           label: anyUnread ? "Mark read" : "Mark unread",
           icon: anyUnread ? "MailOpen" : "Mail",
-          run: () =>
-            runForEach(
+          run: async () => {
+            await runForEach(
               threads,
               (thread) =>
                 anyUnread
@@ -372,7 +391,8 @@ export const CORE_THREAD_ACTIONS: readonly PluginThreadActionRegistration<unknow
               anyUnread
                 ? "Failed to mark threads read"
                 : "Failed to mark threads unread",
-            ),
+            );
+          },
         };
       },
     }),

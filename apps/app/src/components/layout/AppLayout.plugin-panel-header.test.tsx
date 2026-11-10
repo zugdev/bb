@@ -286,7 +286,7 @@ describe("AppLayout plugin panel header", () => {
   });
 
   it.each(["rail", "list"] as const)(
-    "keeps the macOS trigger and history controls in the window title bar with %s navigation",
+    "keeps the macOS trigger in the window title bar without history arrows with %s navigation",
     (placement) => {
       viewportState.navigationPlacement = placement;
       viewportState.macosChrome = true;
@@ -299,9 +299,7 @@ describe("AppLayout plugin panel header", () => {
           screen.getByRole("button", { name: /^Toggle sidebar/ }),
         ),
       ).toBe(true);
-      expect(
-        titleBar.contains(screen.getByRole("button", { name: "Go back" })),
-      ).toBe(true);
+      expect(screen.queryByRole("button", { name: "Go back" })).toBeNull();
       expect(screen.queryByTestId("app-desktop-sidebar-trigger")).toBeNull();
     },
   );
