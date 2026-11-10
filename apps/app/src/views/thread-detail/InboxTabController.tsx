@@ -20,6 +20,7 @@ import {
 } from "./inbox-queue";
 import { openInboxTab, paneContentRoute } from "./splitThreadNavigation";
 import { useAppCommandHandler } from "@/components/commands/AppCommandProvider";
+import { useUsesSwipeChrome } from "@/components/layout/useUsesSwipeChrome";
 import { Button } from "@bb/shared-ui/button";
 import { Icon } from "@bb/shared-ui/icon";
 import {
@@ -162,13 +163,7 @@ export function SnoozeMenu({
   );
 }
 
-export function InboxNavigator({
-  thread,
-  className,
-}: {
-  thread: PluginThreadActionTarget;
-  className: string;
-}) {
+function useInboxNavigation(thread: PluginThreadActionTarget) {
   const store = useStore();
   const navigate = useNavigate();
   const { queue } = useInbox();
@@ -176,7 +171,6 @@ export function InboxNavigator({
     keys: INBOX_ARCHIVE_ACTION_KEYS,
   });
   const index = queue.findIndex((entry) => entry.id === thread.id);
-  if (queue.length === 0) return null;
   const go = (step: -1 | 1) => {
     const target =
       index === -1
@@ -189,17 +183,25 @@ export function InboxNavigator({
       threadId: target.id,
     });
   };
-  const isOpen = thread.archivedAt === null;
+  return { queue, index, go, archive, isOpen: thread.archivedAt === null };
+}
+
+type InboxNavigation = ReturnType<typeof useInboxNavigation>;
+
+function InboxPager({
+  nav: { queue, index, go },
+  buttonClassName,
+}: {
+  nav: InboxNavigation;
+  buttonClassName: string;
+}) {
   return (
-    <div
-      data-inbox-navigator=""
-      className={cn("shrink-0 items-center gap-1 text-xs", className)}
-    >
+    <>
       <Button
         type="button"
         variant="ghost"
         size="icon"
-        className="size-7"
+        className={buttonClassName}
         aria-label="Previous thread in Inbox"
         disabled={queue.length < 2}
         onClick={() => go(-1)}
@@ -214,41 +216,125 @@ export function InboxNavigator({
         type="button"
         variant="ghost"
         size="icon"
-        className="size-7"
+        className={buttonClassName}
         aria-label="Next thread in Inbox"
         disabled={queue.length < 2 && index !== -1}
         onClick={() => go(1)}
       >
         <Icon name="ChevronRight" />
       </Button>
-      {isOpen ? (
-        <SnoozeMenu thread={thread}>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="h-7 gap-1.5 px-2 text-xs"
-          >
-            <Icon name="AlarmClock" className="size-3.5" />
-            Snooze
-          </Button>
-        </SnoozeMenu>
-      ) : null}
-      {archive === undefined || !isOpen ? null : (
+    </>
+  );
+}
+
+function InboxActions({
+  thread,
+  nav: { archive, isOpen },
+  buttonClassName,
+  labelClassName,
+}: {
+  thread: PluginThreadActionTarget;
+  nav: InboxNavigation;
+  buttonClassName: string;
+  labelClassName?: string;
+}) {
+  if (!isOpen) return null;
+  return (
+    <>
+      <SnoozeMenu thread={thread}>
         <Button
           type="button"
           variant="ghost"
           size="sm"
-          className="h-7 gap-1.5 px-2 text-xs"
+          className={buttonClassName}
+        >
+          <Icon name="AlarmClock" className="size-3.5" />
+          <span className={labelClassName}>Snooze</span>
+        </Button>
+      </SnoozeMenu>
+      {archive === undefined ? null : (
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className={buttonClassName}
           disabled={archive.action.disabled}
           onClick={() => void archive.action.run()}
         >
           <Icon name="Archive" className="size-3.5" />
-          Archive
+          <span className={labelClassName}>Archive</span>
         </Button>
       )}
+    </>
+  );
+}
+
+export function InboxNavigator({
+  thread,
+  className,
+}: {
+  thread: PluginThreadActionTarget;
+  className: string;
+}) {
+  const nav = useInboxNavigation(thread);
+  if (nav.queue.length === 0) return null;
+  return (
+    <div
+      data-inbox-navigator=""
+      className={cn("shrink-0 items-center gap-1 text-xs", className)}
+    >
+      <InboxPager nav={nav} buttonClassName="size-7" />
+      <InboxActions
+        thread={thread}
+        nav={nav}
+        buttonClassName="h-7 gap-1.5 px-2 text-xs"
+      />
     </div>
   );
+}
+
+const INBOX_BUBBLE_CLASS =
+  "pointer-events-auto flex h-11 items-center rounded-full border border-border/70 bg-surface-scrim/75 text-xs shadow-lg backdrop-blur-md";
+
+function InboxFloatingBubbles({
+  thread,
+}: {
+  thread: PluginThreadActionTarget;
+}) {
+  const nav = useInboxNavigation(thread);
+  if (nav.queue.length === 0) return null;
+  return (
+    <div
+      data-inbox-navigator=""
+      data-inbox-floating=""
+      className="pointer-events-none absolute inset-x-0 bottom-full z-10 flex items-end justify-between gap-2 pb-2 pl-[max(0.75rem,env(safe-area-inset-left))] pr-[max(0.75rem,env(safe-area-inset-right))]"
+    >
+      <div className={INBOX_BUBBLE_CLASS}>
+        <InboxPager nav={nav} buttonClassName="size-11 rounded-full" />
+      </div>
+      {nav.isOpen ? (
+        <div className={INBOX_BUBBLE_CLASS}>
+          <InboxActions
+            thread={thread}
+            nav={nav}
+            buttonClassName="size-11 rounded-full"
+            labelClassName="sr-only"
+          />
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+export function InboxFloatingNavigator({
+  thread,
+}: {
+  thread: PluginThreadActionTarget;
+}) {
+  const isPhone = useUsesSwipeChrome();
+  const isInboxTab = useIsInboxTabActive();
+  if (!isPhone || !isInboxTab) return null;
+  return <InboxFloatingBubbles thread={thread} />;
 }
 
 export function InboxTabController() {
