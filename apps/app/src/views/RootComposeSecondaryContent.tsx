@@ -3,6 +3,7 @@ import { Skeleton } from "@bb/shared-ui/skeleton";
 import { COARSE_POINTER_HEADER_ICON_BUTTON_CLASS } from "@bb/shared-ui/coarse-pointer-sizing";
 import { cn } from "@bb/shared-ui/lib/utils";
 import {
+  isLeadHomepageSection,
   PluginHomepageSections,
   type HomepageSectionProject,
 } from "@/components/plugin/PluginHomepageSections";
@@ -21,6 +22,7 @@ import {
   shouldUseMacosDesktopChrome,
 } from "@/lib/bb-desktop";
 import { useIsSidebarFramed } from "@/components/ui/sidebar.js";
+import { usePluginSlots } from "@/lib/plugin-slots";
 import { RootComposeHome } from "./RootComposeHome";
 import { useOptionalPaneContext } from "./thread-detail/PaneContext";
 
@@ -94,6 +96,9 @@ export function RootComposeSecondaryContent({
   const paneContext = useOptionalPaneContext();
   const secondaryPanelHost = paneContext?.secondaryPanelHost ?? null;
   const composerHost = usePluginComposerHost();
+  const hasLeadHomepageSection = usePluginSlots().homepageSections.some(
+    isLeadHomepageSection,
+  );
   const [desktopInfo] = useState(getBbDesktopInfo);
   const usesDesktopChrome = shouldUseMacosDesktopChrome(desktopInfo);
   const pinnedPanelToggleBoxClassName =
@@ -129,7 +134,9 @@ export function RootComposeSecondaryContent({
       <RootComposeHome
         isCompact={isCompactHomeLayout}
         composer={children}
-        compactScrollContent={compactScrollContent}
+        compactScrollContent={
+          hasLeadHomepageSection ? null : compactScrollContent
+        }
         homepageSections={
           <PluginHomepageSections project={homepageSectionProject} />
         }

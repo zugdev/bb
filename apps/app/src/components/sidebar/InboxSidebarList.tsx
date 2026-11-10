@@ -147,7 +147,7 @@ function InboxRow({
 }) {
   const target = useMemo(() => threadListEntryActionTarget(thread), [thread]);
   return (
-    <li className="group relative">
+    <li className="group relative pointer-coarse:flex pointer-coarse:items-center">
       <button
         type="button"
         data-thread-id={thread.id}
@@ -168,16 +168,16 @@ function InboxRow({
           />
           <span className="truncate">{getThreadDisplayTitle(thread)}</span>
         </span>
-        <span className="shrink-0 text-2xs tabular-nums text-muted-foreground group-hover:invisible group-focus-within:invisible">
+        <span className="shrink-0 text-2xs tabular-nums text-muted-foreground pointer-fine:group-hover:invisible pointer-fine:group-focus-within:invisible">
           {trailing}
         </span>
       </button>
-      <div className="absolute inset-y-0 right-1 hidden items-center group-focus-within:flex group-hover:flex">
+      <div className="absolute inset-y-0 right-1 hidden items-center group-focus-within:flex group-hover:flex pointer-coarse:static pointer-coarse:flex">
         <SnoozeMenu thread={target}>
           <button
             type="button"
             aria-label={`Snooze ${getThreadDisplayTitle(thread)}`}
-            className="flex size-6 items-center justify-center rounded-md text-muted-foreground hover:bg-state-hover hover:text-foreground"
+            className="flex size-6 items-center justify-center rounded-md text-muted-foreground pointer-coarse:size-9 hover:bg-state-hover hover:text-foreground"
           >
             <Icon name="AlarmClock" className="size-3.5" />
           </button>
