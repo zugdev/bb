@@ -7,7 +7,10 @@ import { archivableThreads } from "../list/ThreadFilterBar.js";
 const DAY = 86_400_000;
 const now = 100 * DAY;
 
-function project(id: string, threads: SidebarProject["threads"]): SidebarProject {
+function project(
+  id: string,
+  threads: SidebarProject["threads"],
+): SidebarProject {
   return {
     id,
     name: id,
@@ -15,6 +18,7 @@ function project(id: string, threads: SidebarProject["threads"]): SidebarProject
     settingsHref: `/projects/${id}/settings`,
     isPersonal: false,
     experimental_gitRemoteUrl: null,
+    experimental_color: "inherit",
     threads,
   };
 }
@@ -55,17 +59,21 @@ function ids(filter: Parameters<typeof filterSidebarProjects>[1]) {
 describe("filterSidebarProjects", () => {
   it("returns the same array when no filter is set", () => {
     expect(
-      filterSidebarProjects(projects, { status: "all", projectId: null, olderThanDays: null }, now),
+      filterSidebarProjects(
+        projects,
+        { status: "all", projectId: null, olderThanDays: null },
+        now,
+      ),
     ).toBe(projects);
   });
 
   it("drops projects left without matching threads", () => {
-    expect(ids({ status: "running", projectId: null, olderThanDays: null })).toEqual([
-      ["a", ["running"]],
-    ]);
-    expect(ids({ status: "needs-you", projectId: null, olderThanDays: null })).toEqual([
-      ["b", ["asking"]],
-    ]);
+    expect(
+      ids({ status: "running", projectId: null, olderThanDays: null }),
+    ).toEqual([["a", ["running"]]]);
+    expect(
+      ids({ status: "needs-you", projectId: null, olderThanDays: null }),
+    ).toEqual([["b", ["asking"]]]);
   });
 
   it("combines the project and age filters", () => {

@@ -2232,6 +2232,7 @@ function ProjectRowComponent({
         >
           <TopLevelSidebarSection
             label={project.name}
+            labelColor={project.experimental_color}
             dropParentKey={buildSidebarEntitySectionId("project", project.id)}
             labelEditor={rename.editor}
             onRename={rename.startEditingFromDoubleClick}

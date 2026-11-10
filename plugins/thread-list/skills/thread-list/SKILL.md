@@ -28,6 +28,11 @@ both work. A value the key's schema rejects fails with
 window applies a change immediately. Sections themselves and a thread's
 section are bb core state: use `bb thread section` and `bb thread update`.
 
+Projects keep bb's one project order, the order Settings > Projects, pickers and
+`bb project list` use. Dragging a project group in the sidebar moves the project
+in that order, and so does `bb project reorder <id> --after <id> --before <id>`.
+`sectionOrder` only decides where `pinned` and `threads` sit among the projects.
+
 On first load the plugin copies any non-default `sidebar.*` values from
 `bb settings ui` once; after that the two are independent.
 

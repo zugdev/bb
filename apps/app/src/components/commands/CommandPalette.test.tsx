@@ -226,6 +226,7 @@ vi.mock("@/hooks/usePromptDraftStorage", () => ({
 }));
 
 vi.mock("@/hooks/queries/sidebar-navigation-query", () => ({
+  useProjectColor: () => undefined,
   useSidebarNavigation: () => ({
     data: {
       projects: [

@@ -1,9 +1,10 @@
 import { queryOptions, useQuery } from "@tanstack/react-query";
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import { PERSONAL_PROJECT_ID, type ThreadListEntry } from "@bb/domain";
 import type { SidebarBootstrapResponse } from "@bb/server-contract";
 import { listSidebarNavigationThreads } from "@/hooks/cache-owners/query-cache";
 import { apiClient } from "@/lib/api-server";
+import { projectColorsById } from "@/lib/project-color";
 import { request, requestOptions } from "@/lib/api";
 import {
   useEnvironmentListRealtimeSubscription,
@@ -63,6 +64,28 @@ export function useProjectDisplayName(
     return data.personalProject.name;
   }
   return data.projects.find((project) => project.id === projectId)?.name;
+}
+
+export function useProjectColors(): ReadonlyMap<string, string> {
+  const { data } = useQuery<SidebarBootstrapResponse>({
+    queryKey: sidebarNavigationQueryKey(),
+    queryFn: ({ signal }) => fetchSidebarNavigation(signal),
+    ...REALTIME_OWNED_STATIC_CACHE_QUERY_POLICY,
+  });
+  return useMemo(
+    () =>
+      data === undefined
+        ? new Map()
+        : projectColorsById([...data.projects, data.personalProject]),
+    [data],
+  );
+}
+
+export function useProjectColor(
+  projectId: string | null | undefined,
+): string | undefined {
+  const colors = useProjectColors();
+  return projectId == null ? undefined : colors.get(projectId);
 }
 
 export interface SidebarNavigationThreadSelection<T> {

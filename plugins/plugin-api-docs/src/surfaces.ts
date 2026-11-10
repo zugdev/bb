@@ -876,6 +876,7 @@ export const SURFACE_GROUPS: SurfaceGroup[] = [
           "experimental_useCommandShortcut",
           "PluginSidebarThread.experimental_lastUserMessageAt",
           "PluginSidebarProject.experimental_gitRemoteUrl",
+          "PluginSidebarProject.experimental_color",
           "experimental_useHomepageSections",
           "ExperimentalHomepageSectionInfo",
           "experimental_HomepageSection",

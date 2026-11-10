@@ -169,7 +169,7 @@ export const preferenceDefinitions = {
   sectionOrder: definePreference(
     stringListSchema,
     ["pinned", "projects", "threads"],
-    "Top-level order when organized by project.",
+    "Top-level order when organized by project. Projects always follow bb's project order (bb project reorder); this sets where pinned and threads sit among them.",
     "sidebar.sectionOrder",
   ),
   manualSectionOrder: definePreference(

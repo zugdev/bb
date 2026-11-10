@@ -31,7 +31,10 @@ import {
   normalizeThreadLifecycleFilter,
   type ThreadArchiveFilter,
 } from "@/lib/thread-lifecycle-filter";
-import { useSidebarNavigation } from "@/hooks/queries/sidebar-navigation-query";
+import {
+  useProjectColor,
+  useSidebarNavigation,
+} from "@/hooks/queries/sidebar-navigation-query";
 import { usePaletteRecentArchivedThreads } from "@/hooks/queries/palette-thread-queries";
 import {
   hasThreadSearchableQuery,
@@ -538,6 +541,7 @@ export function ThreadSearchPaletteMode({
 }
 
 function ThreadSearchPaletteRow({ row }: { row: PaletteThreadSearchRow }) {
+  const projectColor = useProjectColor(row.projectId);
   const metadata = [row.projectName, row.relativeTime]
     .filter(Boolean)
     .join(" · ");
@@ -567,16 +571,18 @@ function ThreadSearchPaletteRow({ row }: { row: PaletteThreadSearchRow }) {
           >
             {row.projectName === null ? null : (
               <>
-                <Icon
-                  name="Folder"
-                  className="mr-1 inline-block size-3.5 align-text-bottom"
-                  aria-hidden
-                />
-                {highlightedText(
-                  row.projectName,
-                  0,
-                  row.projectHighlightRanges,
-                )}
+                <span style={{ color: projectColor }}>
+                  <Icon
+                    name="Folder"
+                    className="mr-1 inline-block size-3.5 align-text-bottom"
+                    aria-hidden
+                  />
+                  {highlightedText(
+                    row.projectName,
+                    0,
+                    row.projectHighlightRanges,
+                  )}
+                </span>
                 {" · "}
               </>
             )}

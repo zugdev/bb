@@ -16,6 +16,7 @@ describe("buildSidebarData", () => {
         href: "/projects/proj_a",
         settingsHref: "/projects/proj_a/settings",
         experimental_gitRemoteUrl: null,
+        experimental_color: "inherit",
       },
       {
         id: "proj_me",
@@ -24,6 +25,7 @@ describe("buildSidebarData", () => {
         href: "/projects/proj_me",
         settingsHref: "/projects/proj_me/settings",
         experimental_gitRemoteUrl: null,
+        experimental_color: "inherit",
       },
     ];
     const threads = [
@@ -64,6 +66,7 @@ describe("buildSidebarData", () => {
       href: "/projects/proj_a",
       settingsHref: "/projects/proj_a/settings",
       experimental_gitRemoteUrl: null,
+      experimental_color: "inherit",
       isPersonal: false,
     });
     expect(data.personalProject?.id).toBe("proj_me");
@@ -90,6 +93,7 @@ describe("buildSidebarData structural sharing", () => {
       href: "/a",
       settingsHref: "/a/s",
       experimental_gitRemoteUrl: null,
+      experimental_color: "inherit",
     },
     {
       id: "proj_b",
@@ -98,6 +102,7 @@ describe("buildSidebarData structural sharing", () => {
       href: "/b",
       settingsHref: "/b/s",
       experimental_gitRemoteUrl: null,
+      experimental_color: "inherit",
     },
   ];
 

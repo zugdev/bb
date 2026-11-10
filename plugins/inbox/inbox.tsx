@@ -32,7 +32,6 @@ import {
   nextSnoozeWake,
   type InboxSections,
 } from "./queue";
-import { projectColor } from "./project-color";
 
 export const INBOX_PANEL_PATH = "inbox";
 
@@ -124,15 +123,15 @@ export function InboxProjectLabel({
   className?: string;
   separator?: string;
 }) {
-  const name = projects.find((project) => project.id === projectId)?.name;
-  if (name === undefined) return null;
+  const project = projects.find((candidate) => candidate.id === projectId);
+  if (project === undefined) return null;
   return (
     <>
       <span
         className={cn("truncate", className)}
-        style={{ color: projectColor(projectId) }}
+        style={{ color: project.experimental_color }}
       >
-        {name}
+        {project.name}
       </span>
       {separator === undefined ? null : (
         <span aria-hidden className="text-muted-foreground">

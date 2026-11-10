@@ -32,7 +32,10 @@ import {
   useUpdateProject,
 } from "@/hooks/mutations/project-mutations";
 import { selectHosts, useHosts } from "@/hooks/queries/host-queries";
-import { useSidebarNavigation } from "@/hooks/queries/sidebar-navigation-query";
+import {
+  useProjectColor,
+  useSidebarNavigation,
+} from "@/hooks/queries/sidebar-navigation-query";
 import { useQuickCreateProject } from "@/hooks/useQuickCreateProject";
 import { getSettingsProjectRoutePath } from "@/lib/route-paths";
 import {
@@ -135,6 +138,7 @@ function SortableProjectRow({
     label: project.name,
   });
   const navigate = useNavigate();
+  const projectColor = useProjectColor(project.id);
   const detailPath = getSettingsProjectRoutePath(project.id);
   const remoteLabel =
     project.gitRemoteUrl === null
@@ -172,6 +176,7 @@ function SortableProjectRow({
               <Icon
                 name="FolderGit"
                 className="size-4 shrink-0 text-muted-foreground"
+                style={{ color: projectColor }}
               />
               <span className="min-w-0 truncate text-sm font-medium text-foreground">
                 {project.name}

@@ -623,9 +623,15 @@ describe("loadPluginApp", () => {
       const shortcut = experimental_useCommandShortcut("cycle");
       return (
         <div>
-          <ProjectPicker value="proj_web" onChange={onChange} disabled={false} />
+          <ProjectPicker
+            value="proj_web"
+            onChange={onChange}
+            disabled={false}
+          />
           <span>{shortcut?.label ?? "unbound"}</span>
-          <span>{experimental_useCommandShortcut("other")?.label ?? "none"}</span>
+          <span>
+            {experimental_useCommandShortcut("other")?.label ?? "none"}
+          </span>
         </div>
       );
     }
@@ -642,6 +648,7 @@ describe("loadPluginApp", () => {
               href: "/",
               settingsHref: "/settings",
               experimental_gitRemoteUrl: null,
+              experimental_color: "inherit",
             },
             {
               id: "proj_web",
@@ -650,6 +657,7 @@ describe("loadPluginApp", () => {
               href: "/projects/proj_web",
               settingsHref: "/settings/projects/proj_web",
               experimental_gitRemoteUrl: null,
+              experimental_color: "inherit",
             },
           ],
         },

@@ -13,7 +13,10 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { sidebarThreadFilterAtom } from "../preferences/atoms.js";
-import { isRunningThread, isThreadFilterActive } from "../model/thread-filter.js";
+import {
+  isRunningThread,
+  isThreadFilterActive,
+} from "../model/thread-filter.js";
 import type { SidebarProject } from "../model/use-sidebar-data.js";
 import type { SidebarThread } from "../model/sidebar-thread.js";
 import type {
@@ -54,7 +57,6 @@ function FilterChip({
           variant="ghost"
           size="sm"
           aria-label={label}
-          title={label}
           data-active={active ? "" : undefined}
           className="h-6 min-w-0 gap-1 rounded-md px-1.5 text-xs text-muted-foreground data-[active]:bg-accent data-[active]:text-foreground"
         >
@@ -120,8 +122,8 @@ export function ThreadFilterBar({
   const projectName =
     filter.projectId === null
       ? null
-      : (allProjects.find((project) => project.id === filter.projectId)
-          ?.name ?? "Project");
+      : (allProjects.find((project) => project.id === filter.projectId)?.name ??
+        "Project");
   const statusLabel =
     STATUS_OPTIONS.find((option) => option.value === filter.status)?.label ??
     "All threads";
@@ -138,7 +140,9 @@ export function ThreadFilterBar({
     setArchiving(false);
     const failed = results.filter((result) => result.status === "rejected");
     if (failed.length > 0) {
-      toast.error(`Failed to archive ${failed.length} of ${results.length} threads.`);
+      toast.error(
+        `Failed to archive ${failed.length} of ${results.length} threads.`,
+      );
     } else {
       toast.success(`Archived ${results.length} threads.`);
     }

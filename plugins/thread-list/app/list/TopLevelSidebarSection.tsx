@@ -52,6 +52,7 @@ interface TopLevelSidebarSectionCollapseControl {
 
 export interface TopLevelSidebarSectionProps {
   label: string;
+  labelColor?: string;
   labelEditor?: ReactNode;
   onRename?: () => void;
   children: ReactNode;
@@ -74,6 +75,7 @@ export interface TopLevelSidebarSectionProps {
 
 export function TopLevelSidebarSection({
   label,
+  labelColor,
   labelEditor,
   onRename,
   children,
@@ -201,6 +203,9 @@ export function TopLevelSidebarSection({
             <span
               className="min-w-0 truncate"
               title={label}
+              style={
+                labelColor === undefined ? undefined : { color: labelColor }
+              }
               onDoubleClick={
                 onRename
                   ? (event) => {

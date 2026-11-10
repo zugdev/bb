@@ -302,7 +302,7 @@ describe("useSidebarThreads sections", () => {
   it("gives each project its compose and settings hrefs", () => {
     state.data = payload([]);
     const { result } = renderHook(() => useSidebarThreads());
-    expect(result.current.projects).toEqual([
+    expect(result.current.projects).toMatchObject([
       {
         id: "proj_app",
         name: "App",
@@ -318,6 +318,8 @@ describe("useSidebarThreads sections", () => {
         settingsHref: `/settings/projects/${PERSONAL_PROJECT_ID}`,
       },
     ]);
+    const [app, personal] = result.current.projects;
+    expect(app?.experimental_color).not.toBe(personal?.experimental_color);
   });
 
   it("reports an empty section list while loading", () => {

@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
+  applyEntityOrder,
   applyVisibleSidebarSectionOrder,
+  findMovedEntity,
   buildSidebarEntitySectionId,
   insertSidebarSectionAfter,
   normalizeSidebarSectionOrder,
@@ -183,5 +185,41 @@ describe("applyVisibleSidebarSectionOrder", () => {
         legacyEntityAnchor: "sections",
       }),
     ).toEqual(["pinned", "section:b", "section:a", "threads"]);
+  });
+});
+
+describe("applyEntityOrder", () => {
+  it("puts projects in the server order and keeps built-in sections where the user put them", () => {
+    expect(
+      applyEntityOrder(
+        ["project:b", "pinned", "project:c", "threads", "project:a"],
+        ["project:a", "project:b", "project:c"],
+      ),
+    ).toEqual(["project:a", "pinned", "project:b", "threads", "project:c"]);
+  });
+});
+
+describe("findMovedEntity", () => {
+  it("names the moved project and its new neighbors for a move down and a move up", () => {
+    expect(
+      findMovedEntity(
+        ["project:a", "project:b", "project:c", "project:d"],
+        ["project:b", "project:c", "project:a", "project:d"],
+      ),
+    ).toEqual({
+      id: "project:a",
+      previousId: "project:c",
+      nextId: "project:d",
+    });
+    expect(
+      findMovedEntity(
+        ["project:a", "project:b", "project:c"],
+        ["project:c", "project:a", "project:b"],
+      ),
+    ).toEqual({ id: "project:c", previousId: null, nextId: "project:a" });
+  });
+
+  it("reports nothing when the order is unchanged", () => {
+    expect(findMovedEntity(["project:a"], ["project:a"])).toBeNull();
   });
 });

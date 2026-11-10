@@ -350,6 +350,19 @@ Docs: `frontend-core-slots.md`.
 
 1. **Scope.** Decide whether these should be one generic way to run bb's app commands.
 
+## `PluginSidebarProject.experimental_color`
+
+`experimental_color` is the CSS color bb draws a project in. `projectColorsById` (`apps/app/src/lib/project-color.ts`) ranks projects, Personal included, by `createdAt` and gives rank n the hue `25 + n × 137.508°` modulo 360, so no two projects share a color and a new project leaves the others unchanged. Deleting a project shifts the color of every newer project by one rank.
+
+**Core callers.** `useProjectColors` and `useProjectColor` (`apps/app/src/hooks/queries/sidebar-navigation-query.ts`) give the same colors to the project tab label, `ProjectSelector`, the command palette's thread rows, the thread info panel's Project row and Settings > Projects. `useSidebarThreads` (`apps/app/src/lib/plugin-sidebar-hooks.ts`) fills the field from the same map. The inbox plugin colors project names with it, and the thread list plugin colors project group headers and the other project marker on thread rows.
+
+Docs: `frontend-registration.md`.
+
+**Audit before stabilizing.**
+
+1. **Settable.** Decide whether users should pick a project's color, which would need a stored column and a uniqueness check on the server.
+2. **Deletion.** Decide whether deleting a project may shift newer colors, or whether ranks should count deleted projects.
+
 ## `BbNavigate.toCompose({ experimental_tab })` and `PluginSidebarProject.experimental_gitRemoteUrl`
 
 `toCompose({ projectId, experimental_tab: true })` opens the New thread screen in a new pane tab in that project through `openComposeTab`, and falls back to plain navigation on compact viewports. `experimental_gitRemoteUrl` is the project's git remote from the sidebar payload, or null.
