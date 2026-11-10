@@ -6,6 +6,7 @@ import { cn } from "@bb/shared-ui/lib/utils";
 import { projectColor } from "@/lib/project-color";
 import { appToast } from "@/components/ui/app-toast";
 import { useThreadEntriesById } from "@/components/thread/ThreadStatusDot";
+import { getThreadDisplayTitle } from "@/lib/thread-title";
 import { useSidebarNavigation } from "@/hooks/queries/sidebar-navigation-query";
 import { splitLayoutAtom } from "@/lib/split-layout/atoms";
 import { findPane, replacePaneContent } from "@/lib/split-layout";
@@ -16,6 +17,7 @@ import type { PaneContent } from "@/lib/split-layout";
 import {
   inboxQueue,
   inboxSections,
+  isSnoozed,
   nextInboxStep,
   nextSnoozeWake,
   type InboxSections,
@@ -91,6 +93,38 @@ export function InboxProjectLabel({
       )}
     </>
   );
+}
+
+function announceInboxAdvance(
+  paneId: string,
+  left: ThreadListEntry | undefined,
+  next: ThreadListEntry,
+) {
+  const nextTitle = getThreadDisplayTitle(next);
+  const replied =
+    left !== undefined &&
+    left.archivedAt === null &&
+    !isSnoozed(left, Date.now());
+  appToast.message(
+    replied ? `Sent to ${getThreadDisplayTitle(left)}` : `Next: ${nextTitle}`,
+    {
+      id: "inbox-advance",
+      duration: 2500,
+      description: replied ? `Next: ${nextTitle}` : undefined,
+    },
+  );
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  requestAnimationFrame(() => {
+    document
+      .querySelector(`[data-split-pane-id="${CSS.escape(paneId)}"]`)
+      ?.animate(
+        [
+          { opacity: 0.3, transform: "translateX(16px)" },
+          { opacity: 1, transform: "none" },
+        ],
+        { duration: 250, easing: "cubic-bezier(0.32,0.72,0,1)" },
+      );
+  });
 }
 
 export function useIsInboxTabActive(): boolean {
@@ -346,6 +380,7 @@ export function InboxTabController() {
   const layout = useAtomValue(splitLayoutAtom);
   const isLoaded = useSidebarNavigation().data !== undefined;
   const { queue } = useInbox();
+  const entries = useThreadEntriesById();
   const trackedByTab = useRef(new Map<string, string | null>());
   const isInboxTab =
     tabs.find((tab) => tab.id === activeTabId)?.kind === "inbox";
@@ -410,8 +445,16 @@ export function InboxTabController() {
       },
       step.thread.id,
     );
+    if (shownThreadId !== null && focused !== null) {
+      announceInboxAdvance(
+        focused.paneId,
+        entries.get(shownThreadId),
+        step.thread,
+      );
+    }
   }, [
     activeTabId,
+    entries,
     focused,
     isInboxTab,
     isLoaded,
