@@ -21,6 +21,11 @@ import {
 } from "./RootComposeSecondaryContent";
 import { panelGroupState } from "@/test/react-resizable-panels-stub";
 import { secondaryPanelWidthPercentAtom } from "@/components/secondary-panel/threadSecondaryPanelAtoms";
+import {
+  resetPluginSlotStoreForTest,
+  setPluginSlotRegistrations,
+} from "@/lib/plugin-slots";
+import { makePluginRegistrationSet } from "@/test/fixtures/plugins";
 
 type RootComposeSecondaryContentProps = ComponentProps<
   typeof RootComposeSecondaryContent
@@ -104,9 +109,12 @@ vi.mock("@/components/secondary-panel/ThreadSecondaryPanel", async () => {
   return { ThreadSecondaryPanel };
 });
 
-vi.mock("@/components/plugin/PluginHomepageSections", async () => {
+vi.mock("@/components/plugin/PluginHomepageSections", async (importOriginal) => {
   const React = await import("react");
   return {
+    ...(await importOriginal<
+      typeof import("@/components/plugin/PluginHomepageSections")
+    >()),
     PluginHomepageSections: () =>
       React.createElement("div", { "data-testid": "plugin-homepage-sections" }),
   };
@@ -195,6 +203,7 @@ function renderRootCompose(args: RenderRootComposeArgs) {
 
 afterEach(() => {
   cleanup();
+  resetPluginSlotStoreForTest();
   clearDesktopChrome();
   panelGroupState.setLayout.mockReset();
 });
@@ -238,6 +247,39 @@ describe("RootComposeSecondaryContent desktop layout", () => {
 
     expect(screen.queryByTestId("compact-recents")).toBeNull();
     expect(screen.getByTestId("root-compose-content")).toBe(composer);
+    expect(screen.getByTestId("plugin-homepage-sections")).not.toBeNull();
+  });
+
+  it("leaves the compact home to a lead homepage section instead of compact scroll content", () => {
+    setPluginSlotRegistrations(
+      "home",
+      makePluginRegistrationSet({
+        homepageSections: [
+          {
+            id: "overview",
+            title: "Overview",
+            component: () => null,
+            experimental_placement: "lead",
+          },
+        ],
+      }),
+    );
+    render(
+      <CompactViewportOverrideProvider isCompactViewport>
+        <RootComposeSecondaryContent
+          compactScrollContent={<ul data-testid="compact-recents" />}
+          homepageSectionProject={NO_SECTION_PROJECT}
+          isCompactHomeLayout
+          isSecondaryPanelOpen={false}
+          onToggleSecondaryPanel={noop}
+          secondaryPanel={createSecondaryPanel(false)}
+        >
+          <div data-testid="root-compose-content" />
+        </RootComposeSecondaryContent>
+      </CompactViewportOverrideProvider>,
+    );
+
+    expect(screen.queryByTestId("compact-recents")).toBeNull();
     expect(screen.getByTestId("plugin-homepage-sections")).not.toBeNull();
   });
 
