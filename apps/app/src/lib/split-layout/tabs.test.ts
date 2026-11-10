@@ -8,6 +8,7 @@ import {
   activeTabAcceptsContent,
   bindActiveTabProjectAtom,
   closeSplitTabAtom,
+  closeThreadsInAllTabsAtom,
   focusThreadInOtherTabAtom,
   movePaneAcrossTabsAtom,
   movePaneToTabAtom,
@@ -447,5 +448,55 @@ describe("project bound tabs", () => {
     expect(
       activeTabAcceptsContent(store, { ...p2Thread, projectId: "p1" }),
     ).toBe(true);
+  });
+});
+
+describe("closing threads in all tabs", () => {
+  function threadIdsByTab(store: ReturnType<typeof createStore>) {
+    const { tabs, activeTabId } = store.get(splitTabsAtom);
+    return tabs.map((tab) =>
+      listPanes(
+        (tab.id === activeTabId ? store.get(splitLayoutAtom) : tab.layout)!
+          .root,
+      ).map((pane) =>
+        pane.content.kind === "thread" ? pane.content.threadId : "",
+      ),
+    );
+  }
+
+  it("removes the thread's panes from background tabs and drops tabs it leaves empty", () => {
+    const store = createStore();
+    store.set(splitLayoutAtom, threadLayout("archived"));
+    store.set(openSplitTabAtom);
+    store.set(
+      splitLayoutAtom,
+      splitPane(threadLayout("archived"), "pane-1", "right", {
+        kind: "thread",
+        projectId: "p1",
+        threadId: "kept",
+      }),
+    );
+    store.set(openSplitTabAtom);
+    store.set(splitLayoutAtom, threadLayout("other"));
+
+    const result = store.set(closeThreadsInAllTabsAtom, ["archived"]);
+
+    expect(result.removedAny).toBe(false);
+    expect(threadIdsByTab(store)).toEqual([["kept"], ["other"]]);
+  });
+
+  it("closes the active tab when the thread was its only pane and focuses the next tab", () => {
+    const store = createStore();
+    store.set(splitLayoutAtom, threadLayout("kept"));
+    store.set(openSplitTabAtom);
+    store.set(splitLayoutAtom, threadLayout("archived"));
+
+    const result = store.set(closeThreadsInAllTabsAtom, ["archived"]);
+
+    expect(result).toEqual({
+      removedAny: true,
+      focusedRoute: { projectId: "p1", threadId: "kept" },
+    });
+    expect(threadIdsByTab(store)).toEqual([["kept"]]);
   });
 });
