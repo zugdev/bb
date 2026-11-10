@@ -57,7 +57,11 @@ import {
 } from "@bb/shared-ui/context-selection";
 import { usePaneContext } from "./PaneContext";
 import { PaneMaximizeButton } from "./PaneMaximizeButton";
-import { InboxNavigator } from "./InboxTabController";
+import {
+  InboxNavigator,
+  InboxProjectLabel,
+  useIsInboxTabActive,
+} from "./InboxTabController";
 import { PaneDragHandle } from "./PaneDragHandle";
 import { PluginThreadHeaderLeading } from "@/components/plugin/PluginThreadHeaderLeading";
 
@@ -99,6 +103,7 @@ export function ThreadDetailHeader({
   const hidesChromeToggles = useUsesSwipeChrome();
   const threadId = thread.id;
   const threadDot = useThreadDot(threadId);
+  const isInboxTab = useIsInboxTabActive();
   const headerActions = useThreadHeaderActionEntries(thread);
   const [primaryAction, ...secondaryActions] = headerActions;
   const { renameThreadAsync } = useThreadActions();
@@ -275,10 +280,28 @@ export function ThreadDetailHeader({
           onDoubleClick={handleTitleDoubleClick}
           onPointerDown={beginPaneDrag ? handleTitlePointerDown : undefined}
         >
-          {isEditing ? editor : <ThreadTitle title={threadTitle} />}
+          {isEditing ? (
+            editor
+          ) : isInboxTab ? (
+            <span className="flex min-w-0 items-baseline gap-1">
+              <InboxProjectLabel
+                projectId={thread.projectId}
+                className="max-w-40 shrink-0"
+                separator="/"
+              />
+              <ThreadTitle title={threadTitle} />
+            </span>
+          ) : (
+            <ThreadTitle title={threadTitle} />
+          )}
         </p>
       </div>
-      <InboxNavigator thread={thread} />
+      {isInboxTab ? (
+        <InboxNavigator
+          thread={thread}
+          className="hidden @min-[40rem]/inbox-header:flex"
+        />
+      ) : null}
       {actionsMenu == null ? null : (
         <span
           className={cn(
@@ -367,7 +390,7 @@ export function ThreadDetailHeader({
     </>
   );
 
-  return (
+  const header = (
     <AppPageHeader
       headerRef={headerRef}
       center={center}
@@ -376,5 +399,15 @@ export function ThreadDetailHeader({
       ownsWindowTopLeft={false}
       className={cn(isSplitPaneHeader && "z-[21]")}
     />
+  );
+  if (!isInboxTab) return header;
+  return (
+    <div className="@container/inbox-header shrink-0">
+      {header}
+      <InboxNavigator
+        thread={thread}
+        className="flex justify-center border-b border-border/60 px-4 py-1 @min-[40rem]/inbox-header:hidden"
+      />
+    </div>
   );
 }
