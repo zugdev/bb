@@ -113,6 +113,7 @@ export interface ThreadScreenComposerHost {
   onCreateNewThreadInEnvironment?: () => void;
   onOpenThreadInfo?: () => void;
   permissionPolicy: ThreadComposerPermissionPolicy;
+  footerOverlay?: ReactNode;
 }
 
 interface ThreadScreenProps {
@@ -611,7 +612,14 @@ export function ThreadScreen({
             scrollAreaClassName="scroll-pt-4"
             contentClassName="gap-2 pt-4"
             footerClassName="chat-prompt-box"
-            footer={promptArea}
+            footer={
+              promptArea === null ? null : (
+                <>
+                  {composer?.footerOverlay}
+                  {promptArea}
+                </>
+              )
+            }
             scrollOverlay={
               <>
                 <ThreadContextCard />

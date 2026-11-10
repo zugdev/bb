@@ -400,7 +400,7 @@ export function ThreadDetailHeader({
       className={cn(isSplitPaneHeader && "z-[21]")}
     />
   );
-  if (!isInboxTab) return header;
+  if (!isInboxTab || hidesChromeToggles) return header;
   return (
     <div className="@container/inbox-header shrink-0">
       {header}
