@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useAtomValue, useStore } from "jotai";
 import { useNavigate } from "react-router-dom";
-import type { ThreadListEntry } from "@bb/domain";
+import { PERSONAL_PROJECT_ID, type ThreadListEntry } from "@bb/domain";
+import { cn } from "@bb/shared-ui/lib/utils";
+import { projectColor } from "@/lib/project-color";
 import { appToast } from "@/components/ui/app-toast";
 import { useThreadEntriesById } from "@/components/thread/ThreadStatusDot";
 import { useSidebarNavigation } from "@/hooks/queries/sidebar-navigation-query";
@@ -48,6 +50,43 @@ export function showInInboxTab(
     );
   }
   navigate(paneContentRoute(content), { replace: true });
+}
+
+function useProjectName(projectId: string): string | null {
+  const data = useSidebarNavigation().data;
+  if (data === undefined) return null;
+  if (projectId === PERSONAL_PROJECT_ID) return data.personalProject.name;
+  return (
+    data.projects.find((project) => project.id === projectId)?.name ?? null
+  );
+}
+
+export function InboxProjectLabel({
+  projectId,
+  className,
+  separator,
+}: {
+  projectId: string;
+  className?: string;
+  separator?: string;
+}) {
+  const name = useProjectName(projectId);
+  if (name === null) return null;
+  return (
+    <>
+      <span
+        className={cn("truncate", className)}
+        style={{ color: projectColor(projectId) }}
+      >
+        {name}
+      </span>
+      {separator === undefined ? null : (
+        <span aria-hidden className="text-muted-foreground">
+          {separator}
+        </span>
+      )}
+    </>
+  );
 }
 
 export function useIsInboxTabActive(): boolean {
@@ -124,13 +163,11 @@ export function SnoozeMenu({
 
 export function InboxNavigator({
   thread,
+  className,
 }: {
   thread: PluginThreadActionTarget;
+  className: string;
 }) {
-  return useIsInboxTabActive() ? <InboxNavigatorBar thread={thread} /> : null;
-}
-
-function InboxNavigatorBar({ thread }: { thread: PluginThreadActionTarget }) {
   const store = useStore();
   const navigate = useNavigate();
   const { queue } = useInbox();
@@ -155,7 +192,7 @@ function InboxNavigatorBar({ thread }: { thread: PluginThreadActionTarget }) {
   return (
     <div
       data-inbox-navigator=""
-      className="ml-auto flex shrink-0 items-center gap-1 whitespace-nowrap text-xs md:absolute md:left-1/2 md:ml-0 md:-translate-x-1/2"
+      className={cn("shrink-0 items-center gap-1 text-xs", className)}
     >
       <Button
         type="button"
@@ -168,10 +205,9 @@ function InboxNavigatorBar({ thread }: { thread: PluginThreadActionTarget }) {
       >
         <Icon name="ChevronLeft" />
       </Button>
-      <span className="flex items-center gap-1.5 tabular-nums text-muted-foreground">
+      <span className="flex items-center gap-1.5 whitespace-nowrap tabular-nums text-muted-foreground">
         <Icon name="Inbox" className="size-3.5 text-primary" />
-        <span className="max-md:sr-only">Inbox</span>
-        {index === -1 ? "–" : index + 1}/{queue.length}
+        Inbox {index === -1 ? "–" : index + 1}/{queue.length}
       </span>
       <Button
         type="button"
@@ -193,7 +229,7 @@ function InboxNavigatorBar({ thread }: { thread: PluginThreadActionTarget }) {
             className="h-7 gap-1.5 px-2 text-xs"
           >
             <Icon name="AlarmClock" className="size-3.5" />
-            <span className="max-md:sr-only">Snooze</span>
+            Snooze
           </Button>
         </SnoozeMenu>
       ) : null}
@@ -207,7 +243,7 @@ function InboxNavigatorBar({ thread }: { thread: PluginThreadActionTarget }) {
           onClick={() => void archive.action.run()}
         >
           <Icon name="Archive" className="size-3.5" />
-          <span className="max-md:sr-only">Archive</span>
+          Archive
         </Button>
       )}
     </div>

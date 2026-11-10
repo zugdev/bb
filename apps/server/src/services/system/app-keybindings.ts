@@ -293,7 +293,7 @@ export const DEFAULT_APP_KEYBINDINGS: AppDefaultKeybindings = [
     { mod: true, shift: true },
     mainWithoutModalOrBrowser,
   ),
-  unassignedBinding("splitTab.newForProject", mainWithoutModalOrBrowser),
+  binding("splitTab.newForProject", "o", { mod: true }, mainWithoutModal),
   unassignedBinding("splitTab.openInbox", mainWithoutModalOrBrowser),
   ...SPLIT_TAB_SELECT_APP_COMMAND_IDS.flatMap((command, index) =>
     webAndDesktopBindings(
@@ -488,7 +488,12 @@ export const DEFAULT_APP_KEYBINDINGS: AppDefaultKeybindings = [
       none: ["modalOpen", "browserFocus", "terminalFocus"],
     },
   ),
-  binding("workspace.openPreferred", "o", { mod: true }, mainWithoutModal),
+  binding(
+    "workspace.openPreferred",
+    "o",
+    { mod: true, alt: true },
+    mainWithoutModal,
+  ),
   ...QUESTION_SELECT_APP_COMMAND_IDS.map((command, index) =>
     binding(
       command,
