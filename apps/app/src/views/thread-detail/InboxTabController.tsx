@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useAtomValue, useStore } from "jotai";
 import { useNavigate } from "react-router-dom";
+import type { ThreadListEntry } from "@bb/domain";
 import { appToast } from "@/components/ui/app-toast";
 import { useThreadEntriesById } from "@/components/thread/ThreadStatusDot";
 import { useSidebarNavigation } from "@/hooks/queries/sidebar-navigation-query";
@@ -8,10 +9,22 @@ import { splitLayoutAtom } from "@/lib/split-layout/atoms";
 import { findPane, replacePaneContent } from "@/lib/split-layout";
 import { splitTabsAtom } from "@/lib/split-layout/tabs";
 import type { PaneContent } from "@/lib/split-layout";
-import { focusQueue, nextFocusStep } from "./focus-queue";
-import { openFocusTab, paneContentRoute } from "./splitThreadNavigation";
+import {
+  inboxQueue,
+  inboxSections,
+  nextInboxStep,
+  nextSnoozeWake,
+  type InboxSections,
+} from "./inbox-queue";
+import { paneContentRoute } from "./splitThreadNavigation";
 import { Button } from "@bb/shared-ui/button";
 import { Icon } from "@bb/shared-ui/icon";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@bb/shared-ui/dropdown-menu";
 import type { PluginThreadActionTarget } from "@get-bb/plugin-sdk";
 import {
   CORE_THREAD_ACTION_OWNER,
@@ -20,7 +33,9 @@ import {
 
 type Store = ReturnType<typeof useStore>;
 
-function showInFocusTab(
+const MAX_TIMEOUT_MS = 2_147_483_647;
+
+export function showInInboxTab(
   store: Store,
   navigate: (route: string, options: { replace: true }) => void,
   content: PaneContent,
@@ -35,34 +50,92 @@ function showInFocusTab(
   navigate(paneContentRoute(content), { replace: true });
 }
 
-function useIsFocusTabActive(): boolean {
+export function useIsInboxTabActive(): boolean {
   const { tabs, activeTabId } = useAtomValue(splitTabsAtom);
-  return tabs.find((tab) => tab.id === activeTabId)?.kind === "focus";
+  return tabs.find((tab) => tab.id === activeTabId)?.kind === "inbox";
 }
 
-const FOCUS_ARCHIVE_ACTION_KEYS = [`${CORE_THREAD_ACTION_OWNER}/archive`];
+function useInboxNow(entries: ReadonlyMap<string, ThreadListEntry>): number {
+  const [now, setNow] = useState(Date.now);
+  useEffect(() => {
+    const wake = nextSnoozeWake(entries.values(), Date.now());
+    if (wake === null) return;
+    const timer = setTimeout(
+      () => setNow(Date.now()),
+      Math.min(wake - Date.now() + 1, MAX_TIMEOUT_MS),
+    );
+    return () => clearTimeout(timer);
+  }, [entries, now]);
+  return now;
+}
 
-export function FocusTabNavigator({
+export interface InboxState {
+  sections: InboxSections;
+  queue: ThreadListEntry[];
+  now: number;
+}
+
+export function useInbox(): InboxState {
+  const entries = useThreadEntriesById();
+  const now = useInboxNow(entries);
+  return useMemo(() => {
+    const sections = inboxSections(entries.values(), now);
+    return {
+      sections,
+      queue: inboxQueue(sections),
+      now,
+    };
+  }, [entries, now]);
+}
+
+export function useInboxQueueLength(): number {
+  return useInbox().queue.length;
+}
+
+const INBOX_ARCHIVE_ACTION_KEYS = [`${CORE_THREAD_ACTION_OWNER}/archive`];
+const SNOOZE_ACTION_KEYS = [`${CORE_THREAD_ACTION_OWNER}/snooze`];
+
+export function SnoozeMenu({
+  thread,
+  children,
+}: {
+  thread: PluginThreadActionTarget;
+  children: ReactNode;
+}) {
+  const [snooze] = useThreadActionEntries(thread, { keys: SNOOZE_ACTION_KEYS });
+  const choices = snooze?.action.choices;
+  if (snooze === undefined || choices === undefined) return null;
+  return (
+    <DropdownMenu modal={false}>
+      <DropdownMenuTrigger asChild>{children}</DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        {choices.items.map((choice) => (
+          <DropdownMenuItem
+            key={choice.id}
+            onSelect={() => void snooze.action.run(choice.id)}
+          >
+            {choice.label}
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+export function InboxNavigator({
   thread,
 }: {
   thread: PluginThreadActionTarget;
 }) {
-  return useIsFocusTabActive() ? (
-    <FocusTabNavigatorBar thread={thread} />
-  ) : null;
+  return useIsInboxTabActive() ? <InboxNavigatorBar thread={thread} /> : null;
 }
 
-function FocusTabNavigatorBar({
-  thread,
-}: {
-  thread: PluginThreadActionTarget;
-}) {
+function InboxNavigatorBar({ thread }: { thread: PluginThreadActionTarget }) {
   const store = useStore();
   const navigate = useNavigate();
-  const entries = useThreadEntriesById();
-  const queue = useMemo(() => focusQueue(entries.values()), [entries]);
+  const { queue } = useInbox();
   const [archive] = useThreadActionEntries(thread, {
-    keys: FOCUS_ARCHIVE_ACTION_KEYS,
+    keys: INBOX_ARCHIVE_ACTION_KEYS,
   });
   const index = queue.findIndex((entry) => entry.id === thread.id);
   if (queue.length === 0) return null;
@@ -72,15 +145,16 @@ function FocusTabNavigatorBar({
         ? queue.at(step === 1 ? 0 : -1)
         : queue[(index + step + queue.length) % queue.length];
     if (target === undefined || target.id === thread.id) return;
-    showInFocusTab(store, navigate, {
+    showInInboxTab(store, navigate, {
       kind: "thread",
       projectId: target.projectId,
       threadId: target.id,
     });
   };
+  const isOpen = thread.archivedAt === null;
   return (
     <div
-      data-focus-tab-navigator=""
+      data-inbox-navigator=""
       className="absolute left-1/2 flex -translate-x-1/2 items-center gap-1 text-xs"
     >
       <Button
@@ -88,28 +162,41 @@ function FocusTabNavigatorBar({
         variant="ghost"
         size="icon"
         className="size-7"
-        aria-label="Previous thread in Focus"
+        aria-label="Previous thread in Inbox"
         disabled={queue.length < 2}
         onClick={() => go(-1)}
       >
         <Icon name="ChevronLeft" />
       </Button>
       <span className="flex items-center gap-1.5 tabular-nums text-muted-foreground">
-        <Icon name="Target" className="size-3.5 text-primary" />
-        Focus {index === -1 ? "–" : index + 1}/{queue.length}
+        <Icon name="Inbox" className="size-3.5 text-primary" />
+        Inbox {index === -1 ? "–" : index + 1}/{queue.length}
       </span>
       <Button
         type="button"
         variant="ghost"
         size="icon"
         className="size-7"
-        aria-label="Next thread in Focus"
+        aria-label="Next thread in Inbox"
         disabled={queue.length < 2 && index !== -1}
         onClick={() => go(1)}
       >
         <Icon name="ChevronRight" />
       </Button>
-      {archive === undefined || thread.archivedAt !== null ? null : (
+      {isOpen ? (
+        <SnoozeMenu thread={thread}>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-7 gap-1.5 px-2 text-xs"
+          >
+            <Icon name="AlarmClock" className="size-3.5" />
+            Snooze
+          </Button>
+        </SnoozeMenu>
+      ) : null}
+      {archive === undefined || !isOpen ? null : (
         <Button
           type="button"
           variant="ghost"
@@ -126,45 +213,16 @@ function FocusTabNavigatorBar({
   );
 }
 
-export function useFocusQueueLength(): number {
-  const entries = useThreadEntriesById();
-  return useMemo(() => focusQueue(entries.values()).length, [entries]);
-}
-
-export function FocusTabButton() {
-  const store = useStore();
-  const navigate = useNavigate();
-  const isFocusTab = useIsFocusTabActive();
-  const count = useFocusQueueLength();
-  if (isFocusTab) return null;
-  return (
-    <Button
-      type="button"
-      variant="ghost"
-      size="sm"
-      className="-ml-2 h-7 gap-1.5 px-2 text-xs"
-      aria-label={`Focus on ${count} threads that need a reply`}
-      onClick={() => openFocusTab(store, navigate)}
-    >
-      <Icon name="Target" className="size-3.5 text-primary" />
-      Focus
-      {count > 0 ? (
-        <span className="text-muted-foreground tabular-nums">{count}</span>
-      ) : null}
-    </Button>
-  );
-}
-
-export function FocusTabController() {
+export function InboxTabController() {
   const store = useStore();
   const navigate = useNavigate();
   const { tabs, activeTabId } = useAtomValue(splitTabsAtom);
   const layout = useAtomValue(splitLayoutAtom);
   const isLoaded = useSidebarNavigation().data !== undefined;
-  const entries = useThreadEntriesById();
+  const { queue } = useInbox();
   const trackedByTab = useRef(new Map<string, string | null>());
-  const isFocusTab =
-    tabs.find((tab) => tab.id === activeTabId)?.kind === "focus";
+  const isInboxTab =
+    tabs.find((tab) => tab.id === activeTabId)?.kind === "inbox";
   const focused =
     layout === null ? null : findPane(layout.root, layout.focusedPaneId);
   const shownThreadId =
@@ -173,14 +231,13 @@ export function FocusTabController() {
     focused === null || focused.content.kind === "new-thread";
 
   useEffect(() => {
-    if (!isLoaded || !isFocusTab) return;
+    if (!isLoaded || !isInboxTab) return;
     if (shownThreadId === null && !showsCompose) return;
-    const queue = focusQueue(entries.values());
     const tracked = trackedByTab.current;
-    const step = nextFocusStep(queue, shownThreadId, tracked.get(activeTabId));
+    const step = nextInboxStep(queue, shownThreadId, tracked.get(activeTabId));
     const show = (content: PaneContent, threadId: string | null) => {
       tracked.set(activeTabId, threadId);
-      showInFocusTab(store, navigate, content);
+      showInInboxTab(store, navigate, content);
     };
     if (step.kind === "stay") {
       if (queue.some((thread) => thread.id === shownThreadId)) {
@@ -203,10 +260,10 @@ export function FocusTabController() {
     );
   }, [
     activeTabId,
-    entries,
-    isFocusTab,
+    isInboxTab,
     isLoaded,
     navigate,
+    queue,
     shownThreadId,
     showsCompose,
     store,

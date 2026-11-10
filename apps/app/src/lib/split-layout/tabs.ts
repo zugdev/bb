@@ -36,7 +36,7 @@ export interface SplitTab {
   layout: SplitLayout | null;
   projectId: string | null;
   name: string | null;
-  kind?: "focus";
+  kind?: "inbox";
 }
 
 export interface SplitTabsState {
@@ -68,7 +68,10 @@ const splitTabsStateSchema = z
             layout: splitLayoutSchema.nullable(),
             projectId: z.string().min(1).nullable().default(null),
             name: z.string().min(1).nullable().default(null),
-            kind: z.literal("focus").optional(),
+            kind: z
+              .enum(["inbox", "focus"])
+              .transform((): "inbox" => "inbox")
+              .optional(),
           })
           .strict(),
       )
@@ -133,7 +136,7 @@ export function tabProjectId(
   tab: SplitTab,
   layout: SplitLayout | null = tab.layout,
 ): string | null {
-  if (tab.kind === "focus") return null;
+  if (tab.kind === "inbox") return null;
   return tab.projectId ?? firstThreadProjectId(layout);
 }
 
@@ -179,7 +182,7 @@ export const bindActiveTabProjectAtom = atom(
   (get, set, projectId: string) => {
     const state = get(splitTabsAtom);
     const active = state.tabs.find((tab) => tab.id === state.activeTabId);
-    if (active === undefined || active.kind === "focus") return;
+    if (active === undefined || active.kind === "inbox") return;
     if (active.projectId !== null) return;
     set(splitTabsAtom, {
       ...state,
@@ -295,11 +298,11 @@ export const openSplitTabAtom = atom(
   },
 );
 
-function markActiveTabFocus(state: SplitTabsState): SplitTabsState {
+function markActiveTabInbox(state: SplitTabsState): SplitTabsState {
   return {
     ...state,
     tabs: state.tabs.map((tab) =>
-      tab.id === state.activeTabId ? { ...tab, kind: "focus" } : tab,
+      tab.id === state.activeTabId ? { ...tab, kind: "inbox" } : tab,
     ),
   };
 }
@@ -311,10 +314,10 @@ function isBlankComposeLayout(layout: SplitLayout | null): boolean {
   );
 }
 
-export const openFocusTabAtom = atom(null, (get, set): SplitLayout | null => {
+export const openInboxTabAtom = atom(null, (get, set): SplitLayout | null => {
   const state = get(splitTabsAtom);
   const activeLayout = get(splitLayoutAtom);
-  const existing = state.tabs.find((tab) => tab.kind === "focus");
+  const existing = state.tabs.find((tab) => tab.kind === "inbox");
   if (existing !== undefined) {
     const next = selectSplitTab(state, activeLayout, existing.id);
     return next === null
@@ -323,13 +326,13 @@ export const openFocusTabAtom = atom(null, (get, set): SplitLayout | null => {
   }
   const active = state.tabs.find((tab) => tab.id === state.activeTabId);
   if (active?.name === null && isBlankComposeLayout(activeLayout)) {
-    set(splitTabsAtom, markActiveTabFocus(state));
+    set(splitTabsAtom, markActiveTabInbox(state));
     return routeLayoutFor(activeLayout);
   }
   const next = insertSplitTab(state, activeLayout, NEW_THREAD_LAYOUT, null);
   return next === null
     ? null
-    : activateTabLayout(set, markActiveTabFocus(next), NEW_THREAD_LAYOUT);
+    : activateTabLayout(set, markActiveTabInbox(next), NEW_THREAD_LAYOUT);
 });
 
 export const seedSplitComposeProjectAtom = atom(
@@ -395,12 +398,12 @@ export const openThreadInTabAtom = atom(
   },
 );
 
-export const openOutsideFocusTabAtom = atom(
+export const openOutsideInboxTabAtom = atom(
   null,
   (get, set, content: PaneContent): boolean => {
     const state = get(splitTabsAtom);
     const active = state.tabs.find((tab) => tab.id === state.activeTabId);
-    if (active?.kind !== "focus") return false;
+    if (active?.kind !== "inbox") return false;
     const activeLayout = get(splitLayoutAtom);
     const focused =
       activeLayout === null

@@ -75,6 +75,11 @@ const mocks = vi.hoisted(() => ({
   onNewChat: vi.fn(),
 }));
 
+vi.mock("@/views/thread-detail/InboxTabController", () => ({
+  useInboxQueueLength: () => 0,
+  useIsInboxTabActive: () => false,
+}));
+
 vi.mock("@/components/commands/AppCommandProvider", () => ({
   useAppCommandRunner: () => ({
     dispatch: mocks.dispatch,
@@ -378,6 +383,7 @@ describe("Rail", () => {
 
     expect(railLabels()).toEqual([
       "Home",
+      "Inbox",
       "Plugins",
       "Skills",
       "Docs",
@@ -746,7 +752,13 @@ describe("Rail", () => {
       visibleKeys: ["__bb__/new-thread", "__bb__/extensions"],
     });
 
-    expect(railLabels()).toEqual(["Home", "Plugins", "More", "Settings"]);
+    expect(railLabels()).toEqual([
+      "Home",
+      "Inbox",
+      "Plugins",
+      "More",
+      "Settings",
+    ]);
   });
 
   it("keeps hidden destinations reachable from More", async () => {
@@ -775,6 +787,7 @@ describe("Rail", () => {
     fireEvent.click(within(list).getByRole("checkbox", { name: /Skills/u }));
     expect(railLabels()).toEqual([
       "Home",
+      "Inbox",
       "Plugins",
       "Docs",
       "More",
@@ -840,6 +853,7 @@ describe("Rail", () => {
     fireEvent.click(within(list).getByRole("checkbox", { name: /Skills/u }));
     expect(railLabels()).toEqual([
       "Home",
+      "Inbox",
       "Plugins",
       "Docs",
       "More",
@@ -851,6 +865,7 @@ describe("Rail", () => {
     expect(railLabels()).toEqual([
       "Home",
       "Search threads",
+      "Inbox",
       "Plugins",
       "Docs",
       "More",
@@ -954,6 +969,7 @@ describe("Rail", () => {
         .map((checkbox) => checkbox.getAttribute("aria-label")),
     ).toEqual([
       "Show Search threads in sidebar",
+      "Show Inbox in sidebar",
       "Show Plugins in sidebar",
       "Show Skills in sidebar",
       "Show Docs in sidebar",

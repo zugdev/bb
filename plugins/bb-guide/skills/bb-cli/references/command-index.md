@@ -192,6 +192,8 @@ Use `--selected-model <model-id>` to discover its reasoning choices and include 
 - `bb thread restore-environment`
 - `bb thread pin`
 - `bb thread unpin`
+- `bb thread snooze`
+- `bb thread unsnooze`
 - `bb thread regenerate-title`
 - `bb thread delete`
 - `bb thread edit-message`

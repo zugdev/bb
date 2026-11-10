@@ -1169,6 +1169,7 @@ describe("server-contract canonical schemas", () => {
           parentNotifications: "auto",
           archivedAt: null,
           pinnedAt: null,
+          snoozedUntil: null,
           pinSortKey: null,
           deletedAt: null,
           lastReadAt: null,

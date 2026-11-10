@@ -77,9 +77,9 @@ import {
 import {
   focusedPaneRoute,
   openComposeTab,
-  openFocusTab,
+  openInboxTab,
 } from "./splitThreadNavigation";
-import { FocusTabController, useFocusQueueLength } from "./FocusTabController";
+import { InboxTabController, useInboxQueueLength } from "./InboxTabController";
 
 function usePaneTitle(content: PaneContent | null): string {
   const threadId =
@@ -299,8 +299,8 @@ function SplitTabCommandHandlers({
     openComposeTab(store, navigate);
     return true;
   });
-  useAppCommandHandler("splitTab.newFocus", () => {
-    openFocusTab(store, navigate);
+  useAppCommandHandler("splitTab.openInbox", () => {
+    openInboxTab(store, navigate);
     return true;
   });
   useAppCommandHandler("splitTab.newForProject", () => {
@@ -397,20 +397,20 @@ function SplitTabItem({
   onCloseOthers: () => void;
   onCloseRight: () => void;
 }) {
-  const isFocus = tab.kind === "focus";
+  const isInbox = tab.kind === "inbox";
   const projectId = tabProjectId(tab, layout);
   const { title, isProjectName } = useSplitTabTitle(
     layout,
-    tab.name ?? (isFocus ? "Focus" : null),
+    tab.name ?? (isInbox ? "Inbox" : null),
     projectId,
   );
   const canRename = projectId === null;
   const dot = useSplitTabDot(layout);
-  const focusQueueLength = useFocusQueueLength();
+  const inboxQueueLength = useInboxQueueLength();
   const extraPanes = layout === null ? 0 : countPanes(layout.root) - 1;
-  const secondaryLabel = isFocus
-    ? focusQueueLength > 0
-      ? String(focusQueueLength)
+  const secondaryLabel = isInbox
+    ? inboxQueueLength > 0
+      ? String(inboxQueueLength)
       : null
     : !isProjectName && extraPanes > 0
       ? `+${extraPanes}`
@@ -448,8 +448,8 @@ function SplitTabItem({
                   label={title}
                   title={title}
                   leadingVisual={
-                    isFocus ? (
-                      <Icon name="Target" className="text-primary" />
+                    isInbox ? (
+                      <Icon name="Inbox" className="text-primary" />
                     ) : dot === null ? (
                       <Icon name="MessageSquare" />
                     ) : (
@@ -608,7 +608,7 @@ export function SplitTabBar() {
       <SplitTabCommandHandlers
         onPickProject={() => setIsPickingProject(true)}
       />
-      <FocusTabController />
+      <InboxTabController />
       {pinnedTab === null ? null : (
         <TabShell
           isActive={isPinnedTab}

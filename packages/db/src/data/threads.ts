@@ -1678,6 +1678,30 @@ export function pinThread(
   return result?.thread ?? null;
 }
 
+export interface SnoozeThreadArgs {
+  threadId: string;
+  until: number | null;
+}
+
+export function snoozeThread(
+  db: ThreadWriteConnection,
+  notifier: DbNotifier,
+  args: SnoozeThreadArgs,
+) {
+  const updated = db
+    .update(threads)
+    .set({ snoozedUntil: args.until, updatedAt: Date.now() })
+    .where(nonDeletedThreads(eq(threads.id, args.threadId)))
+    .returning()
+    .get();
+  if (updated) {
+    notifier.notifyThread(args.threadId, ["snooze-changed"], {
+      projectId: updated.projectId,
+    });
+  }
+  return updated ?? null;
+}
+
 export function unpinThread(
   db: ThreadWriteConnection,
   notifier: DbNotifier,
@@ -2355,6 +2379,7 @@ export function applyThreadLifecycleEventInTransaction(
     })
   ) {
     set.latestAttentionAt = now;
+    set.snoozedUntil = null;
   }
 
   const updated = db

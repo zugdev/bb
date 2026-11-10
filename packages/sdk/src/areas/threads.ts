@@ -344,6 +344,10 @@ export interface ThreadActionArgs {
   threadId: string;
 }
 
+export interface ThreadSnoozeArgs extends ThreadActionArgs {
+  until: number | null;
+}
+
 export interface ThreadStatusArgs extends ThreadActionArgs {
   signal?: AbortSignal;
 }
@@ -759,6 +763,7 @@ export interface ThreadsArea {
   storagePaths(args: ThreadStoragePathsArgs): Promise<ThreadStoragePathsResult>;
   unarchive(args: ThreadActionArgs): Promise<ThreadUnarchiveResult>;
   unpin(args: ThreadActionArgs): Promise<ThreadMutationResult>;
+  experimental_snooze(args: ThreadSnoozeArgs): Promise<ThreadMutationResult>;
   update(args: ThreadUpdateArgs): Promise<ThreadMutationResult>;
   wait(args: ThreadWaitArgs): Promise<ThreadWaitResult>;
 }
@@ -1730,6 +1735,14 @@ export function createThreadsArea(args: CreateSdkAreaArgs): ThreadsArea {
         }),
       );
       return { ok: true };
+    },
+    async experimental_snooze(input) {
+      return transport.readJson(
+        transport.api.v1.threads[":id"].snooze.$post({
+          param: { id: input.threadId },
+          json: { until: input.until },
+        }),
+      );
     },
     async unpin(input) {
       return transport.readJson(

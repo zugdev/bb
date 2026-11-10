@@ -596,6 +596,11 @@ function printThreadStatus(
   if (thread.pinnedAt !== null) {
     console.log(`  Pinned: ${new Date(thread.pinnedAt).toLocaleString()}`);
   }
+  if (thread.snoozedUntil !== null && thread.snoozedUntil > Date.now()) {
+    console.log(
+      `  Snoozed until: ${new Date(thread.snoozedUntil).toLocaleString()}`,
+    );
+  }
   if (environmentInfo) {
     printEnvironmentInfo(environmentInfo);
     printEnvironmentPullRequest(pullRequest);

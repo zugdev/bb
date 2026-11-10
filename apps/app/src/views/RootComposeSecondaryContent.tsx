@@ -2,7 +2,6 @@ import { useState, type ComponentProps, type ReactNode } from "react";
 import { Skeleton } from "@bb/shared-ui/skeleton";
 import { COARSE_POINTER_HEADER_ICON_BUTTON_CLASS } from "@bb/shared-ui/coarse-pointer-sizing";
 import { cn } from "@bb/shared-ui/lib/utils";
-import { FocusTabButton } from "@/views/thread-detail/FocusTabController";
 import {
   PluginHomepageSections,
   type HomepageSectionProject,
@@ -132,10 +131,7 @@ export function RootComposeSecondaryContent({
         composer={children}
         compactScrollContent={compactScrollContent}
         homepageSections={
-          <PluginHomepageSections
-            project={homepageSectionProject}
-            leadAction={<FocusTabButton />}
-          />
+          <PluginHomepageSections project={homepageSectionProject} />
         }
         wideContentClassName={contentClassName}
       />

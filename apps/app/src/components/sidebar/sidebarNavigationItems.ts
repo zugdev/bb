@@ -24,6 +24,7 @@ export const NEW_THREAD_NAVIGATION_ITEM_ID =
   BUILT_IN_SIDEBAR_NAVIGATION_KEYS.newThread;
 export const SEARCH_THREADS_NAVIGATION_ITEM_ID =
   BUILT_IN_SIDEBAR_NAVIGATION_KEYS.searchThreads;
+export const INBOX_NAVIGATION_ITEM_ID = BUILT_IN_SIDEBAR_NAVIGATION_KEYS.inbox;
 export const PLUGINS_NAVIGATION_ITEM_ID =
   BUILT_IN_SIDEBAR_NAVIGATION_KEYS.extensions;
 export const SKILLS_NAVIGATION_ITEM_ID =
@@ -69,6 +70,7 @@ const HOST_ROWS: readonly SidebarNavigationRow[] = [
   hostRow(SEARCH_THREADS_NAVIGATION_ITEM_ID, "Search threads", "search", {
     kind: "search-threads",
   }),
+  hostRow(INBOX_NAVIGATION_ITEM_ID, "Inbox", "inbox", { kind: "open-inbox" }),
   hostRow(PLUGINS_NAVIGATION_ITEM_ID, "Plugins", "extensions", {
     kind: "open-extensions",
   }),
@@ -194,10 +196,13 @@ export function isSameSidebarNavigationItem(
 export function resolveActiveSidebarNavigationItemId({
   rows,
   pathname,
+  isInboxTabActive,
 }: {
   rows: readonly SidebarNavigationRow[];
   pathname: string;
+  isInboxTabActive: boolean;
 }): string | null {
+  if (isInboxTabActive) return INBOX_NAVIGATION_ITEM_ID;
   if (pathname === "/") return NEW_THREAD_NAVIGATION_ITEM_ID;
   if (isToolsRoutePath(pathname)) {
     return pathname === getSkillsRoutePath() ||

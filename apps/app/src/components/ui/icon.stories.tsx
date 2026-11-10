@@ -14,6 +14,7 @@ export default {
 
 const USAGE: Partial<Record<IconName, string>> = {
   AlertCircle: "Dialog warning state",
+  AlarmClock: "Snooze thread action, Inbox header and Inbox row snooze button",
   AlertTriangle: "“Project folder not found” indicator on sidebar project rows",
   AlignLeft: "Left-aligned menu",
   AppWindow: "Right-panel app fallback and HTML/mockup file visual",
@@ -65,6 +66,7 @@ const USAGE: Partial<Record<IconName, string>> = {
   GitPullRequestArrow: "Open pull request glyph",
   GitPullRequestClosed: "Closed pull request glyph",
   GitPullRequestDraft: "Draft pull request glyph",
+  Inbox: "Inbox sidebar navigation row, Inbox tab and empty Inbox",
   Info: "Right panel “thread info” tab, informational banners",
   Laptop: "Persistent host icon (resolved via PersistentHostIconName)",
   ListTodo: "Plan prompt action, todo prompt-stack card header",

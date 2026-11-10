@@ -11,6 +11,7 @@ import {
 import { threadEnvironmentUnavailableApiErrorSchema } from "@bb/server-contract";
 import { action, CliExitError } from "../../action.js";
 import { createCliBbSdk } from "../../client.js";
+import { matchDuration, parseDurationMs } from "../../duration.js";
 import { requireTextInput, TEXT_FILE_HELP_SUFFIX } from "../../text-input.js";
 import {
   BbHttpError,
@@ -75,6 +76,34 @@ interface ThreadRestoreEnvironmentCommandOptions {
 interface ThreadPinCommandOptions {
   self?: boolean;
   json?: boolean;
+}
+
+interface ThreadSnoozeCommandOptions {
+  self?: boolean;
+  json?: boolean;
+  until: string;
+}
+
+export function parseSnoozeUntil(value: string, now: number): number {
+  if (matchDuration(value) !== null) {
+    return (
+      now +
+      parseDurationMs({
+        allowZero: false,
+        defaultUnit: "m",
+        label: "--until",
+        value,
+      })
+    );
+  }
+  const at = Date.parse(value);
+  if (Number.isNaN(at) || at <= now) {
+    throw new CliExitError(
+      `Invalid --until value '${value}'. Expected a duration such as 30m, 3h or 2d, or a future date such as 2026-11-10T09:00.`,
+      1,
+    );
+  }
+  return at;
 }
 
 interface ThreadRegenerateTitleCommandOptions {
@@ -403,6 +432,53 @@ export function registerActionsCommands(
         ),
       );
   }
+
+  parent
+    .command("snooze [id]")
+    .description(
+      "Hide a thread from the Inbox until a time; it returns early when the thread needs attention again",
+    )
+    .requiredOption(
+      "--until <when>",
+      "A duration from now (30m, 3h, 2d) or a date such as 2026-11-10T09:00",
+    )
+    .option("--self", "Target the current thread (from BB_THREAD_ID)")
+    .option("--json", "Print machine-readable JSON output")
+    .action(
+      action(
+        async (id: string | undefined, opts: ThreadSnoozeCommandOptions) => {
+          const threadId = requireThreadIdOrSelf(id, opts);
+          const until = parseSnoozeUntil(opts.until, Date.now());
+          const sdk = createCliBbSdk(getUrl());
+          const thread = await sdk.threads.experimental_snooze({
+            threadId,
+            until,
+          });
+          if (outputJson(opts, thread)) return;
+          console.log(
+            `Thread ${thread.id} snoozed until ${new Date(until).toLocaleString()}`,
+          );
+        },
+      ),
+    );
+
+  parent
+    .command("unsnooze [id]")
+    .description("Return a snoozed thread to the Inbox now")
+    .option("--self", "Target the current thread (from BB_THREAD_ID)")
+    .option("--json", "Print machine-readable JSON output")
+    .action(
+      action(async (id: string | undefined, opts: ThreadPinCommandOptions) => {
+        const threadId = requireThreadIdOrSelf(id, opts);
+        const sdk = createCliBbSdk(getUrl());
+        const thread = await sdk.threads.experimental_snooze({
+          threadId,
+          until: null,
+        });
+        if (outputJson(opts, thread)) return;
+        console.log(`Thread ${thread.id} unsnoozed`);
+      }),
+    );
 
   parent
     .command("regenerate-title [id]")

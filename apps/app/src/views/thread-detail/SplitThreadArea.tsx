@@ -42,7 +42,7 @@ import {
   canMovePaneAcrossTabs,
   closeSplitTabAtom,
   focusThreadInOtherTabAtom,
-  openOutsideFocusTabAtom,
+  openOutsideInboxTabAtom,
   movePaneAcrossTabsAtom,
   movePaneToTabAtom,
   recordClosedPaneAtom,
@@ -323,7 +323,7 @@ function SplitThreadAreaContent({ routeContent }: SplitThreadAreaProps) {
     }
     if (currentContent.kind === "thread") {
       if (store.set(focusThreadInOtherTabAtom, currentContent)) return;
-      if (store.set(openOutsideFocusTabAtom, currentContent)) return;
+      if (store.set(openOutsideInboxTabAtom, currentContent)) return;
       const projectTab = splitWorkspaceActive
         ? placeThreadInProjectTab(
             store.get(splitTabsAtom),

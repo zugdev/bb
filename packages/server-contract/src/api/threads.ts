@@ -853,6 +853,11 @@ export type ReorderPinnedThreadRequest = z.infer<
   typeof reorderPinnedThreadRequestSchema
 >;
 
+export const snoozeThreadRequestSchema = z.object({
+  until: z.number().int().positive().nullable(),
+});
+export type SnoozeThreadRequest = z.infer<typeof snoozeThreadRequestSchema>;
+
 export type PanelFileSource = z.infer<typeof panelFileSourceSchema>;
 
 export type ThreadOpenSplit = z.infer<typeof threadOpenSplitSchema>;

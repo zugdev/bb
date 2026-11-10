@@ -418,6 +418,10 @@ export const REALTIME_THREAD_CHANGE_REGISTRY = {
     flush: "debounced",
     dirty: [dirtyThreadListQueries, dirtyThreadDetailQueries],
   },
+  "snooze-changed": {
+    flush: "debounced",
+    dirty: [dirtyThreadListQueries, dirtyThreadDetailQueries],
+  },
   "parent-changed": {
     flush: "debounced",
     dirty: [dirtyThreadListQueries, dirtyThreadDetailQueries],

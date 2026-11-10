@@ -444,6 +444,7 @@ type ExpectedThreadsKey =
   | "timeline"
   | "timelineTurnSummaryDetails"
   | "unarchive"
+  | "experimental_snooze"
   | "unpin"
   | "update"
   | "wait";
