@@ -330,11 +330,11 @@ function InboxRow({
           />
           <span className="truncate">{thread.displayTitle}</span>
         </span>
-        <span className="shrink-0 text-2xs tabular-nums text-muted-foreground pointer-fine:group-hover:invisible pointer-fine:group-focus-within:invisible">
+        <span className="shrink-0 text-2xs tabular-nums text-muted-foreground pointer-fine:group-hover:invisible pointer-fine:group-focus-within:invisible pointer-fine:group-has-data-[state=open]:invisible">
           {trailing}
         </span>
       </button>
-      <div className="absolute inset-y-0 right-1 hidden items-center group-focus-within:flex group-hover:flex pointer-coarse:static pointer-coarse:flex">
+      <div className="absolute inset-y-0 right-1 hidden items-center group-focus-within:flex group-hover:flex group-has-data-[state=open]:flex pointer-coarse:static pointer-coarse:flex">
         <SnoozeMenu thread={target}>
           <button
             type="button"
