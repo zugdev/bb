@@ -88,7 +88,9 @@ export function nextInboxStep(
   queue: readonly ThreadListEntry[],
   shownThreadId: string | null,
   trackedThreadId: string | null | undefined,
+  composerHasDraft: boolean,
 ): InboxStep {
+  if (shownThreadId === null && composerHasDraft) return { kind: "stay" };
   if (shownThreadId !== null && queue.some((t) => t.id === shownThreadId)) {
     return { kind: "stay" };
   }
