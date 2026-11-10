@@ -3,13 +3,10 @@ import { cliCommand, defineCli, type BbPluginApi } from "@get-bb/plugin-sdk";
 import { z } from "zod";
 import { assistantRpcContract } from "./contract.js";
 import {
-  appendNotification,
   completeTodo,
-  HOME_ITEM_LIMIT,
   openTodos,
   todoSchema,
   upcomingReminders,
-  type AssistantNotification,
   type Todo,
 } from "./home.js";
 import {
@@ -33,7 +30,6 @@ import {
 const PERSONAL_PROJECT_ID = "proj_personal";
 const THREAD_KEY = "threadId";
 const UNSEEN_KEY = "unseen";
-const NOTIFICATIONS_KEY = "notifications";
 const TODOS_KEY = "todos";
 const PANEL_KEY = "assistant/assistant";
 const BUILT_IN_NAVIGATION_KEYS = [
@@ -152,12 +148,6 @@ export default async function plugin(bb: BbPluginApi) {
     bb.rpc.experimental_invalidate(["badge"]);
   }
 
-  async function recordNotification(notification: AssistantNotification): Promise<void> {
-    const log = (await bb.storage.kv.get<AssistantNotification[]>(NOTIFICATIONS_KEY)) ?? [];
-    await bb.storage.kv.set(NOTIFICATIONS_KEY, appendNotification(log, notification));
-    bb.rpc.experimental_invalidate(["home"]);
-  }
-
   async function readTodos(): Promise<Todo[]> {
     const parsed = todoSchema.array().safeParse(await bb.storage.kv.get<unknown>(TODOS_KEY));
     return parsed.success ? parsed.data : [];
@@ -187,11 +177,21 @@ export default async function plugin(bb: BbPluginApi) {
         input: { targetThreadId: threadId },
         outputSchema: automationListOutputSchema,
       });
-      return upcomingReminders(rows);
+      return upcomingReminders(rows, Date.now());
     } catch (error) {
       bb.log.warn(`could not list the assistant's reminders: ${String(error)}`);
       return [];
     }
+  }
+
+  async function finishReminder(automationId: string): Promise<void> {
+    await bb.sdk.plugins.callRpc({
+      pluginId: "automations",
+      method: "automations_pause",
+      input: { projectId: PERSONAL_PROJECT_ID, automationId },
+      outputSchema: z.unknown(),
+    });
+    bb.rpc.experimental_invalidate(["home"]);
   }
 
   async function placeAtTopOfSidebar(): Promise<void> {
@@ -308,7 +308,6 @@ export default async function plugin(bb: BbPluginApi) {
         outputSchema: notificationOutputSchema,
       });
       await bumpUnseen(1);
-      await recordNotification({ title, body, at: Date.now() });
       return result.channels.length === 0
         ? "No notification channel is enabled, so nothing was delivered."
         : `Delivered to ${result.channels.join(", ")}.`;
@@ -419,15 +418,17 @@ export default async function plugin(bb: BbPluginApi) {
       return { threadId: await ensureThread() };
     },
     async "assistant.home"() {
-      const notifications = (await bb.storage.kv.get<AssistantNotification[]>(NOTIFICATIONS_KEY)) ?? [];
       return {
         todos: openTodos(await readTodos()),
         reminders: await assistantReminders(),
-        notifications: notifications.slice(0, HOME_ITEM_LIMIT),
       };
     },
     async "assistant.todoDone"({ id }) {
       await finishTodo(id);
+      return { ok: true as const };
+    },
+    async "assistant.reminderDone"({ id }) {
+      await finishReminder(id);
       return { ok: true as const };
     },
     async "assistant.check"() {

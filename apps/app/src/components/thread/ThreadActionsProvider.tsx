@@ -11,10 +11,8 @@ import { useLocation } from "react-router-dom";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSetAtom } from "jotai";
 import { appToast } from "@/components/ui/app-toast";
-import {
-  closePanesForThreadsAtom,
-  type ClosePanesForThreadsResult,
-} from "@/lib/split-layout/atoms";
+import type { ClosePanesForThreadsResult } from "@/lib/split-layout/atoms";
+import { closeThreadsInAllTabsAtom } from "@/lib/split-layout/tabs";
 import type { Thread } from "@bb/domain";
 import {
   useArchiveThreadAndChildren,
@@ -118,7 +116,7 @@ export function ThreadActionsProvider({
   useEffect(() => {
     viewedThreadIdRef.current = viewedThreadId;
   }, [viewedThreadId]);
-  const closePanesForThreads = useSetAtom(closePanesForThreadsAtom);
+  const closePanesForThreads = useSetAtom(closeThreadsInAllTabsAtom);
   const archiveThreadAndChildrenMutation = useArchiveThreadAndChildren();
   const unarchiveThreadMutation = useUnarchiveThread();
   const markThreadRead = useMarkThreadRead();

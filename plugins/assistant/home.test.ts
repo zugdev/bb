@@ -1,28 +1,28 @@
 import { describe, expect, it } from "vitest";
-import { appendNotification, completeTodo, formatUpcoming, NOTIFICATION_LOG_LIMIT, openTodos, upcomingReminders } from "./home.js";
+import { completeTodo, formatUpcoming, openTodos, upcomingReminders } from "./home.js";
 
 describe("upcomingReminders", () => {
-  it("keeps enabled automations with a next run, soonest first, and skips read problems", () => {
-    const reminders = upcomingReminders([
-      { id: "a", name: "Weekly review", enabled: true, nextRunAt: 300 },
-      { id: "b", name: "Paused", enabled: false, nextRunAt: 100 },
-      { id: "c", name: "Done one off", enabled: true, nextRunAt: null },
-      { id: "d", name: "Email at 9", enabled: true, nextRunAt: 200 },
-      { automationId: "e", problem: "unreadable" },
+  it("keeps enabled reminders due by the end of tomorrow, soonest first, and marks which repeat", () => {
+    const tuesdayNoon = new Date(2026, 10, 10, 12, 0).getTime();
+    const at = (day: number, hour: number) => new Date(2026, 10, day, hour, 0).getTime();
+    const once = { triggerType: "once" };
+    const weekly = { triggerType: "schedule" };
+    const reminders = upcomingReminders(
+      [
+        { id: "monday", name: "Singing lessons", enabled: true, nextRunAt: at(16, 14), trigger: weekly },
+        { id: "card", name: "pay-card", enabled: true, nextRunAt: at(11, 9), trigger: once },
+        { id: "daily", name: "Inbox check", enabled: true, nextRunAt: at(10, 18), trigger: weekly },
+        { id: "late", name: "Late", enabled: true, nextRunAt: at(12, 0), trigger: once },
+        { id: "paused", name: "Paused", enabled: false, nextRunAt: at(10, 15), trigger: once },
+        { id: "fired", name: "Fired", enabled: true, nextRunAt: null, trigger: once },
+        { automationId: "e", problem: "unreadable" },
+      ],
+      tuesdayNoon,
+    );
+    expect(reminders.map((reminder) => [reminder.id, reminder.name, reminder.repeats])).toEqual([
+      ["daily", "Inbox check", true],
+      ["card", "Pay card", false],
     ]);
-    expect(reminders.map((reminder) => reminder.id)).toEqual(["d", "a"]);
-  });
-});
-
-describe("appendNotification", () => {
-  it("puts the newest first and drops the oldest past the limit", () => {
-    let log = appendNotification([], { title: "first", body: "", at: 1 });
-    for (let at = 2; at <= NOTIFICATION_LOG_LIMIT + 1; at++) {
-      log = appendNotification(log, { title: `n${at}`, body: "", at });
-    }
-    expect(log).toHaveLength(NOTIFICATION_LOG_LIMIT);
-    expect(log[0]?.at).toBe(NOTIFICATION_LOG_LIMIT + 1);
-    expect(log.some((notification) => notification.title === "first")).toBe(false);
   });
 });
 
@@ -36,6 +36,7 @@ describe("formatUpcoming", () => {
     const nextMonth = new Date(2026, 11, 20, 9, 0).getTime();
     expect(formatUpcoming(now + 60_000, now).startsWith(days.format(0, "day"))).toBe(true);
     expect(formatUpcoming(nextMorning, now).startsWith(days.format(1, "day"))).toBe(true);
+    expect(formatUpcoming(now - 86_400_000, now).startsWith(days.format(-1, "day"))).toBe(true);
     expect(formatUpcoming(thursday, now).startsWith(weekday.format(thursday))).toBe(true);
     expect(formatUpcoming(nextMonth, now).startsWith(weekday.format(nextMonth))).toBe(false);
   });
