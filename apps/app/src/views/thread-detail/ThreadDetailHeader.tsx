@@ -50,6 +50,7 @@ import {
 import { AppCommandShortcutHint } from "@/components/commands/AppCommandShortcutHint";
 import { CHROME_SUBTLE_ICON_BUTTON_FOREGROUND_CLASS } from "@bb/shared-ui/chrome-style-tokens";
 import { useIsCompactViewport } from "@bb/shared-ui/hooks/use-compact-viewport";
+import { useElementWidth } from "@/hooks/useElementWidth";
 import { dimInactiveSplitsAtom } from "@/lib/split-layout/atoms";
 import {
   CONTEXT_INACTIVE_TEXT_CLASS,
@@ -70,6 +71,7 @@ const THREAD_HEADER_ACTION_BUTTON_CLASS = cn(
   "border-border/70 bg-transparent font-normal hover:bg-state-hover",
 );
 const NARROW_SPLIT_HEADER_MAX_WIDTH = 560;
+const INBOX_CONTROLS_IN_HEADER_MIN_WIDTH = 768;
 
 export interface ThreadDetailHeaderActionsMenuArgs {
   includeResponsiveActions: boolean;
@@ -104,6 +106,9 @@ export function ThreadDetailHeader({
   const threadId = thread.id;
   const threadDot = useThreadDot(threadId);
   const isInboxTab = useIsInboxTabActive();
+  const inboxHeader = useElementWidth();
+  const inboxControlsFitHeader =
+    inboxHeader.width >= INBOX_CONTROLS_IN_HEADER_MIN_WIDTH;
   const headerActions = useThreadHeaderActionEntries(thread);
   const [primaryAction, ...secondaryActions] = headerActions;
   const { renameThreadAsync } = useThreadActions();
@@ -296,11 +301,8 @@ export function ThreadDetailHeader({
           )}
         </p>
       </div>
-      {isInboxTab ? (
-        <InboxNavigator
-          thread={thread}
-          className="hidden @min-[40rem]/inbox-header:flex"
-        />
+      {isInboxTab && inboxControlsFitHeader ? (
+        <InboxNavigator thread={thread} className="flex" />
       ) : null}
       {actionsMenu == null ? null : (
         <span
@@ -402,12 +404,14 @@ export function ThreadDetailHeader({
   );
   if (!isInboxTab || hidesChromeToggles) return header;
   return (
-    <div className="@container/inbox-header shrink-0">
+    <div ref={inboxHeader.ref} className="shrink-0">
       {header}
-      <InboxNavigator
-        thread={thread}
-        className="flex justify-center border-b border-border/60 px-4 py-1 @min-[40rem]/inbox-header:hidden"
-      />
+      {inboxControlsFitHeader ? null : (
+        <InboxNavigator
+          thread={thread}
+          className="flex justify-center border-b border-border/60 px-4 py-1"
+        />
+      )}
     </div>
   );
 }
