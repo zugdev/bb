@@ -184,6 +184,8 @@ export function InboxSidebarList({
   );
 }
 
+const ARCHIVED_INBOX_STEP = 10;
+
 function ArchivedThreads({
   activeThreadId,
   projects,
@@ -211,6 +213,16 @@ function ArchivedThreads({
         .sort((a, b) => (b.archivedAt ?? 0) - (a.archivedAt ?? 0)),
     [threads],
   );
+  const [visibleCount, setVisibleCount] = useState(ARCHIVED_INBOX_STEP);
+  const hasMore =
+    rootThreads.length > visibleCount || archived?.hasNextPage === true;
+  const showMore = () => {
+    const nextCount = visibleCount + ARCHIVED_INBOX_STEP;
+    setVisibleCount(nextCount);
+    if (nextCount >= rootThreads.length && archived?.hasNextPage) {
+      void archived.fetchNextPage();
+    }
+  };
   return (
     <ul className="flex flex-col">
       {archived === null || archived.status !== "ready" ? (
@@ -222,7 +234,7 @@ function ArchivedThreads({
           Nothing archived
         </li>
       ) : null}
-      {rootThreads.map((thread) => (
+      {rootThreads.slice(0, visibleCount).map((thread) => (
         <InboxRow
           key={thread.id}
           thread={thread}
@@ -236,15 +248,15 @@ function ArchivedThreads({
           onOpen={() => onOpen(thread)}
         />
       ))}
-      {archived?.hasNextPage ? (
+      {hasMore ? (
         <li>
           <button
             type="button"
-            disabled={archived.isFetchingNextPage}
+            disabled={archived?.isFetchingNextPage === true}
             className="w-full rounded-md px-2 py-1 text-left text-sm text-muted-foreground hover:bg-state-hover"
-            onClick={() => void archived.fetchNextPage()}
+            onClick={showMore}
           >
-            {archived.isFetchingNextPage ? "Loading…" : "Show more"}
+            {archived?.isFetchingNextPage ? "Loading…" : "Show more"}
           </button>
         </li>
       ) : null}
