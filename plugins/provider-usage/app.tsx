@@ -273,7 +273,7 @@ function UsageNotice({
 }
 
 const USAGE_GRID_CLASS_NAME =
-  "grid grid-cols-[max-content_minmax(0,1fr)_max-content_max-content] gap-x-3";
+  "grid grid-cols-[max-content_minmax(0,1fr)_max-content_max-content_max-content] gap-x-3";
 
 function UsageWindow({ window }: { window: UsageWindowValue }) {
   const [showReset, setShowReset] = useState(false);
@@ -327,15 +327,18 @@ function UsageWindow({ window }: { window: UsageWindowValue }) {
               : projectedToneClass(projected),
           )}
         >
-          {projected === null
-            ? (countdown ?? "—")
-            : `(${Math.round(projected)}%)`}
+          {projected === null ? "" : `(${Math.round(projected)}%)`}
+        </span>
+        <span
+          aria-hidden="true"
+          className="min-w-7 text-right tabular-nums text-subtle-foreground"
+        >
+          {countdown ?? "—"}
         </span>
       </span>
       {showReset ? (
         <span className="col-span-full pb-1 text-2xs text-subtle-foreground">
           {reset ?? "Reset time not reported."}
-          {projected === null || countdown === null ? "" : ` (${countdown})`}
           {window.cost === null ? "" : ` · ${value}`}
         </span>
       ) : null}
