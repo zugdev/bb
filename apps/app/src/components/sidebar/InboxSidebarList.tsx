@@ -138,6 +138,8 @@ export function InboxSidebarList({ onNavigate }: { onNavigate: () => void }) {
   );
 }
 
+const ARCHIVED_INBOX_STEP = 10;
+
 function ArchivedInboxSection({
   shownThreadId,
   now,
@@ -148,12 +150,21 @@ function ArchivedInboxSection({
   onOpen: (thread: ThreadListEntry) => void;
 }) {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [visibleCount, setVisibleCount] = useState(ARCHIVED_INBOX_STEP);
   const descendants = useThreadDescendants();
   const archived = useArchivedThreads(
     { kind: "root" },
     { enabled: isExpanded },
   );
   const threads = archived.data?.pages.flat() ?? [];
+  const hasMore = threads.length > visibleCount || archived.hasNextPage;
+  const showMore = () => {
+    const nextCount = visibleCount + ARCHIVED_INBOX_STEP;
+    setVisibleCount(nextCount);
+    if (nextCount >= threads.length && archived.hasNextPage) {
+      void archived.fetchNextPage();
+    }
+  };
   return (
     <section aria-label="Archived">
       <button
@@ -182,7 +193,7 @@ function ArchivedInboxSection({
               Nothing archived
             </li>
           ) : null}
-          {threads.map((thread) => (
+          {threads.slice(0, visibleCount).map((thread) => (
             <InboxRow
               key={thread.id}
               thread={thread}
@@ -195,13 +206,13 @@ function ArchivedInboxSection({
               onOpen={() => onOpen(thread)}
             />
           ))}
-          {archived.hasNextPage ? (
+          {hasMore ? (
             <li>
               <button
                 type="button"
                 disabled={archived.isFetchingNextPage}
                 className="w-full rounded-md px-2 py-1 text-left text-sm text-muted-foreground hover:bg-state-hover"
-                onClick={() => void archived.fetchNextPage()}
+                onClick={showMore}
               >
                 {archived.isFetchingNextPage ? "Loading…" : "Show more"}
               </button>
