@@ -9,7 +9,9 @@ import { useThreadEntriesById } from "@/components/thread/ThreadStatusDot";
 import { useSidebarNavigation } from "@/hooks/queries/sidebar-navigation-query";
 import { splitLayoutAtom } from "@/lib/split-layout/atoms";
 import { findPane, replacePaneContent } from "@/lib/split-layout";
-import { splitTabsAtom } from "@/lib/split-layout/tabs";
+import { composerDraftScope, splitTabsAtom } from "@/lib/split-layout/tabs";
+import { getPromptDraftAccessor } from "@/hooks/usePromptDraftStorage";
+import { isPromptDraftEmpty } from "@bb/client-core";
 import type { PaneContent } from "@/lib/split-layout";
 import {
   inboxQueue,
@@ -371,7 +373,20 @@ export function InboxTabController() {
     if (!isLoaded || !isInboxTab) return;
     if (shownThreadId === null && !showsCompose) return;
     const tracked = trackedByTab.current;
-    const step = nextInboxStep(queue, shownThreadId, tracked.get(activeTabId));
+    const composerHasDraft =
+      focused !== null &&
+      showsCompose &&
+      !isPromptDraftEmpty(
+        getPromptDraftAccessor(
+          composerDraftScope(layout, store.get(splitTabsAtom), focused.paneId),
+        ).getCurrent(),
+      );
+    const step = nextInboxStep(
+      queue,
+      shownThreadId,
+      tracked.get(activeTabId),
+      composerHasDraft,
+    );
     const show = (content: PaneContent, threadId: string | null) => {
       tracked.set(activeTabId, threadId);
       showInInboxTab(store, navigate, content);
@@ -397,8 +412,10 @@ export function InboxTabController() {
     );
   }, [
     activeTabId,
+    focused,
     isInboxTab,
     isLoaded,
+    layout,
     navigate,
     queue,
     shownThreadId,

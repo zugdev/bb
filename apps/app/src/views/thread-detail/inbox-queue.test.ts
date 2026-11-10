@@ -85,38 +85,45 @@ describe("nextInboxStep", () => {
   const queue = [idle("a", 10), idle("b", 20)];
 
   it("opens the oldest thread from a blank tab", () => {
-    expect(nextInboxStep(queue, null, undefined)).toEqual({
+    expect(nextInboxStep(queue, null, undefined, false)).toEqual({
       kind: "open",
       thread: queue[0],
     });
   });
 
   it("stays while the shown thread still needs a reply", () => {
-    expect(nextInboxStep(queue, "b", "b")).toEqual({ kind: "stay" });
+    expect(nextInboxStep(queue, "b", "b", false)).toEqual({ kind: "stay" });
   });
 
   it("advances once the shown thread was replied to or archived", () => {
-    expect(nextInboxStep(queue.slice(1), "a", "a")).toEqual({
+    expect(nextInboxStep(queue.slice(1), "a", "a", false)).toEqual({
       kind: "open",
       thread: queue[1],
     });
-    expect(nextInboxStep(queue.slice(1), null, "a")).toEqual({
+    expect(nextInboxStep(queue.slice(1), null, "a", false)).toEqual({
       kind: "open",
       thread: queue[1],
     });
+  });
+
+  it("keeps a composer holding a draft when a thread arrives", () => {
+    expect(nextInboxStep(queue, null, null, true)).toEqual({ kind: "stay" });
+    expect(nextInboxStep(queue, null, "a", true)).toEqual({ kind: "stay" });
   });
 
   it("finishes when the last thread leaves the queue", () => {
-    expect(nextInboxStep([], "a", "a")).toEqual({ kind: "done" });
-    expect(nextInboxStep([], null, null)).toEqual({ kind: "stay" });
+    expect(nextInboxStep([], "a", "a", false)).toEqual({ kind: "done" });
+    expect(nextInboxStep([], null, null, false)).toEqual({ kind: "stay" });
   });
 
   it("leaves a thread the user opened by hand alone", () => {
-    expect(nextInboxStep(queue, "elsewhere", "a")).toEqual({ kind: "stay" });
+    expect(nextInboxStep(queue, "elsewhere", "a", false)).toEqual({
+      kind: "stay",
+    });
   });
 
   it("moves on from a composer an archive left behind while threads still wait", () => {
-    expect(nextInboxStep(queue, null, "a")).toEqual({
+    expect(nextInboxStep(queue, null, "a", false)).toEqual({
       kind: "open",
       thread: queue[0],
     });
