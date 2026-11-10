@@ -69,6 +69,9 @@ function Stage({ initialProject }: { initialProject: string | null }) {
         filter={filter}
         setFilter={setFilter}
         showArchived={false}
+        setShowArchived={() => undefined}
+        pullRequestsExpanded={true}
+        setPullRequestsExpanded={() => undefined}
         pullRequests={[
           {
             number: 128,

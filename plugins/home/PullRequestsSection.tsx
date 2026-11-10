@@ -31,21 +31,41 @@ const REVIEW_ICONS: Record<
 
 export function PullRequestsSection({
   pullRequests,
+  expanded,
+  setExpanded,
   onSelect,
 }: {
-  pullRequests: readonly ProjectPullRequest[];
+  pullRequests: readonly ProjectPullRequest[] | null;
+  expanded: boolean;
+  setExpanded: (expanded: boolean) => void;
   onSelect: (pr: ProjectPullRequest) => void;
 }) {
   return (
     <section className="flex flex-col">
-      <div className="flex h-8 items-center gap-2">
+      <button
+        type="button"
+        aria-expanded={expanded}
+        onClick={() => setExpanded(!expanded)}
+        className="-mx-2 flex h-8 items-center gap-2 rounded-md px-2 text-left transition-colors hover:bg-state-hover"
+      >
         <Icon name="GitPullRequest" className="size-4 text-muted-foreground" />
         <h2 className="text-sm font-semibold">Your pull requests</h2>
-        <span className="text-xs text-muted-foreground tabular-nums">
-          {pullRequests.length}
-        </span>
-      </div>
-      {pullRequests.map((pr) => {
+        {expanded && pullRequests !== null ? (
+          <span className="text-xs text-muted-foreground tabular-nums">
+            {pullRequests.length}
+          </span>
+        ) : null}
+        <Icon
+          name={expanded ? "ChevronDown" : "ChevronRight"}
+          className="size-3.5 text-muted-foreground"
+        />
+      </button>
+      {!expanded ? null : pullRequests === null ? (
+        <p className="text-sm text-muted-foreground">Loading…</p>
+      ) : pullRequests.length === 0 ? (
+        <p className="text-sm text-muted-foreground">No open pull requests</p>
+      ) : null}
+      {(expanded ? (pullRequests ?? []) : []).map((pr) => {
         const dot = CHECK_DOTS[pr.checks];
         const review = REVIEW_ICONS[pr.review];
         return (

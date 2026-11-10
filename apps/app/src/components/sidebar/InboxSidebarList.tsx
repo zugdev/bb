@@ -12,6 +12,7 @@ import {
 } from "@/components/thread/ThreadStatusDot";
 import { threadDot } from "@/components/thread/thread-dot";
 import { useRouteState } from "@/hooks/useRouteState";
+import { useArchivedThreads } from "@/hooks/queries/thread-queries";
 import { getThreadDisplayTitle } from "@/lib/thread-title";
 import { formatSnoozeWake } from "@/lib/snooze";
 import { threadListEntryActionTarget } from "@/lib/thread-actions/thread-action-target";
@@ -128,7 +129,87 @@ export function InboxSidebarList({ onNavigate }: { onNavigate: () => void }) {
           </section>
         );
       })}
+      <ArchivedInboxSection
+        shownThreadId={shownThreadId}
+        now={now}
+        onOpen={open}
+      />
     </nav>
+  );
+}
+
+function ArchivedInboxSection({
+  shownThreadId,
+  now,
+  onOpen,
+}: {
+  shownThreadId: string | undefined;
+  now: number;
+  onOpen: (thread: ThreadListEntry) => void;
+}) {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const descendants = useThreadDescendants();
+  const archived = useArchivedThreads(
+    { kind: "root" },
+    { enabled: isExpanded },
+  );
+  const threads = archived.data?.pages.flat() ?? [];
+  return (
+    <section aria-label="Archived">
+      <button
+        type="button"
+        aria-expanded={isExpanded}
+        className={cn(
+          CHROME_SECTION_LABEL_CLASS,
+          "flex h-7 w-full items-center gap-1.5 rounded-md px-2 text-left hover:bg-state-hover",
+        )}
+        onClick={() => setIsExpanded((current) => !current)}
+      >
+        <span className="truncate">Archived</span>
+        <Icon
+          name={isExpanded ? "ChevronDown" : "ChevronRight"}
+          className="ml-auto size-3.5"
+        />
+      </button>
+      {!isExpanded ? null : (
+        <ul className="flex flex-col">
+          {archived.data === undefined ? (
+            <li className="px-2 py-1 text-sm text-muted-foreground">
+              {archived.isLoadingError ? "Could not load" : "Loading…"}
+            </li>
+          ) : threads.length === 0 ? (
+            <li className="px-2 py-1 text-sm text-muted-foreground">
+              Nothing archived
+            </li>
+          ) : null}
+          {threads.map((thread) => (
+            <InboxRow
+              key={thread.id}
+              thread={thread}
+              isCurrent={thread.id === shownThreadId}
+              trailing={formatCompactRelativeTime({
+                timestamp: thread.archivedAt ?? thread.updatedAt,
+                now,
+              })}
+              dot={threadDot(thread, descendants)}
+              onOpen={() => onOpen(thread)}
+            />
+          ))}
+          {archived.hasNextPage ? (
+            <li>
+              <button
+                type="button"
+                disabled={archived.isFetchingNextPage}
+                className="w-full rounded-md px-2 py-1 text-left text-sm text-muted-foreground hover:bg-state-hover"
+                onClick={() => void archived.fetchNextPage()}
+              >
+                {archived.isFetchingNextPage ? "Loading…" : "Show more"}
+              </button>
+            </li>
+          ) : null}
+        </ul>
+      )}
+    </section>
   );
 }
 

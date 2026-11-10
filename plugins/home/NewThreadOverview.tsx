@@ -36,8 +36,11 @@ export interface NewThreadOverviewProps {
   filter: HomeThreadFilter;
   setFilter: ((filter: HomeThreadFilter) => void) | null;
   showArchived: boolean;
+  setShowArchived: (showArchived: boolean) => void;
   onArchiveThreads: (threads: readonly PluginSidebarThread[]) => Promise<void>;
-  pullRequests: readonly ProjectPullRequest[];
+  pullRequests: readonly ProjectPullRequest[] | null;
+  pullRequestsExpanded: boolean;
+  setPullRequestsExpanded: (expanded: boolean) => void;
   onSelectPullRequest: (pr: ProjectPullRequest) => void;
   onOpenThread: OpenThread;
   rootRef?: Ref<HTMLDivElement>;
@@ -66,8 +69,11 @@ export function NewThreadOverview({
   filter,
   setFilter,
   showArchived,
+  setShowArchived,
   onArchiveThreads,
   pullRequests,
+  pullRequestsExpanded,
+  setPullRequestsExpanded,
   onSelectPullRequest,
   onOpenThread,
   rootRef,
@@ -177,6 +183,14 @@ export function NewThreadOverview({
               {cycleShortcutLabel}
             </span>
           )}
+          <button
+            type="button"
+            aria-pressed={showArchived}
+            onClick={() => setShowArchived(!showArchived)}
+            className={cn(pillClass(showArchived), "ml-auto")}
+          >
+            Archived
+          </button>
         </div>
         {setFilter === null ? null : (
           <div
@@ -267,9 +281,11 @@ export function NewThreadOverview({
             onNewThread={() => setProjectId?.(project.id)}
           />
         ))}
-        {selectedProject === null || pullRequests.length === 0 ? null : (
+        {selectedProject === null ? null : (
           <PullRequestsSection
             pullRequests={pullRequests}
+            expanded={pullRequestsExpanded}
+            setExpanded={setPullRequestsExpanded}
             onSelect={onSelectPullRequest}
           />
         )}
