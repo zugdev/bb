@@ -54,6 +54,7 @@ import {
   createSplitTabHoverSwitch,
   resolveSplitTabDropTarget,
 } from "./SplitTabBar";
+import { useIsInboxTabActive } from "./InboxTabController";
 import {
   computePaneRects,
   countPanes,
@@ -1025,6 +1026,7 @@ function SplitPaneCommandHandlers({
 }: SplitPaneCommandHandlersProps) {
   useAppCommandContext("splitActive", isSplitActive);
   const splitDirection = useAtomValue(splitDirectionAtom);
+  const isInboxTab = useIsInboxTabActive();
   const directionalTargets = useMemo(
     () =>
       (["left", "right", "top", "bottom"] as const).map((direction) =>
@@ -1067,10 +1069,12 @@ function SplitPaneCommandHandlers({
     return true;
   });
   useAppCommandHandler("pane.split.right", () => {
+    if (isInboxTab) return true;
     splitFocusedPane(splitDirection === "down" ? "bottom" : "right");
     return true;
   });
   useAppCommandHandler("pane.split.down", () => {
+    if (isInboxTab) return true;
     splitFocusedPane(splitDirection === "down" ? "right" : "bottom");
     return true;
   });
