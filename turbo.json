@@ -1591,6 +1591,13 @@
       "env": ["VITEST_MAX_WORKERS"],
       "dependsOn": ["@get-bb/plugin-sdk#build", "topo"]
     },
+    "bb-plugin-inbox#typecheck": {
+      "dependsOn": ["@get-bb/plugin-sdk#build:types", "topo"]
+    },
+    "bb-plugin-inbox#test": {
+      "env": ["VITEST_MAX_WORKERS"],
+      "dependsOn": ["@get-bb/plugin-sdk#build", "topo"]
+    },
     "bb-plugin-parent-link#typecheck": {
       "dependsOn": ["@get-bb/plugin-sdk#build:types", "topo"]
     },

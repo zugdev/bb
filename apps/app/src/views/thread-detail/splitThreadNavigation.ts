@@ -287,18 +287,6 @@ export function openComposeTab(
   if (route !== null) navigate(route, { replace: true });
 }
 
-export function openInboxTab(
-  store: ReturnType<typeof useStore>,
-  navigate: (route: string, options: { replace: true }) => void,
-): void {
-  const layout = store.set(openOwnedTabAtom, {
-    owner: { kind: "inbox" },
-    content: { kind: "new-thread" },
-  });
-  const route = layout === null ? null : focusedPaneRoute(layout);
-  if (route !== null) navigate(route, { replace: true });
-}
-
 export function showInOwnedTab(
   store: ReturnType<typeof useStore>,
   navigate: (route: string, options: { replace: true }) => void,

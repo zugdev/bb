@@ -62,11 +62,6 @@ import {
 } from "@bb/shared-ui/context-selection";
 import { usePaneContext } from "./PaneContext";
 import { PaneMaximizeButton } from "./PaneMaximizeButton";
-import {
-  InboxNavigator,
-  InboxProjectLabel,
-  useIsInboxTabActive,
-} from "./InboxTabController";
 import { PaneDragHandle } from "./PaneDragHandle";
 import { PluginThreadHeaderLeading } from "@/components/plugin/PluginThreadHeaderLeading";
 
@@ -109,7 +104,6 @@ export function ThreadDetailHeader({
   const hidesChromeToggles = useUsesSwipeChrome();
   const threadId = thread.id;
   const threadDot = useThreadDot(threadId);
-  const isInboxTab = useIsInboxTabActive();
   const hasPluginTrailing = useHasPluginThreadHeaderTrailing();
   const measuredHeader = useElementWidth();
   const trailingFitsHeader =
@@ -293,23 +287,11 @@ export function ThreadDetailHeader({
         >
           {isEditing ? (
             editor
-          ) : isInboxTab ? (
-            <span className="flex min-w-0 items-baseline gap-1">
-              <InboxProjectLabel
-                projectId={thread.projectId}
-                className="max-w-40 shrink-0"
-                separator="/"
-              />
-              <ThreadTitle title={threadTitle} />
-            </span>
           ) : (
             <ThreadTitle title={threadTitle} />
           )}
         </p>
       </div>
-      {isInboxTab && trailingFitsHeader ? (
-        <InboxNavigator thread={thread} className="flex" />
-      ) : null}
       {hasPluginTrailing && !hidesChromeToggles && trailingFitsHeader ? (
         <PluginThreadHeaderTrailing
           threadId={threadId}
@@ -415,21 +397,15 @@ export function ThreadDetailHeader({
       className={cn(isSplitPaneHeader && "z-[21]")}
     />
   );
-  if ((!isInboxTab && !hasPluginTrailing) || hidesChromeToggles) return header;
+  if (!hasPluginTrailing || hidesChromeToggles) return header;
   return (
     <div ref={measuredHeader.ref} className="shrink-0">
       {header}
-      {trailingFitsHeader || !hasPluginTrailing ? null : (
+      {trailingFitsHeader ? null : (
         <PluginThreadHeaderTrailing
           threadId={threadId}
           placement={trailingPlacement}
           className="justify-center border-b border-border/60 px-4 py-1"
-        />
-      )}
-      {trailingFitsHeader || !isInboxTab ? null : (
-        <InboxNavigator
-          thread={thread}
-          className="flex justify-center border-b border-border/60 px-4 py-1"
         />
       )}
     </div>

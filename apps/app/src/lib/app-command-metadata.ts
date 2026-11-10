@@ -247,11 +247,6 @@ export const APP_COMMAND_GROUPS: readonly AppCommandGroup[] = [
         "Pick a project and switch to its tab, opening one if none exists. The sidebar shows only that project's threads while the tab is active.",
       ),
       command(
-        "splitTab.openInbox",
-        "Open Inbox",
-        "Open the Inbox tab. The sidebar lists threads that need an answer, threads waiting on your reply, agents still working, and snoozed threads. The tab shows the oldest thread first and moves to the next one when you reply, archive, or snooze.",
-      ),
-      command(
         "splitTab.reopenClosed",
         "Reopen closed pane or tab",
         "Reopen the chat pane or tab closed most recently.",

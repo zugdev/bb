@@ -41,8 +41,10 @@ function threadLayout(threadId: string): SplitLayout {
   };
 }
 
+const INBOX_PANEL = { pluginId: "inbox", panelPath: "inbox" } as const;
+
 const INBOX = {
-  owner: { kind: "inbox" },
+  owner: { kind: "panel", panel: INBOX_PANEL },
   content: { kind: "new-thread" },
 } as const;
 
@@ -135,7 +137,29 @@ describe("owned tabs", () => {
     store.set(reopenClosedSplitItemAtom);
     const { tabs, activeTabId } = store.get(splitTabsAtom);
     expect(activeTabId).toBe(inboxTabId);
-    expect(tabs.filter((tab) => tab.kind === "inbox")).toHaveLength(1);
+    expect(
+      tabs.filter((tab) => tab.panel?.pluginId === INBOX_PANEL.pluginId),
+    ).toHaveLength(1);
+  });
+
+  it("loads a stored core Inbox tab as the inbox plugin's panel tab", () => {
+    const parsed = parseSplitTabsState(
+      JSON.stringify({
+        tabs: [
+          { id: "inbox", layout: null, kind: "inbox" },
+          { id: "plain", layout: null },
+        ],
+        activeTabId: "inbox",
+      }),
+    );
+    expect(parsed.tabs[0]).toEqual({
+      id: "inbox",
+      layout: null,
+      projectId: null,
+      name: null,
+      panel: INBOX_PANEL,
+    });
+    expect(parsed.tabs[1]).not.toHaveProperty("panel");
   });
 
   it("collapses duplicate owned tabs from stored state", () => {

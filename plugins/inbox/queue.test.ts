@@ -1,18 +1,22 @@
 import { describe, expect, it } from "vitest";
-import { makeThreadListEntry } from "@bb/test-helpers/domain-fixtures";
+import type { PluginSidebarThread } from "@get-bb/plugin-sdk/app";
+import { makeThread } from "./fixtures";
 import {
   inboxQueue,
   inboxSections,
   nextInboxStep,
   nextSnoozeWake,
-} from "./inbox-queue";
+} from "./queue";
 
-const idle = (id: string, latestAttentionAt: number, extra = {}) =>
-  makeThreadListEntry({
+const idle = (
+  id: string,
+  latestAttentionAt: number,
+  extra: Partial<PluginSidebarThread> = {},
+) =>
+  makeThread({
     id,
-    status: "idle",
     latestAttentionAt,
-    lastUserMessageAt: 1,
+    experimental_lastUserMessageAt: 1,
     ...extra,
   });
 
@@ -27,9 +31,10 @@ describe("inboxSections", () => {
       [
         idle("new", 30),
         idle("old", 10),
-        idle("replied", 20, { lastUserMessageAt: 25 }),
+        idle("replied", 20, { experimental_lastUserMessageAt: 25 }),
         idle("archived", 5, { archivedAt: 6 }),
         idle("child", 5, { parentThreadId: "old" }),
+        idle("hidden", 5, { isHidden: true }),
       ],
       NOW,
     );
@@ -39,12 +44,7 @@ describe("inboxSections", () => {
 
   it("puts running agents under working and out of the queue", () => {
     const sections = inboxSections(
-      [
-        idle("running", 5, {
-          status: "active",
-          runtime: { displayStatus: "active" },
-        }),
-      ],
+      [idle("running", 5, { status: "active", runtimeStatus: "active" })],
       NOW,
     );
     expect(ids(sections.working)).toEqual(["running"]);
@@ -53,7 +53,7 @@ describe("inboxSections", () => {
 
   it("hides a snoozed thread until it wakes, then lists it as a new arrival", () => {
     const threads = [
-      idle("snoozed", 10, { snoozedUntil: NOW + 50 }),
+      idle("snoozed", 10, { experimental_snoozedUntil: NOW + 50 }),
       idle("other", 20),
     ];
     const asleep = inboxSections(threads, NOW);
@@ -70,7 +70,7 @@ describe("inboxSections", () => {
     const sections = inboxSections(
       [
         idle("blocked", 10, {
-          snoozedUntil: NOW + 50,
+          experimental_snoozedUntil: NOW + 50,
           hasPendingInteraction: true,
         }),
       ],
@@ -78,6 +78,20 @@ describe("inboxSections", () => {
     );
     expect(ids(sections.needsAnswer)).toEqual(["blocked"]);
     expect(sections.snoozed).toEqual([]);
+  });
+
+  it("asks for an answer when a live child thread waits on one", () => {
+    const sections = inboxSections(
+      [
+        idle("parent", 10, { experimental_lastUserMessageAt: 20 }),
+        idle("child", 15, {
+          parentThreadId: "parent",
+          hasPendingInteraction: true,
+        }),
+      ],
+      NOW,
+    );
+    expect(ids(sections.needsAnswer)).toEqual(["parent"]);
   });
 });
 

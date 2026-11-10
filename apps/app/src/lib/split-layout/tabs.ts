@@ -41,16 +41,18 @@ export interface SplitTabPanel {
   panelPath: string;
 }
 
-export type SplitTabOwner =
-  | { kind: "inbox" }
-  | { kind: "panel"; panel: SplitTabPanel };
+export type SplitTabOwner = { kind: "panel"; panel: SplitTabPanel };
+
+const INBOX_PLUGIN_PANEL: SplitTabPanel = {
+  pluginId: "inbox",
+  panelPath: "inbox",
+};
 
 export interface SplitTab {
   id: string;
   layout: SplitLayout | null;
   projectId: string | null;
   name: string | null;
-  kind?: "inbox";
   panel?: SplitTabPanel;
 }
 
@@ -84,10 +86,7 @@ const splitTabsStateSchema = z
             layout: splitLayoutSchema.nullable(),
             projectId: z.string().min(1).nullable().default(null),
             name: z.string().min(1).nullable().default(null),
-            kind: z
-              .enum(["inbox", "focus"])
-              .transform((): "inbox" => "inbox")
-              .optional(),
+            kind: z.enum(["inbox", "focus"]).optional(),
             panel: z
               .object({
                 pluginId: z.string().min(1),
@@ -96,7 +95,11 @@ const splitTabsStateSchema = z
               .strict()
               .optional(),
           })
-          .strict(),
+          .strict()
+          .transform(({ kind, panel, ...tab }): SplitTab => {
+            const owner = kind === undefined ? panel : INBOX_PLUGIN_PANEL;
+            return owner === undefined ? tab : { ...tab, panel: owner };
+          }),
       )
       .min(1),
     activeTabId: z.string().min(1),
@@ -119,25 +122,20 @@ export function parseSplitTabsState(
 }
 
 export function tabOwner(tab: SplitTab): SplitTabOwner | null {
-  if (tab.kind === "inbox") return { kind: "inbox" };
   return tab.panel === undefined ? null : { kind: "panel", panel: tab.panel };
 }
 
 function ownerKey(owner: SplitTabOwner | null): string | null {
   if (owner === null) return null;
-  return owner.kind === "inbox"
-    ? "inbox"
-    : `panel:${owner.panel.pluginId}/${owner.panel.panelPath}`;
+  return `panel:${owner.panel.pluginId}/${owner.panel.panelPath}`;
 }
 
 export function isOwnedTab(tab: SplitTab): boolean {
-  return tab.kind === "inbox" || tab.panel !== undefined;
+  return tab.panel !== undefined;
 }
 
 function withOwner(tab: SplitTab, owner: SplitTabOwner): SplitTab {
-  return owner.kind === "inbox"
-    ? { ...tab, kind: "inbox" }
-    : { ...tab, panel: owner.panel };
+  return { ...tab, panel: owner.panel };
 }
 
 function findOwnedTab(

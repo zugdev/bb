@@ -86,9 +86,9 @@ bb thread snooze [id] --until <when> Hide a thread from the Inbox
 --self Snooze current thread
 bb thread unsnooze [id] Return it to the Inbox now
 
-The Inbox lists threads that need an answer, threads waiting on your reply,
-agents still working, and snoozed threads. A snoozed thread returns when its
-time comes, or earlier when it finishes a turn or asks a question.
+The Inbox plugin lists threads that need an answer, threads waiting on your
+reply, agents still working, and snoozed threads. A snoozed thread returns
+when its time comes, or earlier when it finishes a turn or asks a question.
 
 bb thread restore-environment [id] Restore a destroyed workspace
 --self Restore current thread

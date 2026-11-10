@@ -23,8 +23,6 @@ import {
 import { ThreadActionSurfaceVisibility } from "@/lib/thread-actions/thread-action-registry";
 import { PluginThreadList } from "./PluginThreadList";
 import { ActiveTabThreadsSection } from "./ActiveTabThreadsSection";
-import { InboxSidebarList } from "./InboxSidebarList";
-import { useIsInboxTabActive } from "@/views/thread-detail/InboxTabController";
 import { useThreadListReplacement } from "./threadListProvider";
 import {
   PluginSidebarFooterDisclosure,
@@ -106,7 +104,6 @@ export function AppSidebar({
   const [desktopInfo] = useState(getBbDesktopInfo);
   const isFramed = useIsSidebarFramed();
   const threadListReplacement = useThreadListReplacement();
-  const isInboxTab = useIsInboxTabActive();
   const { threadId: activeThreadId, projectId: activeProjectId } =
     useRouteState();
   const setRootComposeProjectId = useSetRootComposeProjectId();
@@ -352,22 +349,13 @@ export function AppSidebar({
       ) : null}
       {placement === "list" ? navigationRegion("shrink-0") : null}
       <SidebarContent>
-        {isInboxTab ? (
-          <ThreadActionSurfaceVisibility visible={isThreadListVisible}>
-            <InboxSidebarList onNavigate={closeOnMobile} />
-          </ThreadActionSurfaceVisibility>
-        ) : null}
-        <div className={cn("contents", isInboxTab && "hidden")}>
-          <ThreadActionSurfaceVisibility
-            visible={isThreadListVisible && !isInboxTab}
-          >
-            <ActiveTabThreadsSection onNavigate={closeOnMobile} />
-            <PluginThreadList
-              replacement={threadListReplacement}
-              onNavigate={closeOnMobile}
-            />
-          </ThreadActionSurfaceVisibility>
-        </div>
+        <ThreadActionSurfaceVisibility visible={isThreadListVisible}>
+          <ActiveTabThreadsSection onNavigate={closeOnMobile} />
+          <PluginThreadList
+            replacement={threadListReplacement}
+            onNavigate={closeOnMobile}
+          />
+        </ThreadActionSurfaceVisibility>
       </SidebarContent>
       <div
         className={cn(

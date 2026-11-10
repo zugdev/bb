@@ -25,7 +25,6 @@ export const NEW_THREAD_NAVIGATION_ITEM_ID =
   BUILT_IN_SIDEBAR_NAVIGATION_KEYS.newThread;
 export const SEARCH_THREADS_NAVIGATION_ITEM_ID =
   BUILT_IN_SIDEBAR_NAVIGATION_KEYS.searchThreads;
-export const INBOX_NAVIGATION_ITEM_ID = BUILT_IN_SIDEBAR_NAVIGATION_KEYS.inbox;
 export const PLUGINS_NAVIGATION_ITEM_ID =
   BUILT_IN_SIDEBAR_NAVIGATION_KEYS.extensions;
 export const SKILLS_NAVIGATION_ITEM_ID =
@@ -71,7 +70,6 @@ const HOST_ROWS: readonly SidebarNavigationRow[] = [
   hostRow(SEARCH_THREADS_NAVIGATION_ITEM_ID, "Search threads", "search", {
     kind: "search-threads",
   }),
-  hostRow(INBOX_NAVIGATION_ITEM_ID, "Inbox", "inbox", { kind: "open-inbox" }),
   hostRow(PLUGINS_NAVIGATION_ITEM_ID, "Plugins", "extensions", {
     kind: "open-extensions",
   }),
@@ -203,8 +201,7 @@ export function resolveActiveSidebarNavigationItemId({
   pathname: string;
   activeTabOwner: SplitTabOwner | null;
 }): string | null {
-  if (activeTabOwner?.kind === "inbox") return INBOX_NAVIGATION_ITEM_ID;
-  if (activeTabOwner?.kind === "panel") {
+  if (activeTabOwner !== null) {
     const { pluginId, panelPath } = activeTabOwner.panel;
     const row = rows.find(
       (candidate) =>
