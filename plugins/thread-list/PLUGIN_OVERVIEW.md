@@ -14,4 +14,4 @@ The sidebar thread list, as a plugin.
 
 The plugin reads bb's live thread view through the plugin SDK and stores your layout choices (organization, sort, section order, collapsed groups) in its own storage, synced to every open window. Sections and thread moves go through bb's public API, so `bb thread section` and this list always agree.
 
-Disable the plugin to hide the list; another thread-list plugin can take its place under Settings → Appearance.
+Disable the plugin to hide the list; another thread-list plugin can take its place under Settings → Appearance. Pin and Move to section only show in thread menus while this list is the sidebar list, because no other list shows pins or sections.

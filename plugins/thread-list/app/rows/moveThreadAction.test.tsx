@@ -23,7 +23,9 @@ import {
 installTestPluginRuntime();
 const { experimental_useAppPanel, useBbNavigate, useSdk } =
   await import("@get-bb/plugin-sdk/app");
-const { moveThreadAction } = await import("./moveThreadAction.js");
+const { moveThreadAction, useMarkThreadListMounted } = await import(
+  "./moveThreadAction.js"
+);
 
 afterEach(() => {
   cleanup();
@@ -57,6 +59,11 @@ interface Collected {
   bulkItem(
     threads: readonly PluginThreadActionTarget[],
   ): PluginThreadAction | null;
+}
+
+function ListMarker() {
+  useMarkThreadListMounted();
+  return null;
 }
 
 function Probe({ collected }: { collected: { current: Collected | null } }) {
@@ -100,6 +107,7 @@ function StoreHarness({
 function renderMove(
   organizationMode: "chronological" | "project" = "chronological",
   ancestry: Record<string, string[]> = {},
+  isListShown = true,
 ) {
   const store = createStore();
   const collected: { current: Collected | null } = { current: null };
@@ -116,7 +124,15 @@ function renderMove(
   );
   const slot = renderSlot(
     { component: StoreHarness },
-    { children: <Probe collected={collected} />, store },
+    {
+      children: (
+        <>
+          {isListShown ? <ListMarker /> : null}
+          <Probe collected={collected} />
+        </>
+      ),
+      store,
+    },
     {
       sidebarThreads: {
         threads: [],
@@ -191,6 +207,12 @@ describe("Move to section", () => {
     const { item, hydrated } = renderMove("project");
     await hydrated();
     await waitFor(() => expect(item(makeTarget())).toBeNull());
+  });
+
+  it("is hidden while another thread list is shown in the sidebar", async () => {
+    const { item, hydrated } = renderMove("chronological", {}, false);
+    await hydrated();
+    expect(item(makeTarget())).toBeNull();
   });
 
   it("moves an unpinned thread with one update", async () => {

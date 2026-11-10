@@ -68,6 +68,13 @@ const sdkThreads = vi.hoisted(() => ({
 const copyToClipboardWithToast = vi.hoisted(() => vi.fn(async () => true));
 
 vi.mock("@/lib/sdk", () => ({ sdk: { threads: sdkThreads } }));
+const threadListState = vi.hoisted(() => ({ showsBundledList: true }));
+vi.mock("@/components/sidebar/threadListProvider", async (importOriginal) => ({
+  ...(await importOriginal<
+    typeof import("@/components/sidebar/threadListProvider")
+  >()),
+  useShowsBundledThreadList: () => threadListState.showsBundledList,
+}));
 vi.mock("@/lib/clipboard", () => ({ copyToClipboardWithToast }));
 vi.mock("./ThreadActionsProvider", () => ({
   useThreadActions: () => hostActions,
@@ -727,6 +734,19 @@ describe.each(SURFACES)("thread actions on the $name", (surface) => {
         errorMessage: "Failed to copy thread link",
       },
     );
+  });
+
+  it("hides Pin while another thread list replaces bb's bundled one", async () => {
+    threadListState.showsBundledList = false;
+    try {
+      renderSurface(surface, { thread: baseThread });
+      await surface.open();
+      const menu = await openMenu();
+      expect(within(menu).getByRole("menuitem", { name: "Rename" })).not.toBeNull();
+      expect(within(menu).queryByRole("menuitem", { name: "Pin" })).toBeNull();
+    } finally {
+      threadListState.showsBundledList = true;
+    }
   });
 
   it("falls back to bb's rename dialog when the surface has no editor", async () => {

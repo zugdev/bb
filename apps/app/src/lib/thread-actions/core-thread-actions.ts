@@ -28,6 +28,7 @@ import {
   snoozePresetUntil,
 } from "@/lib/snooze";
 import { useThreadEntriesById } from "@/components/thread/ThreadStatusDot";
+import { useShowsBundledThreadList } from "@/components/sidebar/threadListProvider";
 import { countPanes, listPanes } from "@/lib/split-layout";
 import { splitLayoutAtom } from "@/lib/split-layout/atoms";
 
@@ -402,7 +403,9 @@ export const CORE_THREAD_ACTIONS: readonly PluginThreadActionRegistration<unknow
       order: 20,
       title: "Pin",
       icon: "Pin",
-      item: ({ thread, sdk }) => {
+      useData: useShowsBundledThreadList,
+      item: ({ thread, data: showsPins, sdk }) => {
+        if (!showsPins) return null;
         const isPinned = thread.pinnedAt !== null;
         return {
           label: isPinned ? "Unpin" : "Pin",
@@ -425,7 +428,8 @@ export const CORE_THREAD_ACTIONS: readonly PluginThreadActionRegistration<unknow
           },
         };
       },
-      experimental_bulkItem: ({ threads, sdk }) => {
+      experimental_bulkItem: ({ threads, data: showsPins, sdk }) => {
+        if (!showsPins) return null;
         const allPinned = threads.every((thread) => thread.pinnedAt !== null);
         return {
           label: allPinned ? "Unpin" : "Pin",

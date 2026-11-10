@@ -43,6 +43,13 @@ const sdkThreads = vi.hoisted(() => ({
 }));
 
 vi.mock("@/lib/sdk", () => ({ sdk: { threads: sdkThreads } }));
+const threadListState = vi.hoisted(() => ({ showsBundledList: true }));
+vi.mock("@/components/sidebar/threadListProvider", async (importOriginal) => ({
+  ...(await importOriginal<
+    typeof import("@/components/sidebar/threadListProvider")
+  >()),
+  useShowsBundledThreadList: () => threadListState.showsBundledList,
+}));
 
 const personalProvider: SystemEnvironmentProvider = {
   machineProviderId: null,

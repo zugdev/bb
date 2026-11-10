@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useSyncExternalStore } from "react";
 import { useAtomValue } from "jotai";
 import { toast } from "sonner";
 import {
@@ -49,15 +49,44 @@ function choiceId(sectionId: string | null): string {
   return sectionId ?? THREADS_CHOICE_ID;
 }
 
+let mountedLists = 0;
+const mountedListeners = new Set<() => void>();
+
+function subscribeMountedLists(listener: () => void): () => void {
+  mountedListeners.add(listener);
+  return () => mountedListeners.delete(listener);
+}
+
+function isListMounted(): boolean {
+  return mountedLists > 0;
+}
+
+function setMountedLists(next: number): void {
+  mountedLists = next;
+  for (const listener of mountedListeners) listener();
+}
+
+export function useMarkThreadListMounted(): void {
+  useEffect(() => {
+    setMountedLists(mountedLists + 1);
+    return () => setMountedLists(mountedLists - 1);
+  }, []);
+}
+
 export function useMoveDestinations():
   | readonly ThreadSectionMoveDestination[]
   | null {
   usePreferencesSync();
+  const isShown = useSyncExternalStore(
+    subscribeMountedLists,
+    isListMounted,
+    isListMounted,
+  );
   const mode = useAtomValue(sidebarOrganizationModeAtom);
   const storedOrder = useAtomValue(sidebarManualSectionOrderAtom);
   const { sections } = experimental_useSidebarThreads();
   const destinations =
-    mode === "chronological"
+    isShown && mode === "chronological"
       ? normalizeSidebarSectionOrder({
           storedOrder,
           entitySectionIds: sections.map((section) =>

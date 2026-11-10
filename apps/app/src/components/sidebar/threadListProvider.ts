@@ -19,3 +19,15 @@ export function useThreadListReplacement(): ResolvedReplacement<PluginThreadList
   );
   return resolved;
 }
+
+export const BUNDLED_THREAD_LIST_PLUGIN_ID = "thread-list";
+
+export function useShowsBundledThreadList(): boolean {
+  const { threadLists } = usePluginSlots();
+  const preference = useAtomValue(threadListProviderAtom);
+  const resolved = usePreferredReplacement(threadLists, preference);
+  return (
+    resolved.kind === "plugin" &&
+    resolved.registration.pluginId === BUNDLED_THREAD_LIST_PLUGIN_ID
+  );
+}
