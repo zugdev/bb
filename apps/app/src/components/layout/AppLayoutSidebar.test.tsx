@@ -535,27 +535,15 @@ describe("navigation panel sidebar composition", () => {
     });
     expect(onResizeMouseDown).toHaveBeenCalledOnce();
   });
-  it("keeps native header/history controls and navigates back and forward", () => {
+  it("keeps the native header row without history arrows", () => {
     render(
       panelSidebarTree({
         target: panelSidebar("inbox", NavigatingHomeNavigation),
       }),
     );
     expect(screen.getByTestId("plugin-sidebar-top-reserve-row")).toBeTruthy();
-    expect(
-      screen
-        .getByRole("button", { name: "Go back" })
-        .getAttribute("aria-disabled"),
-    ).toBe("true");
+    expect(screen.queryByRole("button", { name: "Go back" })).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Open dashboard" }));
-    expect(screen.getByTestId("current-path").textContent).toBe(
-      "/plugins/home/home/dashboard",
-    );
-    fireEvent.click(screen.getByRole("button", { name: "Go back" }));
-    expect(screen.getByTestId("current-path").textContent).toBe(
-      "/plugins/home/home/inbox",
-    );
-    fireEvent.click(screen.getByRole("button", { name: "Go forward" }));
     expect(screen.getByTestId("current-path").textContent).toBe(
       "/plugins/home/home/dashboard",
     );

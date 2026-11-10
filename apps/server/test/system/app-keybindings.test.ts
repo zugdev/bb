@@ -837,23 +837,25 @@ describe("app keybindings", () => {
             binding.shortcut.shift,
             binding.shortcut.mod,
           ]),
-      ).toEqual(
-        (
+      ).toEqual([
+        ...(
           [
             ["pane.split.right", "d", false],
             ["pane.split.down", "d", true],
             ["pane.close", "w", false],
             ["splitTab.new", "t", false],
             ["splitTab.reopenClosed", "t", true],
-            ...SPLIT_TAB_SELECT_APP_COMMAND_IDS.map(
-              (command, index) => [command, String(index + 1), false] as const,
-            ),
           ] as const
         ).flatMap(([command, key, shift]) => [
           [command, key, true, shift, false],
           [command, key, false, shift, true],
         ]),
-      );
+        ["splitTab.newForProject", "o", false, false, true],
+        ...SPLIT_TAB_SELECT_APP_COMMAND_IDS.flatMap((command, index) => [
+          [command, String(index + 1), true, false, false],
+          [command, String(index + 1), false, false, true],
+        ]),
+      ]);
       expect(
         assignedDefaultKeybindings
           .filter((binding) => binding.desktopOnly)

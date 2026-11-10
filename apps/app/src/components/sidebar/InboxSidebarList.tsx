@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useStore } from "jotai";
 import { useNavigate } from "react-router-dom";
-import { PERSONAL_PROJECT_ID, type ThreadListEntry } from "@bb/domain";
+import type { ThreadListEntry } from "@bb/domain";
 import { cn } from "@bb/shared-ui/lib/utils";
 import { Icon } from "@bb/shared-ui/icon";
 import { CHROME_SECTION_LABEL_CLASS } from "@bb/shared-ui/chrome-style-tokens";
@@ -11,12 +11,12 @@ import {
   useThreadDescendants,
 } from "@/components/thread/ThreadStatusDot";
 import { threadDot } from "@/components/thread/thread-dot";
-import { useSidebarNavigation } from "@/hooks/queries/sidebar-navigation-query";
 import { useRouteState } from "@/hooks/useRouteState";
 import { getThreadDisplayTitle } from "@/lib/thread-title";
 import { formatSnoozeWake } from "@/lib/snooze";
 import { threadListEntryActionTarget } from "@/lib/thread-actions/thread-action-target";
 import {
+  InboxProjectLabel,
   showInInboxTab,
   SnoozeMenu,
   useInbox,
@@ -31,24 +31,12 @@ interface InboxSectionSpec {
 const SECTIONS: readonly InboxSectionSpec[] = [
   { key: "needsAnswer", label: "Needs an answer", collapsedByDefault: false },
   { key: "waitingOnYou", label: "Waiting on you", collapsedByDefault: false },
-  { key: "working", label: "Working", collapsedByDefault: true },
+  { key: "working", label: "Working", collapsedByDefault: false },
   { key: "snoozed", label: "Snoozed", collapsedByDefault: true },
 ];
 
-function useProjectNames(): ReadonlyMap<string, string> {
-  const data = useSidebarNavigation().data;
-  return useMemo(() => {
-    const names = new Map<string, string>();
-    if (data === undefined) return names;
-    names.set(PERSONAL_PROJECT_ID, data.personalProject.name);
-    for (const project of data.projects) names.set(project.id, project.name);
-    return names;
-  }, [data]);
-}
-
 export function InboxSidebarList({ onNavigate }: { onNavigate: () => void }) {
   const { sections, queue, now } = useInbox();
-  const projectNames = useProjectNames();
   const descendants = useThreadDescendants();
   const { threadId: shownThreadId } = useRouteState();
   const store = useStore();
@@ -119,7 +107,6 @@ export function InboxSidebarList({ onNavigate }: { onNavigate: () => void }) {
                   <InboxRow
                     key={thread.id}
                     thread={thread}
-                    projectName={projectNames.get(thread.projectId) ?? null}
                     isCurrent={thread.id === shownThreadId}
                     trailing={
                       spec.key === "snoozed" && thread.snoozedUntil !== null
@@ -147,14 +134,12 @@ export function InboxSidebarList({ onNavigate }: { onNavigate: () => void }) {
 
 function InboxRow({
   thread,
-  projectName,
   isCurrent,
   trailing,
   dot,
   onOpen,
 }: {
   thread: ThreadListEntry;
-  projectName: string | null;
   isCurrent: boolean;
   trailing: string;
   dot: ReturnType<typeof threadDot>;
@@ -168,7 +153,7 @@ function InboxRow({
         data-thread-id={thread.id}
         aria-current={isCurrent ? "true" : undefined}
         className={cn(
-          "flex h-7 w-full min-w-0 items-center gap-2 rounded-md px-2 text-left text-sm transition-colors hover:bg-state-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+          "flex w-full min-w-0 items-center gap-2 rounded-md px-2 py-1 text-left text-sm transition-colors hover:bg-state-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
           isCurrent && "bg-sidebar-accent",
         )}
         onClick={onOpen}
@@ -176,13 +161,12 @@ function InboxRow({
         <span className="flex size-3 shrink-0 items-center justify-center">
           <ThreadStatusDot dot={dot} />
         </span>
-        {projectName === null ? null : (
-          <span className="max-w-24 shrink-0 truncate rounded bg-muted px-1.5 text-2xs leading-4 text-muted-foreground">
-            {projectName}
-          </span>
-        )}
-        <span className="min-w-0 flex-1 truncate">
-          {getThreadDisplayTitle(thread)}
+        <span className="flex min-w-0 flex-1 flex-col">
+          <InboxProjectLabel
+            projectId={thread.projectId}
+            className="text-2xs leading-4"
+          />
+          <span className="truncate">{getThreadDisplayTitle(thread)}</span>
         </span>
         <span className="shrink-0 text-2xs tabular-nums text-muted-foreground group-hover:invisible group-focus-within:invisible">
           {trailing}

@@ -23,6 +23,7 @@ import {
 } from "react";
 import { useRouteState } from "@/hooks/useRouteState";
 import {
+  getRootComposeRoutePath,
   getThreadRoutePath,
   type ThreadRoutePathArgs,
 } from "@/lib/route-paths";
@@ -41,6 +42,7 @@ import {
   bindActiveTabProjectAtom,
   canMovePaneAcrossTabs,
   closeSplitTabAtom,
+  closeThreadsInAllTabsAtom,
   focusThreadInOtherTabAtom,
   openOutsideInboxTabAtom,
   movePaneAcrossTabsAtom,
@@ -54,6 +56,7 @@ import {
   createSplitTabHoverSwitch,
   resolveSplitTabDropTarget,
 } from "./SplitTabBar";
+import { useIsInboxTabActive } from "./InboxTabController";
 import {
   computePaneRects,
   countPanes,
@@ -291,6 +294,7 @@ export function SplitThreadArea(props: SplitThreadAreaProps = {}) {
   return (
     <ThreadDetailWorkerPoolProvider>
       <SplitThreadAreaContent {...props} />
+      <OpenThreadStaleWatchers />
     </ThreadDetailWorkerPoolProvider>
   );
 }
@@ -707,30 +711,6 @@ function SplitThreadAreaContent({ routeContent }: SplitThreadAreaProps) {
     [setLayout],
   );
 
-  const pruneStalePane = useCallback(
-    (paneId: string) => {
-      const current = store.get(splitLayoutAtom);
-      if (current === null) {
-        return;
-      }
-      const next = removePane(current, paneId);
-      if (next === current) {
-        return;
-      }
-      store.set(splitLayoutAtom, next);
-      if (store.get(maximizedPaneIdAtom) === paneId) {
-        setMaximizedPaneId(null);
-      }
-      if (next.focusedPaneId !== current.focusedPaneId) {
-        const route = focusedPaneRoute(next);
-        if (route !== null) {
-          navigate(route, { replace: true });
-        }
-      }
-    },
-    [navigate, setMaximizedPaneId, store],
-  );
-
   const beginPaneDrag = useCallback<BeginPaneDrag>(
     (paneId, event, label) => {
       if (store.get(splitLayoutAtom) === null) {
@@ -917,7 +897,6 @@ function SplitThreadAreaContent({ routeContent }: SplitThreadAreaProps) {
               onResize: resize,
               onNavigateInPane: navigateInPane,
               onBeginPaneDrag: beginPaneDrag,
-              onPruneStalePane: pruneStalePane,
               paneHost: (paneId: string) =>
                 paneHost(tabPaneKey(tab.id, paneId)),
             };
@@ -1025,6 +1004,7 @@ function SplitPaneCommandHandlers({
 }: SplitPaneCommandHandlersProps) {
   useAppCommandContext("splitActive", isSplitActive);
   const splitDirection = useAtomValue(splitDirectionAtom);
+  const isInboxTab = useIsInboxTabActive();
   const directionalTargets = useMemo(
     () =>
       (["left", "right", "top", "bottom"] as const).map((direction) =>
@@ -1067,10 +1047,12 @@ function SplitPaneCommandHandlers({
     return true;
   });
   useAppCommandHandler("pane.split.right", () => {
+    if (isInboxTab) return true;
     splitFocusedPane(splitDirection === "down" ? "bottom" : "right");
     return true;
   });
   useAppCommandHandler("pane.split.down", () => {
+    if (isInboxTab) return true;
     splitFocusedPane(splitDirection === "down" ? "right" : "bottom");
     return true;
   });
@@ -1109,7 +1091,6 @@ interface SplitTreeProps {
   ) => void;
   onNavigateInPane: NavigateInPane;
   onBeginPaneDrag: BeginPaneDrag;
-  onPruneStalePane: (paneId: string) => void;
   paneHost: (paneId: string) => HTMLElement;
 }
 
@@ -1194,15 +1175,6 @@ function SplitPaneLeaf(props: SplitPaneLeafProps) {
       data-focused={isFocused ? "true" : "false"}
       data-maximized={isMaximized ? "true" : undefined}
     >
-      {props.isTabActive &&
-      (node.content.kind === "thread" ||
-        node.content.kind === "thread-panel-tab") ? (
-        <PaneStaleWatcher
-          key={node.content.threadId}
-          threadId={node.content.threadId}
-          onStale={() => props.onPruneStalePane(node.paneId)}
-        />
-      ) : null}
       <WorkspacePaneContent
         content={node.content}
         paneId={node.paneId}
@@ -2006,6 +1978,52 @@ function SplitDivider({
       />
     </div>
   );
+}
+
+function layoutThreadIds(layout: SplitLayout | null): string[] {
+  return layout === null
+    ? []
+    : listPanes(layout.root).flatMap((pane) =>
+        pane.content.kind === "thread" ||
+        pane.content.kind === "thread-panel-tab"
+          ? [pane.content.threadId]
+          : [],
+      );
+}
+
+function OpenThreadStaleWatchers() {
+  const { threadId: routeThreadId } = useRouteState();
+  const navigate = useImmediateRouteNavigate();
+  const store = useStore();
+  const activeLayout = useAtomValue(splitLayoutAtom);
+  const splitTabs = useAtomValue(splitTabsAtom);
+  const threadIds = new Set([
+    ...(routeThreadId ? [routeThreadId] : []),
+    ...layoutThreadIds(activeLayout),
+    ...splitTabs.tabs.flatMap((tab) =>
+      tab.id === splitTabs.activeTabId ? [] : layoutThreadIds(tab.layout),
+    ),
+  ]);
+  const closeThread = (threadId: string) => {
+    const layoutBefore = store.get(splitLayoutAtom);
+    const shownInActiveTab =
+      layoutBefore === null || layoutThreadIds(layoutBefore).includes(threadId);
+    const result = store.set(closeThreadsInAllTabsAtom, [threadId]);
+    if (result.focusedRoute !== null) {
+      if (result.focusedRoute.threadId !== routeThreadId) {
+        navigate(getThreadRoutePath(result.focusedRoute), { replace: true });
+      }
+    } else if (shownInActiveTab && routeThreadId === threadId) {
+      navigate(getRootComposeRoutePath(), { replace: true });
+    }
+  };
+  return [...threadIds].map((threadId) => (
+    <PaneStaleWatcher
+      key={threadId}
+      threadId={threadId}
+      onStale={() => closeThread(threadId)}
+    />
+  ));
 }
 
 interface PaneStaleWatcherProps {

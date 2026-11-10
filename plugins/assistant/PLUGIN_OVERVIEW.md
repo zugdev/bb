@@ -6,7 +6,7 @@ A personal assistant that lives at the top of your sidebar. It reads your Slack 
 - Every 10 minutes bb sends new Slack mentions, DMs and unread email into that thread for triage.
 - The agent notifies your phone, desktop and browser through Push notifications when an item needs you soon.
 - Draft replies in the thread. The assistant never sends Slack messages or email.
-- An **Assistant** card at the top of the New thread screen, above the project picker, with the assistant's upcoming reminders (automations that target its thread) and its 5 latest notifications.
+- An **Assistant** card at the top of the New thread screen, above the project picker. It lists open to-dos and the assistant's reminders (automations that target its thread) due by the end of tomorrow, soonest first. To-dos and one off reminders have a checkbox: ticking a to-do checks it off and ticking a reminder pauses its automation. Repeating reminders show a repeat icon.
 
 ## Setup
 
