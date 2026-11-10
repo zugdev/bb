@@ -329,7 +329,6 @@ describe("app keybindings", () => {
       expect(assignedDefaultKeybindings).toEqual(config.keybindings);
       for (const command of [
         "thread.rename",
-        "thread.archive",
         "thread.markRead",
         "thread.pin",
         "panel.fullScreen.toggle",
@@ -481,35 +480,83 @@ describe("app keybindings", () => {
           when: { all: ["mainSurface"], none: ["modalOpen"] },
         },
       ]);
-      for (const [command, key] of [
-        ["history.back", "["],
-        ["history.forward", "]"],
-      ] as const) {
+      for (const command of ["history.back", "history.forward"] as const) {
         expect(
-          assignedDefaultKeybindings
-            .filter((binding) => binding.command === command)
-            .map((binding) => ({
-              desktopOnly: binding.desktopOnly,
-              key: binding.shortcut.key,
-              mod: binding.shortcut.mod,
-              control: binding.shortcut.control,
-              shift: binding.shortcut.shift,
-              when: binding.when,
-            })),
-        ).toEqual([
-          {
-            desktopOnly: false,
-            key,
-            mod: true,
-            control: false,
-            shift: false,
-            when: {
-              all: ["mainSurface"],
-              none: ["modalOpen", "browserFocus"],
-            },
-          },
-        ]);
+          assignedDefaultKeybindings.some(
+            (binding) => binding.command === command,
+          ),
+        ).toBe(false);
       }
+      const withoutEditable = {
+        all: ["mainSurface"],
+        none: ["modalOpen", "editableFocus", "terminalFocus", "browserFocus"],
+      };
+      const mainWithoutModal = { all: ["mainSurface"], none: ["modalOpen"] };
+      expect(
+        assignedDefaultKeybindings
+          .filter((binding) =>
+            [
+              "sidebar.toggle",
+              "panel.toggle",
+              "thread.archive",
+              "thread.snooze",
+              "thread.undo",
+            ].includes(binding.command),
+          )
+          .map((binding) => ({
+            command: binding.command,
+            key: binding.shortcut.key,
+            mod: binding.shortcut.mod,
+            shift: binding.shortcut.shift,
+            when: binding.when,
+          })),
+      ).toEqual([
+        {
+          command: "thread.archive",
+          key: "a",
+          mod: true,
+          shift: false,
+          when: withoutEditable,
+        },
+        {
+          command: "thread.snooze",
+          key: "s",
+          mod: true,
+          shift: false,
+          when: mainWithoutModal,
+        },
+        {
+          command: "thread.undo",
+          key: "z",
+          mod: true,
+          shift: false,
+          when: {
+            all: ["mainSurface"],
+            none: ["modalOpen", "terminalFocus", "browserFocus"],
+          },
+        },
+        {
+          command: "sidebar.toggle",
+          key: "[",
+          mod: true,
+          shift: false,
+          when: mainWithoutModal,
+        },
+        {
+          command: "panel.toggle",
+          key: "e",
+          mod: true,
+          shift: false,
+          when: mainWithoutModal,
+        },
+        {
+          command: "panel.toggle",
+          key: "]",
+          mod: true,
+          shift: false,
+          when: mainWithoutModal,
+        },
+      ]);
       expect(
         assignedDefaultKeybindings
           .filter((binding) => binding.command.startsWith("thread.jump."))

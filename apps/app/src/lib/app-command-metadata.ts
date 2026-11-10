@@ -55,6 +55,16 @@ export const APP_COMMAND_GROUPS: readonly AppCommandGroup[] = [
         "Archive the focused thread.",
       ),
       command(
+        "thread.snooze",
+        "Snooze thread",
+        "Snooze the focused thread for 1 hour.",
+      ),
+      command(
+        "thread.undo",
+        "Undo archive or snooze",
+        "Undo the archive or snooze shown in the latest toast while it is visible.",
+      ),
+      command(
         "thread.markRead",
         "Mark thread read or unread",
         "Mark the focused thread read or unread.",

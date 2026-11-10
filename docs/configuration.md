@@ -461,15 +461,7 @@ either way.
 pane shortcuts use `Control+1…9` on macOS and `Ctrl+Shift+1…9` on Windows/Linux in both the web and desktop apps, which leaves `Mod+1…9` to the browser's own tabs and, in the desktop app, to pane tabs. Previous and next thread use `Mod+Shift+[/]` on desktop and
 `Control+Shift+[/]` on the web; they follow the sidebar order.
 
-`history.back` / `history.forward` (Go back / Go forward) do the same thing
-as the sidebar's back and forward arrows: they move through the pages opened
-in the current window, like browser history. They use `Mod+[` / `Mod+]` on
-desktop and the web; in the browser, bb handles the key instead of the
-browser's own Back while it has somewhere to go. At either end the desktop app
-does nothing, while the web app leaves the key to the browser's own Back or
-Forward. The commands appear in the command palette only when there is
-somewhere to go, and they don't run while the in-app browser has focus.
-Hovering an arrow shows its current shortcut.
+`history.back` / `history.forward` (Go back / Go forward) move through the pages opened in the current window, like browser history. They start unassigned and appear in the command palette only when there is somewhere to go. `Mod+[` toggles the left sidebar and `Mod+]` toggles the right panel, which `Mod+E` also toggles.
 
 On macOS, `panel.previousTab` / `panel.nextTab` default to
 `Command+Control+ArrowLeft/Right` (cycling visible right-panel tabs and each
@@ -487,9 +479,7 @@ there, or onto its middle to swap the two.
 
 Pane tab shortcuts use `Alt` on the web, because the browser keeps `Mod+W` and `Mod+T` for itself, and `Mod` in the desktop app. `splitTab.new` (`Alt+T` / `Mod+T`) opens a tab with its own chat panes, starting on a new thread, or switches to a tab that already holds an empty new thread composer. `Alt+2` to `Alt+9` (`Mod+2` to `Mod+9` on desktop) switch tabs, and there is no limit on how many tabs are open. `Alt+1` / `Mod+1` opens Home at `/home`, which lists each project's threads. Opening a thread from Home switches to the tab that shows it, reuses an empty new thread tab, or opens a tab for it. `pane.close` (`Alt+W` / `Mod+W`) closes the focused pane, or the tab when that pane is its last one, and `splitTab.reopenClosed` (`Alt+Shift+T` / `Mod+Shift+T`) reopens the pane or tab closed most recently. `splitTab.newForProject` has no default shortcut; run it from the palette or bind it in Keyboard settings. It opens a project picker and then a tab for the chosen project, and while that tab is active the sidebar thread list shows only that project's threads. Double click a tab's title to rename it, and clear the name to go back to the title of its focused thread. In the desktop app the right panel's tab shortcuts move to `Mod+Alt+T`, `Mod+Alt+Shift+T` and `Mod+Alt+W` to make room.
 
-`thread.rename`, `thread.archive`, `thread.markRead`, and `thread.pin` start
-unassigned and act on the focused pane's open thread; Mark read and Pin toggle
-like the matching thread menu item.
+`thread.rename`, `thread.markRead`, and `thread.pin` start unassigned and act on the focused pane's open thread; Mark read and Pin toggle like the matching thread menu item. `thread.archive` (`Mod+A`) archives the focused pane's thread and `thread.snooze` (`Mod+S`) snoozes it for 1 hour. `Mod+A` keeps select all while a text field, the composer, a terminal or the in-app browser has focus. Archive and snooze from any menu show a toast with Undo for 5 seconds, and `thread.undo` (`Mod+Z`) presses that Undo while the toast is visible. `Mod+Z` keeps its normal undo when no toast is visible or the focused text field has text, so it still undoes from the empty composer bb focuses after an archive.
 
 | Area      | Command                                      | Default                     | Availability             |
 | --------- | -------------------------------------------- | --------------------------- | ------------------------ |
@@ -498,7 +488,9 @@ like the matching thread menu item.
 | Threads   | New thread                                   | `Mod+N` / `Mod+Shift+O`     | Desktop / web            |
 | Threads   | Search threads                               | `Mod+K`                     | All clients              |
 | Threads   | Rename focused thread                        | Unassigned                  | Thread view              |
-| Threads   | Archive focused thread                       | Unassigned                  | Thread view              |
+| Threads   | Archive focused thread                       | `Mod+A`                     | Thread view              |
+| Threads   | Snooze focused thread for 1 hour             | `Mod+S`                     | Thread view              |
+| Threads   | Undo archive or snooze                       | `Mod+Z`                     | While its toast shows    |
 | Threads   | Mark focused thread read or unread           | Unassigned                  | Thread view              |
 | Threads   | Pin or unpin focused thread                  | Unassigned                  | Thread view              |
 | Threads   | Previous / next thread                       | Surface defaults above      | Desktop / web            |
@@ -510,7 +502,7 @@ like the matching thread menu item.
 | Layout    | Close focused chat pane                      | `Alt+W`; desktop `Mod+W`    | All clients              |
 | Layout    | New pane tab / reopen closed pane or tab     | `Alt+T` / `Alt+Shift+T`; desktop `Mod+T` / `Mod+Shift+T` | All clients |
 | Layout    | Go to Home / switch to pane tab 1 to 8       | `Alt+1` / `Alt+2` to `Alt+9`; desktop `Mod+1` / `Mod+2` to `Mod+9` | All clients |
-| Layout    | Toggle sidebar                               | `Mod+S`                     | All clients              |
+| Layout    | Toggle sidebar                               | `Mod+[`                     | All clients              |
 | Window    | New window                                   | `Mod+Shift+N`               | Desktop                  |
 | Window    | Find in window                               | `Mod+F`                     | Desktop                  |
 | Window    | Settings                                     | `Mod+,`                     | All clients              |
@@ -518,7 +510,7 @@ like the matching thread menu item.
 | Window    | Open local logs                              | Unassigned                  | Desktop                  |
 | Window    | Show all notifications                       | Unassigned                  | All clients              |
 | Plugins   | Turn plugin safe mode on / off               | Unassigned                  | All clients              |
-| Panel     | New tab / close tab / toggle                 | `Mod+T` / `Mod+W` / `Mod+E`; desktop `Mod+Alt+T` / `Mod+Alt+W` / `Mod+E` | All clients |
+| Panel     | New tab / close tab / toggle                 | `Mod+T` / `Mod+W` / `Mod+]` or `Mod+E`; desktop `Mod+Alt+T` / `Mod+Alt+W` / `Mod+]` or `Mod+E` | All clients |
 | Panel     | Reopen closed tab                            | `Mod+Alt+Shift+T`           | Desktop                  |
 | Workspace | Quick open file / toggle diff                | `Mod+P` / `Mod+D`           | All clients              |
 | Workspace | Open terminal                                | `Mod+Shift+Enter`           | All clients              |
@@ -852,7 +844,7 @@ in the sidebar header and cannot be hidden from the rail. The list beside the ra
 between the thread list, Plugins, Skills, and Settings; collapsing the sidebar
 leaves only the rail. On narrow windows and phones the rail sits inside the
 drawer. In the macOS desktop app, wide windows add a title bar with the window
-controls, Back and Forward, and the sidebar toggle.
+controls and the sidebar toggle.
 
 With `sidebar.navigationProvider` set to `navigation/top-list` (Settings →
 Appearance → Navigation), there is no rail. The visible destinations, New

@@ -20,7 +20,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { focusManager } from "@tanstack/react-query";
 import { createQueryClientTestHarness } from "@/test/queryClientTestHarness";
 import { makeSystemConfig } from "@/test/fixtures/system-config";
-import { SidebarHistoryNavigationControls } from "@/components/sidebar/SidebarHistoryNavigationControls";
+import { HistoryNavigationButtons } from "@/test/history-navigation-buttons";
 import { resetAppRouteHistoryForTest } from "@/lib/app-route-history";
 import { PluginsOverview } from "./PluginsOverview";
 
@@ -391,7 +391,7 @@ describe("PluginsOverview", () => {
     render(
       <MemoryRouter initialEntries={["/plugins"]}>
         <QueryClientWrapper>
-          <SidebarHistoryNavigationControls />
+          <HistoryNavigationButtons />
           <PluginsOverview />
         </QueryClientWrapper>
       </MemoryRouter>,

@@ -259,14 +259,19 @@ focus: `Cmd+F` on macOS and `Ctrl+Shift+F` elsewhere, so Ctrl+letter keys keep
 reaching the shell. `hints` (default true) shows or hides the delayed shortcut
 badges shown while holding the modifier key; shortcuts work either way.
 
-`history.back` / `history.forward` (`Mod+[` / `Mod+]`) follow the pages opened
-in the current window, like the sidebar arrows. `thread.previous` /
+`history.back` / `history.forward` start unbound and follow the pages opened
+in the current window. `Mod+[` toggles the left sidebar and `Mod+]` the right
+panel. `thread.previous` /
 `thread.next` follow sidebar order instead: `Mod+Shift+[` / `Mod+Shift+]`
 on desktop and `Control+Shift+[` / `Control+Shift+]` on the web.
 
-`thread.rename`, `thread.archive`, `thread.markRead`, and `thread.pin` start
-unbound and act on the focused pane's open thread; Mark read and Pin toggle
-like the matching thread menu item.
+`thread.rename`, `thread.markRead`, and `thread.pin` start unbound and act on
+the focused pane's open thread; Mark read and Pin toggle like the matching
+thread menu item. `thread.archive` (`Mod+A`) archives it and `thread.snooze`
+(`Mod+S`) snoozes it for 1 hour; `Mod+A` keeps select all in text fields.
+Archive and snooze show a toast with Undo for 5 seconds, and `thread.undo`
+(`Mod+Z`) presses it while the toast is visible, unless the focused text field
+has text.
 
 An open question card binds `question.select.1`–`9` (`1`–`9`),
 `question.submit` (`Mod+Enter`: Next, or Submit on the last question),
@@ -332,8 +337,8 @@ the sidebar header and cannot be hidden from the rail. The list beside the rail 
 the thread list, Plugins, Skills, and Settings, and collapsing the sidebar
 hides that list and leaves the rail. Rail order and visibility are
 `sidebar.pluginPanelOrder` and `sidebar.visiblePluginPanels`. In the macOS
-desktop app, wide windows add a title bar holding the window controls, Back
-and Forward, and the sidebar toggle; the sidebar and page sit in a card below
+desktop app, wide windows add a title bar holding the window controls and the
+sidebar toggle; the sidebar and page sit in a card below
 it. On narrow windows and phones the rail sits inside the drawer: Home,
 Plugins, Skills, and Settings swap the list beside it and leave the drawer
 open, and a plugin page closes it.

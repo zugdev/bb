@@ -4,7 +4,6 @@ import { useEffect } from "react";
 import {
   act,
   cleanup,
-  fireEvent,
   render,
   screen,
   waitFor,
@@ -26,9 +25,8 @@ import {
   useAppCommandRunner,
   type AppCommandRunner,
 } from "@/components/commands/AppCommandProvider";
-import { SidebarHistoryNavigationControls } from "@/components/sidebar/SidebarHistoryNavigationControls";
+import { HistoryNavigationButtons } from "@/test/history-navigation-buttons";
 import { resetAppRouteHistoryForTest } from "@/lib/app-route-history";
-import { browserPlatform, presentAppShortcut } from "@/lib/app-keybindings";
 import { HistoryCommandHandlers } from "./HistoryCommandHandlers";
 
 const mocks = vi.hoisted(() => {
@@ -91,7 +89,7 @@ function Harness() {
   return (
     <>
       <HistoryCommandHandlers />
-      <SidebarHistoryNavigationControls />
+      <HistoryNavigationButtons />
       <span data-testid="location">{location.pathname}</span>
     </>
   );
@@ -191,43 +189,5 @@ describe("HistoryCommandHandlers", () => {
       ).toBe(true),
     );
     expect(dispatch("history.forward")).toBe(false);
-  });
-
-  it("shows each sidebar arrow's shortcut in its tooltip", async () => {
-    renderAt(A);
-    open(B);
-    const back = screen.getByRole("button", { name: "Go back" });
-    const forward = screen.getByRole("button", { name: "Go forward" });
-    const backDefinition = mocks.backBinding.shortcut;
-    const forwardDefinition = mocks.forwardBinding.shortcut;
-    if (backDefinition === null || forwardDefinition === null) {
-      throw new Error("Expected default shortcuts for history commands");
-    }
-    const backShortcut = presentAppShortcut(backDefinition, browserPlatform());
-    const forwardShortcut = presentAppShortcut(
-      forwardDefinition,
-      browserPlatform(),
-    );
-
-    expect(back.getAttribute("aria-keyshortcuts")).toBe(
-      backShortcut.ariaKeyshortcuts,
-    );
-    expect(forward.getAttribute("aria-keyshortcuts")).toBe(
-      forwardShortcut.ariaKeyshortcuts,
-    );
-
-    await waitFor(() =>
-      expect(back.getAttribute("aria-disabled") === "true").toBe(false),
-    );
-    fireEvent.keyDown(document.body, { key: "Tab" });
-    fireEvent.focus(back);
-
-    await waitFor(() => {
-      const [tooltip] = screen.queryAllByRole("tooltip");
-      expect(tooltip?.textContent?.trim()).toBe(backShortcut.label);
-      expect(tooltip?.querySelector("kbd")?.textContent).toBe(
-        backShortcut.label,
-      );
-    });
   });
 });

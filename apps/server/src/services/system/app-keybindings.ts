@@ -159,6 +159,16 @@ const mainWithoutModalOrBrowser = {
   none: ["modalOpen", "browserFocus"],
 } as const;
 
+const mainWithoutEditable = {
+  all: ["mainSurface"],
+  none: ["modalOpen", "editableFocus", "terminalFocus", "browserFocus"],
+} as const;
+
+const mainWithoutTerminalOrBrowser = {
+  all: ["mainSurface"],
+  none: ["modalOpen", "terminalFocus", "browserFocus"],
+} as const;
+
 const questionWithoutOtherEditable: readonly BindingOptions[] = [
   {
     all: ["mainSurface", "questionOpen"],
@@ -178,8 +188,8 @@ const splitWithoutModal = {
 } as const;
 
 export const DEFAULT_APP_KEYBINDINGS: AppDefaultKeybindings = [
-  binding("history.back", "[", { mod: true }, mainWithoutModalOrBrowser),
-  binding("history.forward", "]", { mod: true }, mainWithoutModalOrBrowser),
+  unassignedBinding("history.back", mainWithoutModalOrBrowser),
+  unassignedBinding("history.forward", mainWithoutModalOrBrowser),
   binding("palette.open", "p", { mod: true, shift: true }, mainWithoutModal),
   binding("thread.new", "o", { mod: true, shift: true }, mainWithoutModal),
   binding(
@@ -193,12 +203,14 @@ export const DEFAULT_APP_KEYBINDINGS: AppDefaultKeybindings = [
   ),
   binding("thread.search", "k", { mod: true }, mainWithoutModal),
   unassignedBinding("thread.rename", mainWithoutModal),
-  unassignedBinding("thread.archive", mainWithoutModal),
+  binding("thread.archive", "a", { mod: true }, mainWithoutEditable),
+  binding("thread.snooze", "s", { mod: true }, mainWithoutModal),
+  binding("thread.undo", "z", { mod: true }, mainWithoutTerminalOrBrowser),
   unassignedBinding("thread.markRead", mainWithoutModal),
   unassignedBinding("thread.pin", mainWithoutModal),
   binding("app.back", "Escape", {}, mainWithoutModal),
   binding("settings.open", ",", { mod: true }, mainWithoutModal),
-  binding("sidebar.toggle", "s", { mod: true }, mainWithoutModal),
+  binding("sidebar.toggle", "[", { mod: true }, mainWithoutModal),
   unassignedBinding("notifications.open", mainWithoutModal),
   unassignedBinding("plugins.enterSafeMode", mainWithoutModal),
   unassignedBinding("plugins.exitSafeMode", mainWithoutModal),
@@ -352,6 +364,7 @@ export const DEFAULT_APP_KEYBINDINGS: AppDefaultKeybindings = [
     mainWithoutModal,
   ),
   binding("panel.toggle", "e", { mod: true }, mainWithoutModal),
+  binding("panel.toggle", "]", { mod: true }, mainWithoutModal),
   unassignedBinding("panel.fullScreen.toggle", mainWithoutModal),
   binding("file.quickOpen", "p", { mod: true }, mainWithoutModal),
   binding(
