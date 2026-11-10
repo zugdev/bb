@@ -42,7 +42,9 @@ import {
   canMovePaneAcrossTabs,
   closeSplitTabAtom,
   focusThreadInOtherTabAtom,
-  openOutsideInboxTabAtom,
+  landOwnedPanelRedirectAtom,
+  openOutsideOwnedTabAtom,
+  openOwnedTabAtom,
   movePaneAcrossTabsAtom,
   movePaneToTabAtom,
   recordClosedPaneAtom,
@@ -58,6 +60,7 @@ import {
   computePaneRects,
   countPanes,
   findPane,
+  isSamePaneContent,
   listPanes,
   movePane,
   removePane,
@@ -114,6 +117,7 @@ import { Button } from "@bb/shared-ui/button";
 import { Icon } from "@bb/shared-ui/icon";
 import { CHROME_SUBTLE_ICON_BUTTON_FOREGROUND_CLASS } from "@bb/shared-ui/chrome-style-tokens";
 import { usePluginNavPanelChrome } from "@/lib/plugin-nav-panel-chrome";
+import { usePluginSlots } from "@/lib/plugin-slots";
 import {
   PluginPanelHeaderActions,
   PluginPanelHeaderCenter,
@@ -300,6 +304,7 @@ function SplitThreadAreaContent({ routeContent }: SplitThreadAreaProps) {
   const splitWorkspaceActive = useSplitWorkspaceActive();
   const navigate = useImmediateRouteNavigate();
   const store = useStore();
+  const navPanels = usePluginSlots().navPanels;
   const [storedLayout, setLayout] = useAtom(splitLayoutAtom);
   const dimsInactiveSplits = useAtomValue(dimInactiveSplitsAtom);
   const [maximizedPaneId, setMaximizedPaneIdAtom] =
@@ -321,9 +326,45 @@ function SplitThreadAreaContent({ routeContent }: SplitThreadAreaProps) {
     if (currentContent === null) {
       return;
     }
+    if (currentContent.kind === "plugin-panel") {
+      const panel = navPanels.find(
+        (candidate) =>
+          candidate.experimental_ownTab === true &&
+          candidate.pluginId === currentContent.pluginId &&
+          candidate.path === currentContent.panelPath,
+      );
+      const layout =
+        panel === undefined
+          ? null
+          : store.set(openOwnedTabAtom, {
+              owner: {
+                kind: "panel",
+                panel: {
+                  pluginId: currentContent.pluginId,
+                  panelPath: currentContent.panelPath,
+                },
+              },
+              content: currentContent,
+            });
+      const focused =
+        layout === null ? null : findPane(layout.root, layout.focusedPaneId);
+      if (
+        focused !== null &&
+        !isSamePaneContent(focused.content, currentContent)
+      ) {
+        navigate(paneContentRoute(focused.content), { replace: true });
+        return;
+      }
+    }
     if (currentContent.kind === "thread") {
+      if (store.set(landOwnedPanelRedirectAtom, currentContent)) {
+        setLayout((previous) =>
+          reconcileLayoutForContent(previous, currentContent),
+        );
+        return;
+      }
       if (store.set(focusThreadInOtherTabAtom, currentContent)) return;
-      if (store.set(openOutsideInboxTabAtom, currentContent)) return;
+      if (store.set(openOutsideOwnedTabAtom, currentContent)) return;
       const projectTab = splitWorkspaceActive
         ? placeThreadInProjectTab(
             store.get(splitTabsAtom),
@@ -351,7 +392,14 @@ function SplitThreadAreaContent({ routeContent }: SplitThreadAreaProps) {
     setLayout((previous) =>
       reconcileLayoutForContent(previous, currentContent),
     );
-  }, [currentContent, setLayout, splitWorkspaceActive, store]);
+  }, [
+    currentContent,
+    navPanels,
+    navigate,
+    setLayout,
+    splitWorkspaceActive,
+    store,
+  ]);
 
   const layout: SplitLayout | null =
     storedLayout ??

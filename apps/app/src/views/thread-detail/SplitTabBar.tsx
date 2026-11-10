@@ -39,6 +39,7 @@ import {
 import { AppCommandShortcutHint } from "@/components/commands/AppCommandShortcutHint";
 import { PINNED_TAB_ROUTE_PATH } from "@/lib/route-paths";
 import { usePinnedTabPanel } from "@/lib/pinned-tab";
+import { usePluginSlots } from "@/lib/plugin-slots";
 import type { AppShortcutPresentation } from "@/lib/app-keybindings";
 import {
   useIsSidebarFramed,
@@ -398,13 +399,20 @@ function SplitTabItem({
   onCloseRight: () => void;
 }) {
   const isInbox = tab.kind === "inbox";
+  const tabPanel = tab.panel;
+  const panel = usePluginSlots().navPanels.find(
+    (candidate) =>
+      tabPanel !== undefined &&
+      candidate.pluginId === tabPanel.pluginId &&
+      candidate.path === tabPanel.panelPath,
+  );
   const projectId = tabProjectId(tab, layout);
   const { title, isProjectName } = useSplitTabTitle(
     layout,
-    tab.name ?? (isInbox ? "Inbox" : null),
+    tab.name ?? (isInbox ? "Inbox" : (panel?.title ?? null)),
     projectId,
   );
-  const canRename = projectId === null;
+  const canRename = projectId === null && tabPanel === undefined;
   const dot = useSplitTabDot(layout);
   const inboxQueueLength = useInboxQueueLength();
   const extraPanes = layout === null ? 0 : countPanes(layout.root) - 1;
@@ -450,6 +458,8 @@ function SplitTabItem({
                   leadingVisual={
                     isInbox ? (
                       <Icon name="Inbox" className="text-primary" />
+                    ) : panel !== undefined ? (
+                      <Icon name={panel.icon} />
                     ) : dot === null ? (
                       <Icon name="MessageSquare" />
                     ) : (

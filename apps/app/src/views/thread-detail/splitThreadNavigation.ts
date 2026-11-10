@@ -14,7 +14,8 @@ import {
 import type { useStore } from "jotai";
 import {
   insertSplitTab,
-  openInboxTabAtom,
+  isOwnedTab,
+  openOwnedTabAtom,
   openSplitTabAtom,
   selectSplitTab,
   tabAcceptsContent,
@@ -192,7 +193,7 @@ export function placeThreadBesideSplit(
   const target = state.tabs.find(
     (tab) =>
       tab.id !== state.activeTabId &&
-      tab.kind !== "inbox" &&
+      !isOwnedTab(tab) &&
       tabAcceptsContent(tab, tab.layout, content) &&
       hasRoomForThread(tab),
   );
@@ -288,7 +289,10 @@ export function openInboxTab(
   store: ReturnType<typeof useStore>,
   navigate: (route: string, options: { replace: true }) => void,
 ): void {
-  const layout = store.set(openInboxTabAtom);
+  const layout = store.set(openOwnedTabAtom, {
+    owner: { kind: "inbox" },
+    content: { kind: "new-thread" },
+  });
   const route = layout === null ? null : focusedPaneRoute(layout);
   if (route !== null) navigate(route, { replace: true });
 }

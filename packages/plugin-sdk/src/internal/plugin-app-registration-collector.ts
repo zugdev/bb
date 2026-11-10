@@ -230,6 +230,7 @@ const NAV_PANEL_REGISTRATION_KEYS = {
   experimental_sidebar: true,
   headerContent: true,
   experimental_pinnedTab: true,
+  experimental_ownTab: true,
 } satisfies Record<keyof PluginNavPanelRegistration | "fixedTabs", true>;
 
 const RENAMED_NAV_PANEL_KEYS: ReadonlyMap<string, string> = new Map([
@@ -827,6 +828,12 @@ export function collectPluginAppRegistrations(
         ) {
           throw new Error(`${kind}: "experimental_pinnedTab" must be a boolean`);
         }
+        if (
+          registration.experimental_ownTab !== undefined &&
+          typeof registration.experimental_ownTab !== "boolean"
+        ) {
+          throw new Error(`${kind}: "experimental_ownTab" must be a boolean`);
+        }
         const legacy = registration as PluginNavPanelRegistration & {
           fixedTabs?: readonly PluginNavPanelFixedTabRegistration[];
         };
@@ -877,6 +884,9 @@ export function collectPluginAppRegistrations(
           component: requireComponent(kind, registration.component),
           ...(registration.experimental_pinnedTab === true
             ? { experimental_pinnedTab: true }
+            : {}),
+          ...(registration.experimental_ownTab === true
+            ? { experimental_ownTab: true }
             : {}),
           ...(registration.experimental_useBadge !== undefined
             ? {

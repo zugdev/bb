@@ -175,6 +175,7 @@ export default definePluginApp((app) => {
     icon: "Bot",
     path: "assistant",
     component: AssistantPanel,
+    experimental_ownTab: true,
     experimental_useBadge: useAssistantBadge,
   });
 });
