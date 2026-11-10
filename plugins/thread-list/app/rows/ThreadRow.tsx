@@ -55,7 +55,7 @@ import {
 import type { SidebarThread } from "../model/sidebar-thread.js";
 import { useThreadsHaveDraft } from "../list/sidebarDraftPresence.js";
 import { NO_HIDDEN_THREADS } from "../list/groupRollups.js";
-import { useSidebarProjectName } from "../model/use-sidebar-data.js";
+import { useSidebarProject } from "../model/use-sidebar-data.js";
 import {
   sidebarShowProviderIconsAtom,
   sidebarShowRowMetadataAtom,
@@ -363,7 +363,8 @@ function ThreadRowComponent({
   );
   const showActive = isSelected || (isActive && !selectionHidesActive);
   const labelTitle = thread.displayTitle;
-  const crossProjectName = useSidebarProjectName(crossProjectId);
+  const crossProject = useSidebarProject(crossProjectId);
+  const crossProjectName = crossProject?.name;
   const crossProjectLabel =
     crossProjectId === null
       ? null
@@ -690,6 +691,7 @@ function ThreadRowComponent({
                   role="img"
                   aria-label={crossProjectLabel}
                   className="relative z-[31] flex size-5 shrink-0 items-center justify-center text-muted-foreground"
+                  style={{ color: crossProject?.experimental_color }}
                   onClick={(event) => {
                     event.preventDefault();
                     event.stopPropagation();

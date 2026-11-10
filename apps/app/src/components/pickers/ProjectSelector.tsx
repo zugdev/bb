@@ -17,12 +17,11 @@ import {
   OPTION_MUTED_CLASS_NAME,
   OPTION_TRIGGER_CONTENT_CLASS_NAME,
 } from "@bb/shared-ui/option-display";
+import { useProjectColors } from "@/hooks/queries/sidebar-navigation-query";
 import { Popover, PopoverContent, PopoverTrigger } from "@bb/shared-ui/popover";
 import { useScrollOverflowState } from "../thread/timeline/useScrollOverflowState";
 import { searchPickerOptions } from "@bb/shared-ui/picker-search";
-import {
-  useResetPickerScroll,
-} from "@bb/shared-ui/hooks/use-reset-picker-scroll";
+import { useResetPickerScroll } from "@bb/shared-ui/hooks/use-reset-picker-scroll";
 
 const PROJECT_SEARCH_MIN_OPTIONS = 5;
 const NO_HIGHLIGHT_VALUE = "__project-picker-idle__";
@@ -121,6 +120,12 @@ export function ProjectSelector({
   const fallback =
     !allowNoProject && !allProjectsSelected && !selected ? projects[0] : null;
   const noProjectSelected = allowNoProject && value === null;
+  const projectColors = useProjectColors();
+  const shownProjectId = selected?.id ?? fallback?.id;
+  const triggerColor =
+    isLoading || shownProjectId === undefined
+      ? undefined
+      : projectColors.get(shownProjectId);
   const triggerLabel = isLoading
     ? "Loading projects…"
     : (selected?.name ??
@@ -183,6 +188,7 @@ export function ProjectSelector({
             <Icon
               name={triggerIcon}
               className="size-3.5 shrink-0"
+              style={{ color: triggerColor }}
               aria-hidden
             />
             <span className="min-w-0 truncate" data-promptbox-full-label="">
@@ -265,6 +271,7 @@ export function ProjectSelector({
                       <Icon
                         name="Folder"
                         className="size-4 text-muted-foreground"
+                        style={{ color: projectColors.get(project.id) }}
                         aria-hidden
                       />
                       <span className="min-w-0 flex-1 truncate">

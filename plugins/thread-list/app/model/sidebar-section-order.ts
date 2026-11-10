@@ -196,3 +196,41 @@ export function insertSidebarSectionAfter({
   normalized.splice(anchorIndex + 1, 0, sectionId);
   return normalized;
 }
+
+export function applyEntityOrder(
+  order: readonly SidebarSectionId[],
+  entitySectionIds: readonly SidebarSectionId[],
+): SidebarSectionId[] {
+  const present = new Set(order);
+  const ordered = entitySectionIds.filter((id) => present.has(id));
+  const entitySet = new Set(ordered);
+  let next = 0;
+  return order.map((id) => (entitySet.has(id) ? ordered[next++]! : id));
+}
+
+export interface SidebarEntityMove {
+  id: SidebarSectionId;
+  previousId: SidebarSectionId | null;
+  nextId: SidebarSectionId | null;
+}
+
+export function findMovedEntity(
+  current: readonly SidebarSectionId[],
+  next: readonly SidebarSectionId[],
+): SidebarEntityMove | null {
+  const start = current.findIndex((id, index) => id !== next[index]);
+  if (start === -1 || current.length !== next.length) return null;
+  const sameWithout = (id: SidebarSectionId) => {
+    const left = current.filter((candidate) => candidate !== id);
+    const right = next.filter((candidate) => candidate !== id);
+    return left.every((candidate, index) => candidate === right[index]);
+  };
+  const moved = [current[start]!, next[start]!].find(sameWithout);
+  if (moved === undefined) return null;
+  const at = next.indexOf(moved);
+  return {
+    id: moved,
+    previousId: next[at - 1] ?? null,
+    nextId: next[at + 1] ?? null,
+  };
+}

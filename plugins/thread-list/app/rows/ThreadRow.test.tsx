@@ -1141,6 +1141,7 @@ describe("ThreadRow", () => {
           href: "/projects/proj_other",
           settingsHref: "/projects/proj_other/settings",
           experimental_gitRemoteUrl: null,
+          experimental_color: "inherit",
         },
       ],
       thread: createThread({

@@ -37,6 +37,7 @@ import { useRetiredSidebarEnvironmentPullRequest } from "./retired-sidebar-pull-
 import { useHosts } from "@/hooks/queries/host-queries";
 import { useArchivedThreads } from "@/hooks/queries/thread-queries";
 import { useSidebarNavigation } from "@/hooks/queries/sidebar-navigation-query";
+import { projectColorsById } from "@/lib/project-color";
 import {
   usePinThread,
   useUnpinThread,
@@ -163,6 +164,7 @@ export function useSidebarThreads(
       };
     }
     const allProjects = [...data.projects, data.personalProject];
+    const colors = projectColorsById(allProjects);
     const selected = new Map<string, ThreadListEntry>();
     if (includeArchived) {
       for (const thread of archived.data?.pages.flat() ?? []) {
@@ -190,6 +192,7 @@ export function useSidebarThreads(
         href: getProjectComposeRoutePath(project.id),
         settingsHref: getSettingsProjectRoutePath(project.id),
         experimental_gitRemoteUrl: project.gitRemoteUrl,
+        experimental_color: colors.get(project.id) ?? "inherit",
       })),
       sections: data.sections,
     };

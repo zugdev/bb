@@ -28,11 +28,7 @@ import {
   type ExperimentalThreadInfoProps,
 } from "@get-bb/plugin-sdk";
 import { Link } from "react-router-dom";
-import type {
-  Environment,
-  Thread,
-  ThreadListEntry,
-} from "@bb/domain";
+import type { Environment, Thread, ThreadListEntry } from "@bb/domain";
 import {
   formatEnvironmentDisplay,
   type EnvironmentDisplayHostContext,
@@ -45,7 +41,10 @@ import {
 import { useSystemEnvironmentProviders } from "@/hooks/queries/environment-provider-queries";
 import { useSystemMachineProviders } from "@/hooks/queries/machine-provider-queries";
 import { useHosts } from "@/hooks/queries/host-queries";
-import { useProjectDisplayName } from "@/hooks/queries/sidebar-navigation-query";
+import {
+  useProjectColor,
+  useProjectDisplayName,
+} from "@/hooks/queries/sidebar-navigation-query";
 import { MachineIcon } from "@/components/machines/MachineLabel";
 import { Button } from "@bb/shared-ui/button";
 import { COARSE_POINTER_TEXT_SM_CLASS } from "@bb/shared-ui/coarse-pointer-sizing";
@@ -347,11 +346,16 @@ export function EnvironmentRow({
 
 export function ProjectRow({ projectId }: { projectId: string }) {
   const projectName = useProjectDisplayName(projectId);
+  const projectColor = useProjectColor(projectId);
   if (!projectName) return null;
 
   return (
     <DetailRow icon="Folder" label="Project">
-      <span className="block min-w-0 truncate" title={projectName}>
+      <span
+        className="block min-w-0 truncate"
+        title={projectName}
+        style={{ color: projectColor }}
+      >
         {projectName}
       </span>
     </DetailRow>

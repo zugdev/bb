@@ -115,6 +115,7 @@ export function makePluginProject(
     href: `/projects/${id}`,
     settingsHref: `/settings/projects/${id}`,
     experimental_gitRemoteUrl: null,
+    experimental_color: "inherit",
     ...overrides,
   };
 }

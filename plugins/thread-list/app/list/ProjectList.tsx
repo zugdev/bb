@@ -83,6 +83,7 @@ import type {
 import {
   buildSidebarEntitySectionId,
   insertSidebarSectionAfter,
+  type SidebarEntityMove,
 } from "../model/sidebar-section-order.js";
 import {
   SortableProjectRow,
@@ -622,9 +623,32 @@ function ProjectModeSections({
       EMPTY_THREAD_LIST
     );
   }, [personalProjectId, threadsByProject]);
+  const sdk = useSdk();
+  const moveProject = useCallback(
+    (move: SidebarEntityMove) => {
+      const projectIdOf = (id: SidebarSectionId | null) =>
+        id === null ? null : id.slice("project:".length);
+      sdk.projects
+        .reorder({
+          projectId: projectIdOf(move.id)!,
+          previousProjectId: projectIdOf(move.previousId),
+          nextProjectId: projectIdOf(move.nextId),
+        })
+        .catch((error: unknown) => {
+          toast.error(
+            getMutationErrorMessage({
+              error,
+              fallbackMessage: "Failed to reorder project.",
+            }),
+          );
+        });
+    },
+    [sdk],
+  );
   const { onOrderChange, order, persistedOrder } = useSidebarModeSectionOrder({
     mode: "project",
     entitySectionIds: projectSectionIds,
+    onEntityMove: moveProject,
     hasThreadsSection: personalProjectId !== null || projectRows.length === 0,
     showPinnedSection,
   });

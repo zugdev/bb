@@ -9,9 +9,12 @@ import {
 import type { OrganizationMode as SidebarOrganizationMode } from "../../shared/preferences.js";
 import type { SidebarSectionId } from "../model/sidebar-section-id.js";
 import {
+  applyEntityOrder,
   applyVisibleSidebarSectionOrder,
+  findMovedEntity,
   normalizeSidebarSectionOrder,
   type LegacySidebarEntityAnchor,
+  type SidebarEntityMove,
 } from "../model/sidebar-section-order.js";
 
 const MODE_SECTION_ORDER_CONFIG: Record<
@@ -43,6 +46,7 @@ interface UseSidebarModeSectionOrderArgs {
   entitySectionIds: readonly SidebarSectionId[];
   hasThreadsSection?: boolean;
   mode: SidebarOrganizationMode;
+  onEntityMove?: (move: SidebarEntityMove) => void;
   showPinnedSection: boolean;
 }
 
@@ -56,6 +60,7 @@ export function useSidebarModeSectionOrder({
   entitySectionIds,
   hasThreadsSection,
   mode,
+  onEntityMove,
   showPinnedSection,
 }: UseSidebarModeSectionOrderArgs): UseSidebarModeSectionOrderResult {
   const config = MODE_SECTION_ORDER_CONFIG[mode];
@@ -65,22 +70,25 @@ export function useSidebarModeSectionOrder({
     () => new Set<string>(hiddenGroups),
     [hiddenGroups],
   );
-  const persistedOrder = useMemo(
-    () =>
-      normalizeSidebarSectionOrder({
-        storedOrder,
-        entitySectionIds,
-        legacyEntityAnchor: config.legacyEntityAnchor,
-        hasPinnedSection: true,
-        ...(hasThreadsSection === undefined ? {} : { hasThreadsSection }),
-      }),
-    [
-      config.legacyEntityAnchor,
-      entitySectionIds,
-      hasThreadsSection,
+  const followsEntityOrder = onEntityMove !== undefined;
+  const persistedOrder = useMemo(() => {
+    const normalized = normalizeSidebarSectionOrder({
       storedOrder,
-    ],
-  );
+      entitySectionIds,
+      legacyEntityAnchor: config.legacyEntityAnchor,
+      hasPinnedSection: true,
+      ...(hasThreadsSection === undefined ? {} : { hasThreadsSection }),
+    });
+    return followsEntityOrder
+      ? applyEntityOrder(normalized, entitySectionIds)
+      : normalized;
+  }, [
+    config.legacyEntityAnchor,
+    entitySectionIds,
+    followsEntityOrder,
+    hasThreadsSection,
+    storedOrder,
+  ]);
   const order = useMemo(
     () =>
       persistedOrder.filter(
@@ -92,6 +100,16 @@ export function useSidebarModeSectionOrder({
   );
   const onOrderChange = useCallback(
     (nextOrder: SidebarSectionId[]) => {
+      if (onEntityMove !== undefined) {
+        const entitySet = new Set(entitySectionIds);
+        const nextEntities = nextOrder.filter((id) => entitySet.has(id));
+        const movedSet = new Set(nextEntities);
+        const move = findMovedEntity(
+          persistedOrder.filter((id) => movedSet.has(id)),
+          nextEntities,
+        );
+        if (move !== null) onEntityMove(move);
+      }
       setStoredOrder(
         (current) =>
           applyVisibleSidebarSectionOrder({
@@ -104,7 +122,14 @@ export function useSidebarModeSectionOrder({
           }) ?? current,
       );
     },
-    [config, entitySectionIds, hasThreadsSection, setStoredOrder],
+    [
+      config,
+      entitySectionIds,
+      hasThreadsSection,
+      onEntityMove,
+      persistedOrder,
+      setStoredOrder,
+    ],
   );
   return { onOrderChange, order, persistedOrder };
 }

@@ -5,6 +5,10 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ProjectSelector } from "./ProjectSelector";
 
+vi.mock("@/hooks/queries/sidebar-navigation-query", () => ({
+  useProjectColors: () => new Map(),
+}));
+
 const PROJECTS = [
   { id: "proj_alpha", name: "Alpha Web" },
   { id: "proj_bravo", name: "Bravo API" },

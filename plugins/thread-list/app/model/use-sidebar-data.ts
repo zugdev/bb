@@ -17,6 +17,7 @@ export interface SidebarProject {
   settingsHref: string;
   isPersonal: boolean;
   experimental_gitRemoteUrl: string | null;
+  experimental_color: string;
   threads: SidebarThread[];
 }
 
@@ -63,7 +64,8 @@ function sameProjectShape(
     previous.href === project.href &&
     previous.settingsHref === project.settingsHref &&
     previous.isPersonal === project.isPersonal &&
-    previous.experimental_gitRemoteUrl === project.experimental_gitRemoteUrl
+    previous.experimental_gitRemoteUrl === project.experimental_gitRemoteUrl &&
+    previous.experimental_color === project.experimental_color
   );
 }
 
@@ -111,6 +113,7 @@ export function buildSidebarData(
       settingsHref: project.settingsHref,
       isPersonal: project.isPersonal,
       experimental_gitRemoteUrl: project.experimental_gitRemoteUrl,
+      experimental_color: project.experimental_color,
       threads:
         before !== undefined && sameElements(before.threads, bucket)
           ? before.threads
@@ -185,13 +188,13 @@ export const SidebarProjectsContext = createContext<
   readonly PluginSidebarProject[]
 >([]);
 
-export function useSidebarProjectName(
+export function useSidebarProject(
   projectId: string | null,
-): string | undefined {
+): PluginSidebarProject | undefined {
   const projects = useContext(SidebarProjectsContext);
   return projectId === null
     ? undefined
-    : projects.find((project) => project.id === projectId)?.name;
+    : projects.find((project) => project.id === projectId);
 }
 
 export function useSidebarData() {

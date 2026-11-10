@@ -26,6 +26,7 @@ import { TabPill } from "@/components/ui/tab-pill";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@bb/shared-ui/tooltip";
 import { useThread } from "@/hooks/queries/thread-queries";
 import {
+  useProjectColor,
   useProjectDisplayName,
   useSidebarNavigation,
 } from "@/hooks/queries/sidebar-navigation-query";
@@ -76,10 +77,7 @@ import {
   splitTabsAtom,
   type SplitTab,
 } from "@/lib/split-layout/tabs";
-import {
-  focusedPaneRoute,
-  openComposeTab,
-} from "./splitThreadNavigation";
+import { focusedPaneRoute, openComposeTab } from "./splitThreadNavigation";
 
 function usePaneTitle(content: PaneContent | null): string {
   const threadId =
@@ -421,6 +419,7 @@ function SplitTabItem({
     tab.name ?? panel?.title ?? null,
     projectId,
   );
+  const projectColor = useProjectColor(projectId);
   const canRename = projectId === null && tabPanel === undefined;
   const dot = useSplitTabDot(layout);
   const panelBadge = usePanelBadge(panel);
@@ -465,6 +464,7 @@ function SplitTabItem({
               ) : (
                 <TabPill
                   label={title}
+                  labelColor={isProjectName ? projectColor : undefined}
                   title={title}
                   leadingVisual={
                     panel !== undefined ? (

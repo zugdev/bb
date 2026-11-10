@@ -24,6 +24,7 @@ interface TabPillCloseAction {
 
 interface TabPillProps {
   label: string;
+  labelColor?: string;
   ariaLabel?: string;
   ariaKeyshortcuts?: string;
   iconOnly?: boolean;
@@ -40,6 +41,7 @@ interface TabPillProps {
 
 export function TabPill({
   label,
+  labelColor,
   ariaLabel,
   ariaKeyshortcuts,
   iconOnly = false,
@@ -126,6 +128,7 @@ export function TabPill({
             !iconOnly && labelMaxWidthClass,
           )}
           title={iconOnly ? undefined : title}
+          style={labelColor === undefined ? undefined : { color: labelColor }}
         >
           {label}
         </span>

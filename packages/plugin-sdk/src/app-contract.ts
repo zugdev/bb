@@ -1601,6 +1601,12 @@ export interface PluginSidebarProject {
    * docs/api_to_audit.md.
    */
   experimental_gitRemoteUrl: string | null;
+  /**
+   * The project's CSS color, the one bb draws its name and folder icon in.
+   * Every project gets its own color, and adding a project leaves the other
+   * colors unchanged. Experimental: see docs/api_to_audit.md.
+   */
+  experimental_color: string;
 }
 
 /**
