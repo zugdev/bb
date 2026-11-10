@@ -233,8 +233,8 @@ export const APP_COMMAND_GROUPS: readonly AppCommandGroup[] = [
       ),
       command(
         "splitTab.newForProject",
-        "New project tab",
-        "Pick a project and open a tab for it. The sidebar shows only that project's threads while the tab is active.",
+        "Switch project",
+        "Pick a project and switch to its tab, opening one if none exists. The sidebar shows only that project's threads while the tab is active.",
       ),
       command(
         "splitTab.openInbox",
