@@ -13,8 +13,9 @@ import {
   movePaneAcrossTabsAtom,
   movePaneToTabAtom,
   moveSplitTabAtom,
-  openInboxTabAtom,
-  openOutsideInboxTabAtom,
+  landOwnedPanelRedirectAtom,
+  openOutsideOwnedTabAtom,
+  openOwnedTabAtom,
   openSplitTabAtom,
   openThreadInTab,
   openThreadInTabAtom,
@@ -39,6 +40,110 @@ function threadLayout(threadId: string): SplitLayout {
     focusedPaneId: "pane-1",
   };
 }
+
+const INBOX = {
+  owner: { kind: "inbox" },
+  content: { kind: "new-thread" },
+} as const;
+
+const ASSISTANT_PANEL = {
+  kind: "plugin-panel",
+  pluginId: "assistant",
+  panelPath: "assistant",
+  subPath: "",
+} as const;
+
+const ASSISTANT = {
+  owner: {
+    kind: "panel",
+    panel: { pluginId: "assistant", panelPath: "assistant" },
+  },
+  content: ASSISTANT_PANEL,
+} as const;
+
+describe("owned tabs", () => {
+  it("keeps one Inbox tab and one tab per panel, focusing the existing one", () => {
+    const store = createStore();
+    store.set(splitLayoutAtom, threadLayout("a"));
+
+    store.set(openOwnedTabAtom, INBOX);
+    const inboxTabId = store.get(splitTabsAtom).activeTabId;
+    store.set(openOwnedTabAtom, ASSISTANT);
+    const assistantTabId = store.get(splitTabsAtom).activeTabId;
+    expect(store.get(splitLayoutAtom)).toEqual({
+      root: { type: "pane", paneId: "pane-1", content: ASSISTANT_PANEL },
+      focusedPaneId: "pane-1",
+    });
+
+    store.set(openOwnedTabAtom, INBOX);
+    expect(store.get(splitTabsAtom).activeTabId).toBe(inboxTabId);
+    store.set(openOwnedTabAtom, ASSISTANT);
+    expect(store.get(splitTabsAtom).activeTabId).toBe(assistantTabId);
+    expect(store.get(splitTabsAtom).tabs).toHaveLength(3);
+  });
+
+  it("keeps the thread a panel tab redirects to and closes other tabs showing only it", () => {
+    const store = createStore();
+    const assistantThread = { projectId: "p1", threadId: "assistant" };
+    store.set(splitLayoutAtom, threadLayout("assistant"));
+    const legacyTabId = store.get(splitTabsAtom).activeTabId;
+    store.set(openOwnedTabAtom, ASSISTANT);
+
+    expect(store.set(landOwnedPanelRedirectAtom, assistantThread)).toBe(true);
+    expect(store.get(splitTabsAtom).tabs.map((tab) => tab.id)).not.toContain(
+      legacyTabId,
+    );
+    store.set(splitLayoutAtom, threadLayout("assistant"));
+    expect(store.set(landOwnedPanelRedirectAtom, assistantThread)).toBe(false);
+    expect(
+      store.set(openOutsideOwnedTabAtom, {
+        kind: "thread",
+        projectId: "p1",
+        threadId: "b",
+      }),
+    ).toBe(true);
+    const [assistantTab] = store.get(splitTabsAtom).tabs;
+    expect(tabProjectId(assistantTab!)).toBeNull();
+  });
+
+  it("focuses the existing owned tab when a closed one is reopened", () => {
+    const store = createStore();
+    store.set(openOwnedTabAtom, INBOX);
+    const firstInboxId = store.get(splitTabsAtom).activeTabId;
+    store.set(openSplitTabAtom);
+    store.set(closeSplitTabAtom, firstInboxId);
+    store.set(openOwnedTabAtom, INBOX);
+    const inboxTabId = store.get(splitTabsAtom).activeTabId;
+    store.set(openSplitTabAtom);
+
+    store.set(reopenClosedSplitItemAtom);
+    const { tabs, activeTabId } = store.get(splitTabsAtom);
+    expect(activeTabId).toBe(inboxTabId);
+    expect(tabs.filter((tab) => tab.kind === "inbox")).toHaveLength(1);
+  });
+
+  it("collapses duplicate owned tabs from stored state", () => {
+    const panel = { pluginId: "assistant", panelPath: "assistant" };
+    const parsed = parseSplitTabsState(
+      JSON.stringify({
+        tabs: [
+          { id: "inbox", layout: null, kind: "inbox" },
+          { id: "focus", layout: null, kind: "focus" },
+          { id: "assistant", layout: null, panel },
+          { id: "assistant-2", layout: null, panel },
+          { id: "plain", layout: null },
+        ],
+        activeTabId: "assistant-2",
+      }),
+    );
+    expect(parsed.tabs.map((tab) => tab.id)).toEqual([
+      "inbox",
+      "assistant",
+      "plain",
+    ]);
+    expect(parsed.activeTabId).toBe("assistant");
+  });
+});
 
 describe("split tabs", () => {
   it("keeps each tab's layout across switching, closing and reopening", () => {
@@ -90,21 +195,21 @@ describe("split tabs", () => {
   it("opens threads picked outside Inbox in their own tab and leaves the Inbox tab alone", () => {
     const store = createStore();
     const other = { kind: "thread", projectId: "p1", threadId: "b" } as const;
-    expect(store.set(openOutsideInboxTabAtom, other)).toBe(false);
+    expect(store.set(openOutsideOwnedTabAtom, other)).toBe(false);
 
     store.set(splitLayoutAtom, threadLayout("a"));
-    store.set(openInboxTabAtom);
+    store.set(openOwnedTabAtom, INBOX);
     store.set(splitLayoutAtom, threadLayout("a"));
     const focusTabId = store.get(splitTabsAtom).activeTabId;
     expect(
-      store.set(openOutsideInboxTabAtom, {
+      store.set(openOutsideOwnedTabAtom, {
         kind: "thread",
         projectId: "p1",
         threadId: "a",
       }),
     ).toBe(false);
 
-    expect(store.set(openOutsideInboxTabAtom, other)).toBe(true);
+    expect(store.set(openOutsideOwnedTabAtom, other)).toBe(true);
     const { tabs, activeTabId } = store.get(splitTabsAtom);
     expect(activeTabId).not.toBe(focusTabId);
     expect(listPanes(store.get(splitLayoutAtom)!.root)[0]?.content).toEqual(

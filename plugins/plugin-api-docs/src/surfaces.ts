@@ -93,6 +93,7 @@ export const SURFACE_GROUPS: SurfaceGroup[] = [
           "PluginNavPanelRegistration",
           "PluginNavPanelRegistration.experimental_sidebar",
           "PluginNavPanelRegistration.experimental_pinnedTab",
+          "PluginNavPanelRegistration.experimental_ownTab",
           "experimental_useThreadSearch",
           "ExperimentalThreadSearch",
           "experimental_useAddProject",

@@ -1038,6 +1038,13 @@ export interface PluginNavPanelRegistration {
    */
   experimental_pinnedTab?: boolean;
   /**
+   * Open this panel in a tab of its own, at most one per panel. Opening the
+   * panel again focuses that tab. The tab takes the panel's title and icon,
+   * and a thread the panel opens with `experimental_replace` stays in it.
+   * Experimental: see docs/api_to_audit.md.
+   */
+  experimental_ownTab?: boolean;
+  /**
    * Optional component rendered on the right side of the shared title bar
    * (e.g. a sync button or a count). Contained separately from the body: a
    * throwing headerContent is hidden without breaking the title bar.
