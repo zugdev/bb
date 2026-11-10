@@ -107,6 +107,7 @@ export interface NewThreadProjectConfig {
   disabled?: boolean;
   isLoading?: boolean;
   showChevronWhenDisabled?: boolean;
+  openRequest?: number;
 }
 
 export interface NewThreadModeConfig {
@@ -351,6 +352,7 @@ const DefaultNewThreadComposer = memo(function DefaultNewThreadComposer({
               disabled={project.disabled}
               isLoading={project.isLoading}
               showChevronWhenDisabled={project.showChevronWhenDisabled}
+              openRequest={project.openRequest}
               className="shrink-0"
             />
           ) : null}

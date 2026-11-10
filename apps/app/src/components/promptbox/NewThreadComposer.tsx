@@ -215,6 +215,7 @@ interface NewThreadComposerPromptOptions {
   textEffects?: NewThreadPromptBoxProps["textEffects"];
   allowNoProject?: boolean;
   createProject?: ProjectSelectorCreateProjectConfig;
+  projectPickerOpenRequest?: number;
   onRequestMachineSetup?: (host: Host) => void;
   locks?: NewThreadComposerLocks;
   mentionMenuPlacement: NewThreadPromptBoxProps["mentionMenuPlacement"];
@@ -2136,6 +2137,7 @@ export function NewThreadComposer({
             onChange: handleProjectChange,
             allowNoProject: options.allowNoProject,
             createProject: options.createProject,
+            openRequest: options.projectPickerOpenRequest,
             isLoading: !sidebarNavigationSettled,
             disabled:
               locks.project ||

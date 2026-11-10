@@ -53,6 +53,7 @@ interface ProjectSelectorProps {
   showChevronWhenDisabled?: boolean;
   className?: string;
   defaultOpen?: boolean;
+  openRequest?: number;
   onOpenChange?: (open: boolean) => void;
   modal?: boolean;
 }
@@ -70,6 +71,7 @@ export function ProjectSelector({
   showChevronWhenDisabled = false,
   className,
   defaultOpen,
+  openRequest = 0,
   onOpenChange,
   modal = true,
 }: ProjectSelectorProps) {
@@ -96,6 +98,11 @@ export function ProjectSelector({
     highlightedItem?.scrollIntoView({ block: "nearest" });
   }, [highlightedValue]);
   const disabled = disabledProp || isLoading;
+  const [handledOpenRequest, setHandledOpenRequest] = useState(openRequest);
+  if (openRequest !== handledOpenRequest) {
+    setHandledOpenRequest(openRequest);
+    if (!disabled) setOpen(true);
+  }
   const showSearch = projects.length > PROJECT_SEARCH_MIN_OPTIONS;
   const filteredProjects = useMemo(
     () =>
