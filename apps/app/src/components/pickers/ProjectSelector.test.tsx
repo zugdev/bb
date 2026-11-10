@@ -17,6 +17,25 @@ const PROJECTS = [
 afterEach(cleanup);
 
 describe("ProjectSelector", () => {
+  it("opens on each new open request and stays closed while disabled", () => {
+    const props = {
+      projects: PROJECTS,
+      value: "proj_alpha",
+      onChange: vi.fn(),
+      modal: false,
+    };
+    const { rerender } = render(<ProjectSelector {...props} openRequest={0} />);
+    expect(screen.queryByRole("option", { name: "Bravo API" })).toBeNull();
+    rerender(<ProjectSelector {...props} openRequest={1} disabled />);
+    expect(screen.queryByRole("option", { name: "Bravo API" })).toBeNull();
+    rerender(<ProjectSelector {...props} openRequest={2} />);
+    fireEvent.click(screen.getByRole("option", { name: "Bravo API" }));
+    expect(props.onChange).toHaveBeenCalledWith("proj_bravo");
+    expect(screen.queryByRole("option", { name: "Bravo API" })).toBeNull();
+    rerender(<ProjectSelector {...props} openRequest={3} />);
+    expect(screen.getByRole("option", { name: "Bravo API" })).toBeTruthy();
+  });
+
   it("selects a searched project and returns to all projects without falling back to the first project", () => {
     function Picker() {
       const [value, setValue] = useState<string | null>("all");

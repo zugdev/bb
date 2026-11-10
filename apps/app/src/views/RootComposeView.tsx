@@ -1103,6 +1103,16 @@ function RootComposeSurface({
     openCompactDrawer();
     setShouldAutoFocusNewTab(true);
   }, [openCompactDrawer, openTab]);
+  const [projectPickerOpenRequest, setProjectPickerOpenRequest] = useState(0);
+  useAppCommandHandler(
+    "splitTab.newForProject",
+    () => {
+      if (!isFocusedPane) return false;
+      setProjectPickerOpenRequest((request) => request + 1);
+      return true;
+    },
+    1,
+  );
   useAppCommandHandler("panel.newTab", () => {
     if (!isFocusedPane) return false;
     handleOpenNewTab();
@@ -1434,6 +1444,7 @@ function RootComposeSurface({
     textEffects: promptTextEffects,
     allowNoProject: true,
     createProject,
+    projectPickerOpenRequest,
     onRequestMachineSetup: handleRequestMachineSetup,
   });
 
