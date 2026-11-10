@@ -62,6 +62,7 @@ function threadOnMachine(
     lastReadAt: 1,
     latestAttentionAt: 1,
     experimental_lastUserMessageAt: null,
+    experimental_snoozedUntil: null,
   };
 }
 

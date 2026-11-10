@@ -901,6 +901,86 @@ export interface ExperimentalThreadHeaderLeadingRegistration {
   component: ComponentType<ExperimentalThreadHeaderLeadingProps>;
 }
 
+/** Props passed to an `experimental_threadHeaderTrailing` component. */
+export interface ExperimentalThreadHeaderTrailingProps {
+  /** The thread whose header renders the component. */
+  threadId: string;
+  /**
+   * `inline` renders after the thread title, inside the header row, while
+   * the header is at least 768px wide. `below` renders in a centered band
+   * under a narrower header. bb renders the component in one of the two
+   * places at a time, so lay the content out for its placement.
+   */
+  placement: "inline" | "below";
+}
+
+/**
+ * Render a component in an open thread's header after the thread title, or
+ * in a band under the header when the header is narrower than 768px. The
+ * band only shows when a component renders something. Not rendered on
+ * phones, which have no room for it; use
+ * `experimental_threadComposerOverlay` there. Registrations are additive and
+ * a crash hides only that component.
+ */
+export interface ExperimentalThreadHeaderTrailingRegistration {
+  /** Unique within the plugin; letters, digits, `-`, `_`. */
+  id: string;
+  component: ComponentType<ExperimentalThreadHeaderTrailingProps>;
+}
+
+/** Props passed to an `experimental_threadComposerOverlay` component. */
+export interface ExperimentalThreadComposerOverlayProps {
+  /** The thread whose composer renders the component. */
+  threadId: string;
+  /**
+   * True in the phone layout: a compact viewport outside the macOS desktop
+   * app, where the thread header hides its chrome toggles.
+   */
+  isPhone: boolean;
+}
+
+/**
+ * Render a component in an open thread's composer footer, positioned over
+ * the transcript just above the composer. bb positions a full-width,
+ * pointer-transparent box at the composer's top edge; set
+ * `pointer-events: auto` on what should take input. Registrations are
+ * additive and a crash hides only that component.
+ */
+export interface ExperimentalThreadComposerOverlayRegistration {
+  /** Unique within the plugin; letters, digits, `-`, `_`. */
+  id: string;
+  component: ComponentType<ExperimentalThreadComposerOverlayProps>;
+}
+
+/** What a nav panel's own tab shows in its focused pane. */
+export type ExperimentalOwnTabPane =
+  | { kind: "thread"; paneId: string; projectId: string; threadId: string }
+  | {
+      kind: "compose";
+      paneId: string;
+      /** Reads the pane composer's draft now: true when it holds text or attachments. */
+      hasDraft(): boolean;
+    }
+  | { kind: "other"; paneId: string };
+
+/** What `experimental_useOwnTab` shows in the panel's own tab. */
+export type ExperimentalOwnTabTarget =
+  | { kind: "thread"; projectId: string; threadId: string }
+  | { kind: "compose" };
+
+/** A nav panel's own tab, from `experimental_useOwnTab(path)`. */
+export interface ExperimentalOwnTab {
+  /** True while the panel's own tab is the active pane tab. */
+  isActive: boolean;
+  /** The active own tab's focused pane; null while another tab is active. */
+  focused: ExperimentalOwnTabPane | null;
+  /**
+   * Open or focus the panel's own tab and show `target` in its focused pane,
+   * replacing what it showed. Other tabs that show the same thread stay.
+   */
+  show(target: ExperimentalOwnTabTarget): void;
+}
+
 /**
  * A name the host resolves to a glyph, in this order: a name any plugin
  * registered with `app.experimental_icons.register()`, then a built-in BB icon
@@ -1498,6 +1578,12 @@ export interface PluginSidebarThread {
    * Experimental: see docs/api_to_audit.md.
    */
   experimental_lastUserMessageAt: number | null;
+  /**
+   * When a snooze ends (epoch ms); null when the thread was never snoozed or
+   * the snooze was cleared. A past value means the snooze has ended.
+   * Experimental: see docs/api_to_audit.md.
+   */
+  experimental_snoozedUntil: number | null;
 }
 
 /** One project in the sidebar's live view. */
@@ -3881,6 +3967,22 @@ export interface PluginAppSlots {
   experimental_threadHeaderLeading(
     registration: ExperimentalThreadHeaderLeadingRegistration,
   ): void;
+  /**
+   * Render a component after the thread title in the thread header (see
+   * {@link ExperimentalThreadHeaderTrailingRegistration}). Experimental: see
+   * docs/api_to_audit.md.
+   */
+  experimental_threadHeaderTrailing(
+    registration: ExperimentalThreadHeaderTrailingRegistration,
+  ): void;
+  /**
+   * Render a component just above an open thread's composer (see
+   * {@link ExperimentalThreadComposerOverlayRegistration}). Experimental: see
+   * docs/api_to_audit.md.
+   */
+  experimental_threadComposerOverlay(
+    registration: ExperimentalThreadComposerOverlayRegistration,
+  ): void;
   navPanel(registration: PluginNavPanelRegistration): void;
   /** Register a context-scoped tab. Experimental: see docs/api_to_audit.md. */
   experimental_tab<
@@ -5708,6 +5810,15 @@ export interface PluginSdkApp {
    * tabs. Experimental: see docs/api_to_audit.md.
    */
   experimental_useTabVisible(): boolean;
+  /**
+   * This plugin's nav panel's own tab (see
+   * `PluginNavPanelRegistration.experimental_ownTab`), by the panel's `path`:
+   * whether it is active, what its focused pane shows, and `show` to put a
+   * thread or the new thread composer there. Works anywhere in the plugin,
+   * including commands' components and app overlays. Experimental: see
+   * docs/api_to_audit.md.
+   */
+  experimental_useOwnTab(panelPath: string): ExperimentalOwnTab;
   /**
    * The servers this client can switch between, the list bb's command palette
    * offers. Null when the client keeps no server list: any web browser.

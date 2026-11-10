@@ -130,7 +130,8 @@ const VIEW_FIXTURE_ANCHORS: Record<string, readonly FixtureAnchor[]> = {
         'scrollBehavior="bottom-anchor"',
         "scrollOverlay=",
         "<ThreadTableOfContents",
-        "footer={promptArea}",
+        "footer={",
+        "{promptArea}",
       ],
       because:
         "The thread projection keeps the real bottom-anchored timeline, bottom composer, and held-open table of contents composition.",

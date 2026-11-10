@@ -263,6 +263,16 @@ Docs: `frontend-registration.md`.
 
 **Audit before stabilizing.** Stabilize together with the `threads.lastUserMessageAt` column if upstream takes it.
 
+## `PluginSidebarThread.experimental_snoozedUntil`
+
+When the thread's snooze ends, in epoch milliseconds; null when it was never snoozed or the snooze was cleared. A past value means the snooze has ended. It reads `threads.snoozed_until` (see `bb.sdk.threads.experimental_snooze`) through `toPluginSidebarThread`.
+
+**Core callers.** None in the app; the Snooze thread action reads the column from the thread list entry. The inbox plugin (`plugins/inbox`, fork) sorts snoozed threads and wakes them with it.
+
+Docs: `frontend-registration.md`.
+
+**Audit before stabilizing.** Stabilize together with `experimental_snooze` and the `threads.snoozed_until` column if upstream takes them.
+
 ## `experimental_ProjectPicker` (`@get-bb/plugin-sdk/app`)
 
 bb's `ProjectSelector` with the New thread composer's project list, No project, search and Add project, taking `{ value, onChange, disabled }`. The host fills the list from the sidebar navigation query, shows loading until it arrives, and wires Add project to the quick create dialog.
@@ -279,6 +289,8 @@ Docs: `frontend-core-slots.md`.
 
 `experimental_ownTab: true` opens a nav panel in a pane tab of its own, at most one per panel. Opening the panel route from anywhere (sidebar, palette, `toPluginPanel`) focuses that tab and navigates to its focused pane, so a tab the panel already redirected to a thread shows that thread. The first open reuses a blank, unnamed compose tab or inserts a new one. The tab stores `panel: { pluginId, panelPath }` in `bb.splitTabs`, has no project binding, draws the panel's title and icon, and opens any other thread in a new tab, like the Inbox tab. When the panel replaces itself with a thread, the thread stays in the tab and other tabs that showed only that thread close. Duplicate tabs for one panel, or duplicate Inbox tabs, collapse to the first on load.
 
+An owned panel tab marks its panel's sidebar navigation row active while it is the active tab, draws the panel badge's `count` from `experimental_useBadge` on the tab, takes no splits from the split shortcuts, and stays open when its threads close. `SidebarNavigationModel` reads the owner through `useActiveTabOwner`; `SplitTabBar` mounts the badge through `usePanelBadge`; `SplitPaneCommandHandlers` and `removeThreadsFromInactiveTabs` / `closeThreadsInAllTabsAtom` check `isOwnedTab`.
+
 **Core callers.** The Inbox tab goes through the same `openOwnedTabAtom`, `openOutsideOwnedTabAtom` and load dedupe in `apps/app/src/lib/split-layout/tabs.ts`; `SplitThreadArea` and `SplitTabBar` read the flag. The assistant plugin sets it on its panel.
 
 Docs: `frontend-core-slots.md`.
@@ -287,6 +299,19 @@ Docs: `frontend-core-slots.md`.
 
 1. **Redirect rule.** The thread stays in the tab only when the focused pane is still the panel. Decide whether a panel should declare which threads belong to its tab.
 2. **Compact viewports.** Tabs do not render on compact viewports, so the flag has no effect there.
+
+## `experimental_useOwnTab` (`@get-bb/plugin-sdk/app`)
+
+`experimental_useOwnTab(panelPath)` reads and drives the calling plugin's nav panel own tab: `isActive` while it is the active pane tab, `focused` with the focused pane (`thread` with ids, `compose` with `hasDraft()` reading that pane composer's draft scope at call time, or `other`), and `show(target)` which opens or focuses the tab through `openOwnedTabAtom` and replaces its focused pane with a thread or the new thread composer, then routes there.
+
+**Core callers.** `showInOwnedTab` (`apps/app/src/views/thread-detail/splitThreadNavigation.ts`) is the only path that puts content in an owned tab's focused pane; the hook is its plugin entry point. First plugin: `plugins/inbox` (fork), which advances its tab through the queue and opens it on its command.
+
+Docs: `frontend-hooks-and-ui.md`.
+
+**Audit before stabilizing.**
+
+1. **Panel scope.** The hook takes a path and only reaches the calling plugin's own panels. Decide whether `show` should also accept split targets.
+2. **Draft read.** `hasDraft()` is a read at call time with no subscription; decide whether plugins need a reactive draft state.
 
 ## `PluginNavPanelRegistration.experimental_pinnedTab`
 
@@ -2582,6 +2607,32 @@ Core caller: `ThreadDetailHeader` through `PluginThreadHeaderLeading`. First plu
 2. **Narrow state.** `isNarrow` mirrors one header rule. Decide whether the thread action item input should get the same flag, which would let a plugin pair a header link with a narrow menu row without its own shared state.
 3. **Width budget.** Several plugins can register; nothing caps their total width against the title.
 4. **Other headers.** Side chats and thread panel tab panes have no `ThreadDetailHeader`; decide whether they should render the slot.
+
+## `app.slots.experimental_threadHeaderTrailing` (`@get-bb/plugin-sdk/app`)
+
+Renders a plugin component after the thread title in every open thread's header, with `threadId` and `placement`. `ThreadDetailHeader` measures the header with `useElementWidth`: at 768px or wider it renders the components inline with `placement: "inline"`, and narrower it renders them once in a centered band under the header with `placement: "below"`. The band hides when every component renders nothing. Phones (`useUsesSwipeChrome`) render neither. A crash hides only that component.
+
+**Core callers.** `ThreadDetailHeader` through `PluginThreadHeaderTrailing`. First plugin: `plugins/inbox` (fork), which draws the Inbox pager, Snooze and Archive while its tab is active.
+
+Docs: `frontend-core-slots.md`.
+
+**Audit before stabilizing.**
+
+1. **Breakpoint.** 768px is one fixed rule; decide whether components should report their width so the header decides placement from content.
+2. **Width budget.** Several plugins can register; nothing caps their total width against the title.
+
+## `app.slots.experimental_threadComposerOverlay` (`@get-bb/plugin-sdk/app`)
+
+Renders a plugin component in a full width, pointer-transparent box at the top edge of an open thread's composer, over the transcript, with `threadId` and `isPhone` (`useUsesSwipeChrome`). Components set `pointer-events: auto` on what takes input. A crash hides only that component.
+
+**Core callers.** `ThreadDetailView` passes `PluginThreadComposerOverlay` as the composer's `footerOverlay`. First plugin: `plugins/inbox` (fork), which floats the Inbox controls as bubbles on phones.
+
+Docs: `frontend-core-slots.md`.
+
+**Audit before stabilizing.**
+
+1. **Stacking.** Several plugins stack in a column with no order control.
+2. **Other composers.** Side chats and the new thread composer do not render the slot.
 
 ## `app.slots.experimental_newThreadPanelAction` (`@get-bb/plugin-sdk/app`)
 

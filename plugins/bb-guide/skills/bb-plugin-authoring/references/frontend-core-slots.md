@@ -108,7 +108,13 @@ Slot props contracts (versioned, additive-only):
   `experimental_ownTab: true` opens the panel in a pane tab of its own, at most
   one per panel; opening it again focuses that tab. The tab takes the panel's
   title and icon, and a thread the panel opens with `experimental_replace`
-  stays in it.
+  stays in it. The tab shows the badge's `count` from
+  `experimental_useBadge`, takes no splits, and stays open when its threads
+  close. `experimental_useOwnTab(path)` returns `{ isActive, focused, show }`:
+  `focused` is the tab's focused pane (`thread`, `compose` with `hasDraft()`,
+  or `other`) and `show({ kind: "thread", projectId, threadId })` or
+  `show({ kind: "compose" })` opens or focuses the tab and replaces its
+  focused pane.
   `experimental_pinnedTab: true` makes the panel the first pane tab at `/home`:
   bb draws the tab with its icon and title before every other tab, binds the
   first tab shortcut to it, renders it under the tab bar outside every split
@@ -266,6 +272,15 @@ experimental_Original }` — draws the sidebar navigation. Registration:
   where header actions fold into the thread menu. Open a thread in the same
   pane with `useBbNavigate().toThread(id, { experimental_inPane: true })`.
   Experimental: see `docs/api_to_audit.md`.
+- `experimental_threadHeaderTrailing` → `{ threadId, placement }`. Register
+  `{ id, component }` to render after the thread title. `placement` is
+  `"inline"` in headers 768px or wider and `"below"` in a centered band under
+  narrower ones; bb renders it in one place at a time and not on phones.
+  Experimental: see `docs/api_to_audit.md`.
+- `experimental_threadComposerOverlay` → `{ threadId, isPhone }`. Register
+  `{ id, component }` to render just above an open thread's composer, over
+  the transcript. bb's box is pointer-transparent; set `pointer-events: auto`
+  on controls. Experimental: see `docs/api_to_audit.md`.
 - `fileOpener` → `{ path: string, source, experimental_lineRange?, Original }` — register as a viewer/editor
   for file extensions: `{ id, title, extensions: ["md"], component }`.
   Matching files use the first applicable opener in deterministic slot order

@@ -1,6 +1,8 @@
 import {
   useEffect,
+  useState,
   type ComponentType,
+  type ReactNode,
   type Dispatch,
   type SetStateAction,
 } from "react";
@@ -151,4 +153,23 @@ export function NavigationBadgeSources({
       </PluginSlotMount>
     );
   });
+}
+
+const PANEL_BADGE_ITEM_ID = "panel";
+
+export function usePanelBadge(panel: PluginNavPanelSlot | undefined): {
+  badge: ExperimentalBadge | null;
+  source: ReactNode;
+} {
+  const [badges, setBadges] = useState<NavigationBadges>(() => new Map());
+  return {
+    badge: badges.get(PANEL_BADGE_ITEM_ID) ?? null,
+    source:
+      panel === undefined ? null : (
+        <NavigationBadgeSources
+          panels={[{ itemId: PANEL_BADGE_ITEM_ID, panel }]}
+          setBadges={setBadges}
+        />
+      ),
+  };
 }

@@ -21,8 +21,10 @@ import {
   tabAcceptsContent,
   tabProjectId,
   type SplitTab,
+  type SplitTabOwner,
   type SplitTabsState,
 } from "@/lib/split-layout/tabs";
+import { splitLayoutAtom } from "@/lib/split-layout/atoms";
 import { decideThreadDrop, type SplitZone } from "@/lib/split-drag";
 import type { PaneContent, SplitLayout } from "@/lib/split-layout";
 import { matchPath } from "react-router-dom";
@@ -295,6 +297,19 @@ export function openInboxTab(
   });
   const route = layout === null ? null : focusedPaneRoute(layout);
   if (route !== null) navigate(route, { replace: true });
+}
+
+export function showInOwnedTab(
+  store: ReturnType<typeof useStore>,
+  navigate: (route: string, options: { replace: true }) => void,
+  owner: SplitTabOwner,
+  content: PaneContent,
+): void {
+  const layout = store.set(openOwnedTabAtom, { owner, content });
+  if (layout === null) return;
+  const shown = replacePaneContent(layout, layout.focusedPaneId, content);
+  store.set(splitLayoutAtom, shown);
+  navigate(paneContentRoute(content), { replace: true });
 }
 
 export function focusedPaneRoute(layout: SplitLayout): string | null {

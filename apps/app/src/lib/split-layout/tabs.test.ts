@@ -106,6 +106,22 @@ describe("owned tabs", () => {
     expect(tabProjectId(assistantTab!)).toBeNull();
   });
 
+  it("keeps an inactive panel tab open when its only thread closes", () => {
+    const store = createStore();
+    store.set(openOwnedTabAtom, ASSISTANT);
+    store.set(splitLayoutAtom, threadLayout("assistant"));
+    const assistantTabId = store.get(splitTabsAtom).activeTabId;
+    store.set(openSplitTabAtom);
+    store.set(splitLayoutAtom, threadLayout("other"));
+
+    store.set(closeThreadsInAllTabsAtom, ["assistant"]);
+
+    const assistantTab = store
+      .get(splitTabsAtom)
+      .tabs.find((tab) => tab.id === assistantTabId);
+    expect(assistantTab?.layout).toBeNull();
+  });
+
   it("focuses the existing owned tab when a closed one is reopened", () => {
     const store = createStore();
     store.set(openOwnedTabAtom, INBOX);

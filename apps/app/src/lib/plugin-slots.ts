@@ -7,6 +7,8 @@ import type {
   ComposerCustomization,
   ExperimentalAppOverlayRegistration,
   ExperimentalThreadHeaderLeadingRegistration,
+  ExperimentalThreadHeaderTrailingRegistration,
+  ExperimentalThreadComposerOverlayRegistration,
   ExperimentalCodeFenceRendererRegistration,
   PluginDiffRendererRegistration,
   ExperimentalComposerRegistration,
@@ -54,6 +56,8 @@ export interface PluginRegistrationSet {
   settingsSections: readonly PluginSettingsSectionRegistration[];
   appOverlays?: readonly ExperimentalAppOverlayRegistration[];
   threadHeaderLeadings?: readonly ExperimentalThreadHeaderLeadingRegistration[];
+  threadHeaderTrailings?: readonly ExperimentalThreadHeaderTrailingRegistration[];
+  threadComposerOverlays?: readonly ExperimentalThreadComposerOverlayRegistration[];
   navPanels: readonly LegacyNavPanelRegistration[];
   tabs?: readonly ExperimentalTabRegistration[];
   threadPanelActions: readonly LegacyThreadPanelActionRegistration[];
@@ -102,6 +106,10 @@ export interface ExperimentalAppOverlaySlot
   extends ExperimentalAppOverlayRegistration, PluginSlotBase {}
 export interface ExperimentalThreadHeaderLeadingSlot
   extends ExperimentalThreadHeaderLeadingRegistration, PluginSlotBase {}
+export interface ExperimentalThreadHeaderTrailingSlot
+  extends ExperimentalThreadHeaderTrailingRegistration, PluginSlotBase {}
+export interface ExperimentalThreadComposerOverlaySlot
+  extends ExperimentalThreadComposerOverlayRegistration, PluginSlotBase {}
 export interface PluginNavPanelSlot
   extends PluginNavPanelRegistration, PluginSlotBase {}
 export type PluginTabSlot = ExperimentalTabRegistration & PluginSlotBase;
@@ -189,6 +197,8 @@ export interface PluginSlotSnapshot {
   settingsSections: readonly PluginSettingsSectionSlot[];
   appOverlays: readonly ExperimentalAppOverlaySlot[];
   threadHeaderLeadings: readonly ExperimentalThreadHeaderLeadingSlot[];
+  threadHeaderTrailings: readonly ExperimentalThreadHeaderTrailingSlot[];
+  threadComposerOverlays: readonly ExperimentalThreadComposerOverlaySlot[];
   navPanels: readonly PluginNavPanelSlot[];
   tabs: readonly PluginTabSlot[];
   threadPanelActions: readonly PluginThreadPanelActionSlot[];
@@ -228,6 +238,8 @@ export const EMPTY_PLUGIN_SLOT_SNAPSHOT: PluginSlotSnapshot = {
   settingsSections: [],
   appOverlays: [],
   threadHeaderLeadings: [],
+  threadHeaderTrailings: [],
+  threadComposerOverlays: [],
   navPanels: [],
   tabs: coreTabs,
   threadPanelActions: [],
@@ -274,6 +286,8 @@ const SLOT_KINDS: readonly SlotKind[] = [
   "settingsSections",
   "appOverlays",
   "threadHeaderLeadings",
+  "threadHeaderTrailings",
+  "threadComposerOverlays",
   "navPanels",
   "tabs",
   "threadPanelActions",
@@ -359,6 +373,8 @@ function flattenRegistrations(
     settingsSections: stamp(set.settingsSections),
     appOverlays: stamp(set.appOverlays),
     threadHeaderLeadings: stamp(set.threadHeaderLeadings),
+    threadHeaderTrailings: stamp(set.threadHeaderTrailings),
+    threadComposerOverlays: stamp(set.threadComposerOverlays),
     navPanels: stamp(set.navPanels),
     tabs: stamp(tabs),
     threadPanelActions: stamp(

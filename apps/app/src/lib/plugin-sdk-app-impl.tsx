@@ -136,6 +136,7 @@ import { DetailRow } from "@/components/ui/detail-card";
 import { ThreadContextCardRow } from "@/components/plugin/ThreadContextCardRow";
 import { useThreadContextKind } from "@/components/plugin/PluginThreadContextCard";
 import { useTabVisible } from "@/components/secondary-panel/tab-visibility";
+import { useOwnTab } from "./plugin-own-tab";
 import { useServerChoices } from "@/hooks/useServerChoices";
 import { ThreadRowMetadata } from "@/components/plugin/ThreadRowMetadata";
 
@@ -175,6 +176,7 @@ export const pluginSdkAppImplementation = {
   useBbNavigate,
   experimental_useCanOpenFileExternally: usePluginCanOpenFileExternally,
   experimental_useTabVisible: useTabVisible,
+  experimental_useOwnTab: useOwnTab,
   experimental_useServers: useServerChoices,
   experimental_useAppPanel,
   experimental_useFixedTabTarget,

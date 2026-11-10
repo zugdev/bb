@@ -199,6 +199,7 @@ export const experimental_useCanOpenFileExternally = runtimeFunction(
 export const experimental_useTabVisible = runtimeFunction(
   "experimental_useTabVisible",
 );
+export const experimental_useOwnTab = runtimeFunction("experimental_useOwnTab");
 // The viewing client's servers (experimental — see docs/api_to_audit.md).
 export const experimental_useServers = runtimeFunction(
   "experimental_useServers",

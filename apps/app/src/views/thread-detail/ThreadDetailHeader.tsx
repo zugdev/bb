@@ -51,6 +51,10 @@ import { AppCommandShortcutHint } from "@/components/commands/AppCommandShortcut
 import { CHROME_SUBTLE_ICON_BUTTON_FOREGROUND_CLASS } from "@bb/shared-ui/chrome-style-tokens";
 import { useIsCompactViewport } from "@bb/shared-ui/hooks/use-compact-viewport";
 import { useElementWidth } from "@/hooks/useElementWidth";
+import {
+  PluginThreadHeaderTrailing,
+  useHasPluginThreadHeaderTrailing,
+} from "@/components/plugin/PluginThreadHeaderTrailing";
 import { dimInactiveSplitsAtom } from "@/lib/split-layout/atoms";
 import {
   CONTEXT_INACTIVE_TEXT_CLASS,
@@ -71,7 +75,7 @@ const THREAD_HEADER_ACTION_BUTTON_CLASS = cn(
   "border-border/70 bg-transparent font-normal hover:bg-state-hover",
 );
 const NARROW_SPLIT_HEADER_MAX_WIDTH = 560;
-const INBOX_CONTROLS_IN_HEADER_MIN_WIDTH = 768;
+const TRAILING_CONTROLS_IN_HEADER_MIN_WIDTH = 768;
 
 export interface ThreadDetailHeaderActionsMenuArgs {
   includeResponsiveActions: boolean;
@@ -106,9 +110,11 @@ export function ThreadDetailHeader({
   const threadId = thread.id;
   const threadDot = useThreadDot(threadId);
   const isInboxTab = useIsInboxTabActive();
-  const inboxHeader = useElementWidth();
-  const inboxControlsFitHeader =
-    inboxHeader.width >= INBOX_CONTROLS_IN_HEADER_MIN_WIDTH;
+  const hasPluginTrailing = useHasPluginThreadHeaderTrailing();
+  const measuredHeader = useElementWidth();
+  const trailingFitsHeader =
+    measuredHeader.width >= TRAILING_CONTROLS_IN_HEADER_MIN_WIDTH;
+  const trailingPlacement = trailingFitsHeader ? "inline" : "below";
   const headerActions = useThreadHeaderActionEntries(thread);
   const [primaryAction, ...secondaryActions] = headerActions;
   const { renameThreadAsync } = useThreadActions();
@@ -301,8 +307,15 @@ export function ThreadDetailHeader({
           )}
         </p>
       </div>
-      {isInboxTab && inboxControlsFitHeader ? (
+      {isInboxTab && trailingFitsHeader ? (
         <InboxNavigator thread={thread} className="flex" />
+      ) : null}
+      {hasPluginTrailing && !hidesChromeToggles && trailingFitsHeader ? (
+        <PluginThreadHeaderTrailing
+          threadId={threadId}
+          placement={trailingPlacement}
+          className={cn(usesDesktopChrome && MACOS_WINDOW_NO_DRAG_CLASS)}
+        />
       ) : null}
       {actionsMenu == null ? null : (
         <span
@@ -402,11 +415,18 @@ export function ThreadDetailHeader({
       className={cn(isSplitPaneHeader && "z-[21]")}
     />
   );
-  if (!isInboxTab || hidesChromeToggles) return header;
+  if ((!isInboxTab && !hasPluginTrailing) || hidesChromeToggles) return header;
   return (
-    <div ref={inboxHeader.ref} className="shrink-0">
+    <div ref={measuredHeader.ref} className="shrink-0">
       {header}
-      {inboxControlsFitHeader ? null : (
+      {trailingFitsHeader || !hasPluginTrailing ? null : (
+        <PluginThreadHeaderTrailing
+          threadId={threadId}
+          placement={trailingPlacement}
+          className="justify-center border-b border-border/60 px-4 py-1"
+        />
+      )}
+      {trailingFitsHeader || !isInboxTab ? null : (
         <InboxNavigator
           thread={thread}
           className="flex justify-center border-b border-border/60 px-4 py-1"

@@ -1,3 +1,4 @@
+import type { SplitTabOwner } from "@/lib/split-layout/tabs";
 import type {
   ExperimentalBadge,
   ExperimentalSidebarNavigationAction,
@@ -196,13 +197,22 @@ export function isSameSidebarNavigationItem(
 export function resolveActiveSidebarNavigationItemId({
   rows,
   pathname,
-  isInboxTabActive,
+  activeTabOwner,
 }: {
   rows: readonly SidebarNavigationRow[];
   pathname: string;
-  isInboxTabActive: boolean;
+  activeTabOwner: SplitTabOwner | null;
 }): string | null {
-  if (isInboxTabActive) return INBOX_NAVIGATION_ITEM_ID;
+  if (activeTabOwner?.kind === "inbox") return INBOX_NAVIGATION_ITEM_ID;
+  if (activeTabOwner?.kind === "panel") {
+    const { pluginId, panelPath } = activeTabOwner.panel;
+    const row = rows.find(
+      (candidate) =>
+        candidate.panelEntry?.chrome.pluginId === pluginId &&
+        candidate.panelEntry.chrome.path === panelPath,
+    );
+    if (row !== undefined) return getPluginNavPanelKey(row);
+  }
   if (pathname === "/") return NEW_THREAD_NAVIGATION_ITEM_ID;
   if (isToolsRoutePath(pathname)) {
     return pathname === getSkillsRoutePath() ||

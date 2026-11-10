@@ -871,7 +871,7 @@ export function removeThreadsFromInactiveTabs(
     const layout = withoutThreadPanes(tab.layout, targets);
     if (layout === tab.layout) return [tab];
     changed = true;
-    if (layout === null && tab.kind !== "inbox") return [];
+    if (layout === null && !isOwnedTab(tab)) return [];
     return [{ ...tab, layout }];
   });
   return changed ? { ...state, tabs } : null;
@@ -908,7 +908,7 @@ export const closeThreadsInAllTabsAtom = atom(
     if (
       !activeTabOnlyShowsThreads ||
       state.tabs.length < 2 ||
-      active?.kind === "inbox"
+      (active !== undefined && isOwnedTab(active))
     ) {
       return set(closePanesForThreadsAtom, threadIds);
     }

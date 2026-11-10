@@ -39,6 +39,9 @@ import {
   type ExperimentalTabRegistration,
   type ExperimentalAppOverlayRegistration,
   type ExperimentalThreadHeaderLeadingRegistration,
+  type ExperimentalOwnTab,
+  type ExperimentalThreadHeaderTrailingRegistration,
+  type ExperimentalThreadComposerOverlayRegistration,
   type ExperimentalSidebarNavigationActions,
   type ExperimentalSidebarNavigationTarget,
   type ExperimentalSidebarNavigationIconProps,
@@ -395,10 +398,17 @@ interface SlotEnv {
   codeTheme: PluginCodeThemeState;
   canOpenFileExternally: (target: ExperimentalLiveFileTarget) => boolean;
   tabVisible: boolean;
+  ownTab: (panelPath: string) => ExperimentalOwnTab;
   servers: ExperimentalServers | null;
   branchesState: BranchesState;
   checkoutState: CheckoutState;
 }
+
+const INACTIVE_OWN_TAB: ExperimentalOwnTab = {
+  isActive: false,
+  focused: null,
+  show: () => undefined,
+};
 
 interface TestFixedTabTargetStore {
   clear(sequence: number): void;
@@ -1928,6 +1938,9 @@ const testPluginSdkApp = {
   experimental_useServers(): ExperimentalServers | null {
     return useSlotEnv("experimental_useServers").servers;
   },
+  experimental_useOwnTab(panelPath: string): ExperimentalOwnTab {
+    return useSlotEnv("experimental_useOwnTab").ownTab(panelPath);
+  },
   experimental_copyToClipboard(
     content: ExperimentalClipboardContent,
   ): Promise<boolean> {
@@ -2136,6 +2149,8 @@ export interface CapturedPluginApp {
   settingsSections: PluginSettingsSectionRegistration[];
   appOverlays: ExperimentalAppOverlayRegistration[];
   threadHeaderLeadings: ExperimentalThreadHeaderLeadingRegistration[];
+  threadHeaderTrailings: ExperimentalThreadHeaderTrailingRegistration[];
+  threadComposerOverlays: ExperimentalThreadComposerOverlayRegistration[];
   navPanels: import("../internal/plugin-app-registration-collector.js").LegacyNavPanelRegistration[];
   tabs: ExperimentalTabRegistration[];
   threadPanelActions: import("../internal/plugin-app-registration-collector.js").LegacyThreadPanelActionRegistration[];
@@ -2526,6 +2541,11 @@ export interface RenderSlotOptions<
    * that is selected in an open panel.
    */
   tabVisible?: boolean;
+  /**
+   * Answer for `experimental_useOwnTab(panelPath)`. Omitted → an inactive
+   * tab whose `show` does nothing.
+   */
+  ownTab?: (panelPath: string) => ExperimentalOwnTab;
   /**
    * Answer for `experimental_useServers()`. Omitted → null, as in a web
    * browser. Pass `{ status, servers, switchTo }` to act as bb Desktop or the
@@ -3476,6 +3496,7 @@ export function renderSlot<
     codeTheme,
     canOpenFileExternally: options.canOpenFileExternally ?? (() => false),
     tabVisible: options.tabVisible ?? true,
+    ownTab: options.ownTab ?? (() => INACTIVE_OWN_TAB),
     servers: options.servers ?? null,
     branchesState: {
       branches: options.branchesState?.branches ?? [],
