@@ -155,7 +155,7 @@ function InboxNavigatorBar({ thread }: { thread: PluginThreadActionTarget }) {
   return (
     <div
       data-inbox-navigator=""
-      className="absolute left-1/2 flex -translate-x-1/2 items-center gap-1 text-xs"
+      className="ml-auto flex shrink-0 items-center gap-1 whitespace-nowrap text-xs md:absolute md:left-1/2 md:ml-0 md:-translate-x-1/2"
     >
       <Button
         type="button"
@@ -170,7 +170,8 @@ function InboxNavigatorBar({ thread }: { thread: PluginThreadActionTarget }) {
       </Button>
       <span className="flex items-center gap-1.5 tabular-nums text-muted-foreground">
         <Icon name="Inbox" className="size-3.5 text-primary" />
-        Inbox {index === -1 ? "–" : index + 1}/{queue.length}
+        <span className="max-md:sr-only">Inbox</span>
+        {index === -1 ? "–" : index + 1}/{queue.length}
       </span>
       <Button
         type="button"
@@ -192,7 +193,7 @@ function InboxNavigatorBar({ thread }: { thread: PluginThreadActionTarget }) {
             className="h-7 gap-1.5 px-2 text-xs"
           >
             <Icon name="AlarmClock" className="size-3.5" />
-            Snooze
+            <span className="max-md:sr-only">Snooze</span>
           </Button>
         </SnoozeMenu>
       ) : null}
@@ -206,7 +207,7 @@ function InboxNavigatorBar({ thread }: { thread: PluginThreadActionTarget }) {
           onClick={() => void archive.action.run()}
         >
           <Icon name="Archive" className="size-3.5" />
-          Archive
+          <span className="max-md:sr-only">Archive</span>
         </Button>
       )}
     </div>

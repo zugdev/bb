@@ -171,7 +171,7 @@ export function NewThreadOverview({
           })}
           {recent.length === 0 || cycleShortcutLabel === null ? null : (
             <span
-              className="text-xs text-muted-foreground/70"
+              className="text-xs text-muted-foreground/70 pointer-coarse:hidden"
               aria-hidden="true"
             >
               {cycleShortcutLabel}
