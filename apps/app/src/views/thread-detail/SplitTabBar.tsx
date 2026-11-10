@@ -264,6 +264,7 @@ function SplitTabRenameInput({
 function NewProjectTabPicker({ onDone }: { onDone: () => void }) {
   const store = useStore();
   const navigate = useNavigate();
+  const show = useShowSplitTabLayout();
   const navigation = useSidebarNavigation();
   const projects = useMemo(
     () =>
@@ -282,7 +283,21 @@ function NewProjectTabPicker({ onDone }: { onDone: () => void }) {
         if (!open) onDone();
       }}
       onChange={(projectId) => {
-        if (projectId !== null) openComposeTab(store, navigate, projectId);
+        if (projectId === null) return;
+        const { tabs, activeTabId } = store.get(splitTabsAtom);
+        const activeLayout = store.get(splitLayoutAtom);
+        const existing = tabs.find(
+          (tab) =>
+            tabProjectId(
+              tab,
+              tab.id === activeTabId ? activeLayout : tab.layout,
+            ) === projectId,
+        );
+        if (existing === undefined) {
+          openComposeTab(store, navigate, projectId);
+        } else {
+          show(store.set(selectSplitTabAtom, existing.id));
+        }
       }}
     />
   );

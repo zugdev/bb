@@ -10,7 +10,12 @@ import { createTabScopedStorage } from "@/lib/browser-storage";
 import { PERSONAL_PROJECT_ID } from "@bb/domain";
 import { rootComposeProjectIdAtom } from "@/lib/root-compose-selection";
 import { getThreadRoutePath } from "@/lib/route-paths";
-import { maximizedPaneIdAtom, splitLayoutAtom } from "./atoms";
+import {
+  closePanesForThreadsAtom,
+  type ClosePanesForThreadsResult,
+  maximizedPaneIdAtom,
+  splitLayoutAtom,
+} from "./atoms";
 import {
   MAX_PANES,
   countPanes,
@@ -833,6 +838,89 @@ export function composerDraftScope(
     ? { kind: "new-thread" }
     : { kind: "split-new-thread", paneId: `${activeTabId}-${paneId}` };
 }
+
+function showsThread(content: PaneContent, threadIds: ReadonlySet<string>) {
+  return (
+    (content.kind === "thread" || content.kind === "thread-panel-tab") &&
+    threadIds.has(content.threadId)
+  );
+}
+
+function withoutThreadPanes(
+  layout: SplitLayout | null,
+  threadIds: ReadonlySet<string>,
+): SplitLayout | null {
+  if (layout === null) return null;
+  let next = layout;
+  for (const pane of listPanes(layout.root)) {
+    if (!showsThread(pane.content, threadIds)) continue;
+    if (countPanes(next.root) === 1) return null;
+    next = removePane(next, pane.paneId);
+  }
+  return next;
+}
+
+export function removeThreadsFromInactiveTabs(
+  state: SplitTabsState,
+  threadIds: readonly string[],
+): SplitTabsState | null {
+  const targets = new Set(threadIds);
+  let changed = false;
+  const tabs = state.tabs.flatMap((tab) => {
+    if (tab.id === state.activeTabId) return [tab];
+    const layout = withoutThreadPanes(tab.layout, targets);
+    if (layout === tab.layout) return [tab];
+    changed = true;
+    if (layout === null && tab.kind !== "inbox") return [];
+    return [{ ...tab, layout }];
+  });
+  return changed ? { ...state, tabs } : null;
+}
+
+export const closeThreadsInInactiveTabsAtom = atom(
+  null,
+  (get, set, threadIds: readonly string[]) => {
+    const next = removeThreadsFromInactiveTabs(get(splitTabsAtom), threadIds);
+    if (next !== null) set(splitTabsAtom, next);
+  },
+);
+
+function focusedThreadRoute(layout: SplitLayout): ThreadRef | null {
+  const focused = findPane(layout.root, layout.focusedPaneId);
+  return focused?.content.kind === "thread"
+    ? {
+        projectId: focused.content.projectId,
+        threadId: focused.content.threadId,
+      }
+    : null;
+}
+
+export const closeThreadsInAllTabsAtom = atom(
+  null,
+  (get, set, threadIds: readonly string[]): ClosePanesForThreadsResult => {
+    set(closeThreadsInInactiveTabsAtom, threadIds);
+    const state = get(splitTabsAtom);
+    const active = state.tabs.find((tab) => tab.id === state.activeTabId);
+    const activeLayout = get(splitLayoutAtom);
+    const activeTabOnlyShowsThreads =
+      activeLayout !== null &&
+      withoutThreadPanes(activeLayout, new Set(threadIds)) === null;
+    if (
+      !activeTabOnlyShowsThreads ||
+      state.tabs.length < 2 ||
+      active?.kind === "inbox"
+    ) {
+      return set(closePanesForThreadsAtom, threadIds);
+    }
+    const removed = removeSplitTab(state, null, state.activeTabId);
+    if (removed === null) return set(closePanesForThreadsAtom, threadIds);
+    const layout = routeLayoutFor(
+      layoutOfTab(removed.state, removed.state.activeTabId),
+    );
+    activateTabLayout(set, removed.state, layout);
+    return { removedAny: true, focusedRoute: focusedThreadRoute(layout) };
+  },
+);
 
 export const reopenClosedSplitItemAtom = atom(
   null,
