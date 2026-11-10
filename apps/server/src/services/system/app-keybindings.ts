@@ -306,7 +306,6 @@ export const DEFAULT_APP_KEYBINDINGS: AppDefaultKeybindings = [
     mainWithoutModalOrBrowser,
   ),
   binding("splitTab.newForProject", "o", { mod: true }, mainWithoutModal),
-  binding("splitTab.openInbox", "i", { mod: true }, mainWithoutModalOrBrowser),
   ...SPLIT_TAB_SELECT_APP_COMMAND_IDS.flatMap((command, index) =>
     webAndDesktopBindings(
       command,

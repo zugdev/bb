@@ -80,7 +80,6 @@ import {
   focusedPaneRoute,
   openComposeTab,
 } from "./splitThreadNavigation";
-import { InboxTabController, useInboxQueueLength } from "./InboxTabController";
 
 function usePaneTitle(content: PaneContent | null): string {
   const threadId =
@@ -409,7 +408,6 @@ function SplitTabItem({
   onCloseOthers: () => void;
   onCloseRight: () => void;
 }) {
-  const isInbox = tab.kind === "inbox";
   const tabPanel = tab.panel;
   const panel = usePluginSlots().navPanels.find(
     (candidate) =>
@@ -420,20 +418,16 @@ function SplitTabItem({
   const projectId = tabProjectId(tab, layout);
   const { title, isProjectName } = useSplitTabTitle(
     layout,
-    tab.name ?? (isInbox ? "Inbox" : (panel?.title ?? null)),
+    tab.name ?? panel?.title ?? null,
     projectId,
   );
   const canRename = projectId === null && tabPanel === undefined;
   const dot = useSplitTabDot(layout);
-  const inboxQueueLength = useInboxQueueLength();
   const panelBadge = usePanelBadge(panel);
   const panelBadgeCount = panelBadge.badge?.count ?? null;
   const extraPanes = layout === null ? 0 : countPanes(layout.root) - 1;
-  const secondaryLabel = isInbox
-    ? inboxQueueLength > 0
-      ? String(inboxQueueLength)
-      : null
-    : panel !== undefined
+  const secondaryLabel =
+    panel !== undefined
       ? panelBadgeCount === null
         ? null
         : String(panelBadgeCount)
@@ -473,9 +467,7 @@ function SplitTabItem({
                   label={title}
                   title={title}
                   leadingVisual={
-                    isInbox ? (
-                      <Icon name="Inbox" className="text-primary" />
-                    ) : panel !== undefined ? (
+                    panel !== undefined ? (
                       <Icon name={panel.icon} />
                     ) : dot === null ? (
                       <Icon name="MessageSquare" />
@@ -636,7 +628,6 @@ export function SplitTabBar() {
       <SplitTabCommandHandlers
         onPickProject={() => setIsPickingProject(true)}
       />
-      <InboxTabController />
       {pinnedTab === null ? null : (
         <TabShell
           isActive={isPinnedTab}

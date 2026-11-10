@@ -287,11 +287,11 @@ Docs: `frontend-core-slots.md`.
 
 ## `PluginNavPanelRegistration.experimental_ownTab`
 
-`experimental_ownTab: true` opens a nav panel in a pane tab of its own, at most one per panel. Opening the panel route from anywhere (sidebar, palette, `toPluginPanel`) focuses that tab and navigates to its focused pane, so a tab the panel already redirected to a thread shows that thread. The first open reuses a blank, unnamed compose tab or inserts a new one. The tab stores `panel: { pluginId, panelPath }` in `bb.splitTabs`, has no project binding, draws the panel's title and icon, and opens any other thread in a new tab, like the Inbox tab. When the panel replaces itself with a thread, the thread stays in the tab and other tabs that showed only that thread close. Duplicate tabs for one panel, or duplicate Inbox tabs, collapse to the first on load.
+`experimental_ownTab: true` opens a nav panel in a pane tab of its own, at most one per panel. Opening the panel route from anywhere (sidebar, palette, `toPluginPanel`) focuses that tab and navigates to its focused pane, so a tab the panel already redirected to a thread shows that thread. The first open reuses a blank, unnamed compose tab or inserts a new one. The tab stores `panel: { pluginId, panelPath }` in `bb.splitTabs`, has no project binding, draws the panel's title and icon, and opens any other thread in a new tab. When the panel replaces itself with a thread, the thread stays in the tab and other tabs that showed only that thread close. Duplicate tabs for one panel collapse to the first on load, and a stored core Inbox tab (`kind: "inbox"` or `"focus"`) loads as the inbox plugin's panel tab (`{ pluginId: "inbox", panelPath: "inbox" }`).
 
 An owned panel tab marks its panel's sidebar navigation row active while it is the active tab, draws the panel badge's `count` from `experimental_useBadge` on the tab, takes no splits from the split shortcuts, and stays open when its threads close. `SidebarNavigationModel` reads the owner through `useActiveTabOwner`; `SplitTabBar` mounts the badge through `usePanelBadge`; `SplitPaneCommandHandlers` and `removeThreadsFromInactiveTabs` / `closeThreadsInAllTabsAtom` check `isOwnedTab`.
 
-**Core callers.** The Inbox tab goes through the same `openOwnedTabAtom`, `openOutsideOwnedTabAtom` and load dedupe in `apps/app/src/lib/split-layout/tabs.ts`; `SplitThreadArea` and `SplitTabBar` read the flag. The assistant plugin sets it on its panel.
+**Core callers.** `openOwnedTabAtom`, `openOutsideOwnedTabAtom` and the load dedupe in `apps/app/src/lib/split-layout/tabs.ts`; `SplitThreadArea` and `SplitTabBar` read the flag. The assistant plugin and the inbox plugin (`plugins/inbox`, fork) set it on their panels.
 
 Docs: `frontend-core-slots.md`.
 
@@ -1338,7 +1338,7 @@ Docs: `backend-sdk.md`, `bb guide thread-messaging`.
 
 ## `bb.sdk.threads.experimental_snooze`
 
-`POST /threads/:id/snooze` with `{ until }` sets `threads.snoozed_until` to a millisecond timestamp, or clears it with `null`. The Inbox hides a snoozed thread until that time and lists it again as a new arrival. The server clears the snooze when a status change gives the thread new attention, and a pending question or approval always shows in the Inbox even while snoozed. Core callers: the Snooze thread action (thread menu, row actions, the Inbox header bar) and `bb thread snooze` / `bb thread unsnooze`.
+`POST /threads/:id/snooze` with `{ until }` sets `threads.snoozed_until` to a millisecond timestamp, or clears it with `null`. The Inbox hides a snoozed thread until that time and lists it again as a new arrival. The server clears the snooze when a status change gives the thread new attention, and a pending question or approval always shows in the Inbox even while snoozed. Core callers: the Snooze thread action (thread menu and row actions) and `bb thread snooze` / `bb thread unsnooze`. The inbox plugin runs the same action from its header bar and sidebar rows.
 
 **Audit before stabilizing.**
 

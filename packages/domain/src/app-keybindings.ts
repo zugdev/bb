@@ -86,7 +86,6 @@ export const APP_COMMAND_IDS = [
   "pane.close",
   "splitTab.new",
   "splitTab.newForProject",
-  "splitTab.openInbox",
   "splitTab.reopenClosed",
   ...SPLIT_TAB_SELECT_APP_COMMAND_IDS,
   "window.new",

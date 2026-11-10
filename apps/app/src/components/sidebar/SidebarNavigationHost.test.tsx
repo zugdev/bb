@@ -60,10 +60,6 @@ import { SidebarVisibilityCustomize } from "./SidebarVisibilityControls";
 
 const mocks = vi.hoisted(() => ({ toastError: vi.fn() }));
 
-vi.mock("@/views/thread-detail/InboxTabController", () => ({
-  useInboxQueueLength: () => 0,
-  useIsInboxTabActive: () => false,
-}));
 
 vi.mock("@/components/commands/AppCommandProvider", () => ({
   useAppCommandRunner: () => ({

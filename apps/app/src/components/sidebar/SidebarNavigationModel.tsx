@@ -56,11 +56,7 @@ import {
   type SidebarNavigationRow,
 } from "./sidebarNavigationItems";
 import { usePaneContentSplitActions } from "./usePaneContentSplitDrag";
-import {
-  useInboxQueueLength,
-} from "@/views/thread-detail/InboxTabController";
 import { useActiveTabOwner } from "@/lib/split-layout/useActiveTabOwner";
-import { openInboxTab } from "@/views/thread-detail/splitThreadNavigation";
 import {
   useSidebarNavigationArrangement,
   type SidebarNavigationArrangement,
@@ -91,7 +87,6 @@ const HOST_ICON_NAMES: Record<
 > = {
   "new-thread": "MessageSquarePlus",
   search: "Search",
-  inbox: "Inbox",
   extensions: "Plug02",
   skills: "Zap",
 };
@@ -196,7 +191,6 @@ export function SidebarNavigationModelProvider({
     null,
   );
   const newThreadDisabled = host.onNewChat === undefined;
-  const inboxQueueLength = useInboxQueueLength();
   const activeTabOwner = useActiveTabOwner();
 
   const rawItems = useMemo(() => {
@@ -223,22 +217,13 @@ export function SidebarNavigationModelProvider({
                   ariaKeyShortcuts: threadSearchShortcut.ariaKeyshortcuts,
                 }
               : null,
-        badge:
-          row.action.kind === "open-inbox"
-            ? inboxQueueLength > 0
-              ? {
-                  count: inboxQueueLength,
-                  label: `${inboxQueueLength} in Inbox`,
-                }
-              : null
-            : (badges.get(key) ?? null),
+        badge: badges.get(key) ?? null,
       });
     });
   }, [
     arrangement.ordered,
     arrangement.visibleKeys,
     badges,
-    inboxQueueLength,
     newThreadDisabled,
     newThreadShortcut,
     searchThreadsDisabled,
@@ -337,13 +322,6 @@ export function SidebarNavigationModelProvider({
               return;
             }
             current.host.onNewChat?.();
-            return;
-          case "open-inbox":
-            current.host.onNavigate?.();
-            openInboxTab(
-              store,
-              (route, options) => void current.navigate(route, options),
-            );
             return;
           case "search-threads":
             current.host.onSearchThreads?.();

@@ -26,10 +26,6 @@ import {
   useResolvedSidebarNavigation,
 } from "./sidebarNavigationProvider";
 
-vi.mock("@/views/thread-detail/InboxTabController", () => ({
-  useInboxQueueLength: () => 0,
-  useIsInboxTabActive: () => false,
-}));
 
 vi.mock("@/components/commands/AppCommandProvider", () => ({
   useAppCommandHandler: () => {},

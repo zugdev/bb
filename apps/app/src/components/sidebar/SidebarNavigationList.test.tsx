@@ -57,10 +57,6 @@ const mocks = vi.hoisted(() => ({
   onNewChat: vi.fn(),
 }));
 
-vi.mock("@/views/thread-detail/InboxTabController", () => ({
-  useInboxQueueLength: () => 0,
-  useIsInboxTabActive: () => false,
-}));
 
 vi.mock("@/components/commands/AppCommandProvider", () => ({
   useAppCommandRunner: () => ({
@@ -214,7 +210,7 @@ describe("SidebarNavigationList", () => {
       visibleKeys: ["__bb__/extensions", "garden/docs"],
     });
 
-    expect(rowLabels()).toEqual(["Inbox", "Plugins", "Docs"]);
+    expect(rowLabels()).toEqual(["Plugins", "Docs"]);
 
     fireEvent.keyDown(within(header()).getByRole("button", { name: "More" }), {
       key: "Enter",
@@ -239,7 +235,7 @@ describe("SidebarNavigationList", () => {
     expect(destinations.className).toContain("overflow-y-auto");
     expect(
       rowButtons(destinations).map((button) => button.textContent),
-    ).toEqual(["New thread", "Inbox", "Plugins", "Skills", "Docs"]);
+    ).toEqual(["New thread", "Plugins", "Skills", "Docs"]);
   });
 
   it("hides New thread from Customize like any other row", async () => {
@@ -257,7 +253,7 @@ describe("SidebarNavigationList", () => {
       within(editor).getByRole("checkbox", { name: /New thread/u }),
     );
 
-    expect(rowLabels()).toEqual(["Inbox", "Plugins", "Skills", "Docs"]);
+    expect(rowLabels()).toEqual(["Plugins", "Skills", "Docs"]);
     expect(store.get(pluginNavVisiblePanelKeysAtom)).not.toContain(
       "__bb__/new-thread",
     );

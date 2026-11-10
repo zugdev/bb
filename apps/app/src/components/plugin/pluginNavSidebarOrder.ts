@@ -8,7 +8,6 @@ interface PluginNavPanelIdentity {
 export const BUILT_IN_SIDEBAR_NAVIGATION_KEYS = {
   newThread: "__bb__/new-thread",
   searchThreads: "__bb__/search-threads",
-  inbox: "__bb__/inbox",
   extensions: "__bb__/extensions",
   skills: "__bb__/skills",
   automations: "__bb__/automations",
@@ -21,7 +20,6 @@ export const DEFAULT_HIDDEN_SIDEBAR_NAVIGATION_KEYS = [
 export const DEFAULT_BUILT_IN_SIDEBAR_NAVIGATION_ORDER = [
   BUILT_IN_SIDEBAR_NAVIGATION_KEYS.newThread,
   BUILT_IN_SIDEBAR_NAVIGATION_KEYS.searchThreads,
-  BUILT_IN_SIDEBAR_NAVIGATION_KEYS.inbox,
   BUILT_IN_SIDEBAR_NAVIGATION_KEYS.extensions,
   BUILT_IN_SIDEBAR_NAVIGATION_KEYS.skills,
   BUILT_IN_SIDEBAR_NAVIGATION_KEYS.automations,

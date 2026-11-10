@@ -9,7 +9,7 @@ import {
 } from "@/components/thread/ThreadStatusDot";
 import { listPanes } from "@/lib/split-layout";
 import { splitLayoutAtom } from "@/lib/split-layout/atoms";
-import { splitTabsAtom } from "@/lib/split-layout/tabs";
+import { isOwnedTab, splitTabsAtom } from "@/lib/split-layout/tabs";
 import { getThreadRoutePath, PINNED_TAB_ROUTE_PATH } from "@/lib/route-paths";
 import { getThreadDisplayTitle } from "@/lib/thread-title";
 import { useDefaultRequestRename } from "@/lib/thread-actions/thread-action-registry";
@@ -27,7 +27,14 @@ export function ActiveTabThreadsSection({
   const navigate = useNavigate();
   const requestRename = useDefaultRequestRename();
   const isPinnedTab = useLocation().pathname === PINNED_TAB_ROUTE_PATH;
-  if (isPinnedTab || layout === null) return null;
+  const activeTab = tabs.find((tab) => tab.id === activeTabId);
+  if (
+    isPinnedTab ||
+    layout === null ||
+    (activeTab !== undefined && isOwnedTab(activeTab))
+  ) {
+    return null;
+  }
   const focusedPaneId = layout.focusedPaneId;
   const rows = listPanes(layout.root).flatMap((pane) => {
     if (pane.content.kind !== "thread") return [];
@@ -36,7 +43,7 @@ export function ActiveTabThreadsSection({
     return [{ pane, content: pane.content, entry }];
   });
   if (rows.length === 0) return null;
-  const tabName = tabs.find((tab) => tab.id === activeTabId)?.name ?? null;
+  const tabName = activeTab?.name ?? null;
   return (
     <section aria-label="Threads in this tab" className="px-2">
       <div

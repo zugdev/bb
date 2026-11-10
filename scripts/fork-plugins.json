@@ -4,6 +4,7 @@
     "plugins/assistant",
     "plugins/fork-updater",
     "plugins/home",
+    "plugins/inbox",
     "plugins/orchestrator",
     "plugins/parent-link",
     "plugins/muon-copy",
