@@ -275,6 +275,19 @@ Docs: `frontend-core-slots.md`.
 
 1. **Variant.** It always renders the outline variant. Decide whether plugins need the ghost variant the composer footer uses.
 
+## `PluginNavPanelRegistration.experimental_ownTab`
+
+`experimental_ownTab: true` opens a nav panel in a pane tab of its own, at most one per panel. Opening the panel route from anywhere (sidebar, palette, `toPluginPanel`) focuses that tab and navigates to its focused pane, so a tab the panel already redirected to a thread shows that thread. The first open reuses a blank, unnamed compose tab or inserts a new one. The tab stores `panel: { pluginId, panelPath }` in `bb.splitTabs`, has no project binding, draws the panel's title and icon, and opens any other thread in a new tab, like the Inbox tab. When the panel replaces itself with a thread, the thread stays in the tab and other tabs that showed only that thread close. Duplicate tabs for one panel, or duplicate Inbox tabs, collapse to the first on load.
+
+**Core callers.** The Inbox tab goes through the same `openOwnedTabAtom`, `openOutsideOwnedTabAtom` and load dedupe in `apps/app/src/lib/split-layout/tabs.ts`; `SplitThreadArea` and `SplitTabBar` read the flag. The assistant plugin sets it on its panel.
+
+Docs: `frontend-core-slots.md`.
+
+**Audit before stabilizing.**
+
+1. **Redirect rule.** The thread stays in the tab only when the focused pane is still the panel. Decide whether a panel should declare which threads belong to its tab.
+2. **Compact viewports.** Tabs do not render on compact viewports, so the flag has no effect there.
+
 ## `PluginNavPanelRegistration.experimental_pinnedTab`
 
 `experimental_pinnedTab: true` makes a nav panel the first pane tab. The page keeps core's `/home` URL (`PINNED_TAB_ROUTE_PATH`), so saved links and history keep working: `PinnedTabView` renders the tab bar and then the panel there, outside every tab's split layout. `SplitTabBar` draws the first tab from the panel's icon and title, the first tab shortcut opens it, and the sidebar's This tab section and quick create's stay on the page rule treat it like the old Home. Sidebar navigation, the palette's panel list and the remembered panel chrome leave it out. The first pinned registration wins; with none, there is no first tab and the first tab shortcut does nothing.

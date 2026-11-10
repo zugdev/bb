@@ -36,12 +36,22 @@ export const SPLIT_TABS_STORAGE_KEY = "bb.splitTabs";
 const MAX_CLOSED_SPLIT_ITEMS = 20;
 const FIRST_TAB_ID = "tab-1";
 
+export interface SplitTabPanel {
+  pluginId: string;
+  panelPath: string;
+}
+
+export type SplitTabOwner =
+  | { kind: "inbox" }
+  | { kind: "panel"; panel: SplitTabPanel };
+
 export interface SplitTab {
   id: string;
   layout: SplitLayout | null;
   projectId: string | null;
   name: string | null;
   kind?: "inbox";
+  panel?: SplitTabPanel;
 }
 
 export interface SplitTabsState {
@@ -56,6 +66,7 @@ export type ClosedSplitItem =
       layout: SplitLayout | null;
       projectId: string | null;
       name: string | null;
+      owner: SplitTabOwner | null;
     };
 
 const INITIAL_SPLIT_TABS: SplitTabsState = {
@@ -77,6 +88,13 @@ const splitTabsStateSchema = z
               .enum(["inbox", "focus"])
               .transform((): "inbox" => "inbox")
               .optional(),
+            panel: z
+              .object({
+                pluginId: z.string().min(1),
+                panelPath: z.string().min(1),
+              })
+              .strict()
+              .optional(),
           })
           .strict(),
       )
@@ -92,10 +110,62 @@ export function parseSplitTabsState(
   if (storedValue === null || storedValue === "") return INITIAL_SPLIT_TABS;
   try {
     const result = splitTabsStateSchema.safeParse(JSON.parse(storedValue));
-    return result.success ? result.data : INITIAL_SPLIT_TABS;
+    return result.success
+      ? dropDuplicateOwnedTabs(result.data)
+      : INITIAL_SPLIT_TABS;
   } catch {
     return INITIAL_SPLIT_TABS;
   }
+}
+
+export function tabOwner(tab: SplitTab): SplitTabOwner | null {
+  if (tab.kind === "inbox") return { kind: "inbox" };
+  return tab.panel === undefined ? null : { kind: "panel", panel: tab.panel };
+}
+
+function ownerKey(owner: SplitTabOwner | null): string | null {
+  if (owner === null) return null;
+  return owner.kind === "inbox"
+    ? "inbox"
+    : `panel:${owner.panel.pluginId}/${owner.panel.panelPath}`;
+}
+
+export function isOwnedTab(tab: SplitTab): boolean {
+  return tab.kind === "inbox" || tab.panel !== undefined;
+}
+
+function withOwner(tab: SplitTab, owner: SplitTabOwner): SplitTab {
+  return owner.kind === "inbox"
+    ? { ...tab, kind: "inbox" }
+    : { ...tab, panel: owner.panel };
+}
+
+function findOwnedTab(
+  tabs: readonly SplitTab[],
+  owner: SplitTabOwner,
+): SplitTab | undefined {
+  const key = ownerKey(owner);
+  return tabs.find((tab) => ownerKey(tabOwner(tab)) === key);
+}
+
+function dropDuplicateOwnedTabs(state: SplitTabsState): SplitTabsState {
+  const keptByKey = new Map<string, string>();
+  const replacedBy = new Map<string, string>();
+  const tabs = state.tabs.filter((tab) => {
+    const key = ownerKey(tabOwner(tab));
+    if (key === null) return true;
+    const kept = keptByKey.get(key);
+    if (kept === undefined) {
+      keptByKey.set(key, tab.id);
+      return true;
+    }
+    replacedBy.set(tab.id, kept);
+    return false;
+  });
+  return {
+    tabs,
+    activeTabId: replacedBy.get(state.activeTabId) ?? state.activeTabId,
+  };
 }
 
 export const splitTabsAtom = atomWithStorage<SplitTabsState>(
@@ -141,7 +211,7 @@ export function tabProjectId(
   tab: SplitTab,
   layout: SplitLayout | null = tab.layout,
 ): string | null {
-  if (tab.kind === "inbox") return null;
+  if (isOwnedTab(tab)) return null;
   return tab.projectId ?? firstThreadProjectId(layout);
 }
 
@@ -187,7 +257,7 @@ export const bindActiveTabProjectAtom = atom(
   (get, set, projectId: string) => {
     const state = get(splitTabsAtom);
     const active = state.tabs.find((tab) => tab.id === state.activeTabId);
-    if (active === undefined || active.kind === "inbox") return;
+    if (active === undefined || isOwnedTab(active)) return;
     if (active.projectId !== null) return;
     set(splitTabsAtom, {
       ...state,
@@ -303,11 +373,14 @@ export const openSplitTabAtom = atom(
   },
 );
 
-function markActiveTabInbox(state: SplitTabsState): SplitTabsState {
+function markActiveTab(
+  state: SplitTabsState,
+  owner: SplitTabOwner,
+): SplitTabsState {
   return {
     ...state,
     tabs: state.tabs.map((tab) =>
-      tab.id === state.activeTabId ? { ...tab, kind: "inbox" } : tab,
+      tab.id === state.activeTabId ? withOwner(tab, owner) : tab,
     ),
   };
 }
@@ -319,26 +392,77 @@ function isBlankComposeLayout(layout: SplitLayout | null): boolean {
   );
 }
 
-export const openInboxTabAtom = atom(null, (get, set): SplitLayout | null => {
-  const state = get(splitTabsAtom);
-  const activeLayout = get(splitLayoutAtom);
-  const existing = state.tabs.find((tab) => tab.kind === "inbox");
-  if (existing !== undefined) {
-    const next = selectSplitTab(state, activeLayout, existing.id);
+export const openOwnedTabAtom = atom(
+  null,
+  (
+    get,
+    set,
+    open: { owner: SplitTabOwner; content: PaneContent },
+  ): SplitLayout | null => {
+    const state = get(splitTabsAtom);
+    const activeLayout = get(splitLayoutAtom);
+    const existing = findOwnedTab(state.tabs, open.owner);
+    if (existing !== undefined) {
+      const next = selectSplitTab(state, activeLayout, existing.id);
+      return next === null
+        ? routeLayoutFor(activeLayout)
+        : activateTabLayout(set, next, routeLayoutFor(existing.layout));
+    }
+    const active = state.tabs.find((tab) => tab.id === state.activeTabId);
+    const layout = singlePaneLayout(open.content);
+    if (
+      active !== undefined &&
+      active.name === null &&
+      !isOwnedTab(active) &&
+      isBlankComposeLayout(activeLayout)
+    ) {
+      set(splitTabsAtom, markActiveTab(state, open.owner));
+      if (open.content.kind === "new-thread") {
+        return routeLayoutFor(activeLayout);
+      }
+      set(splitLayoutAtom, layout);
+      return layout;
+    }
+    const next = insertSplitTab(state, activeLayout, layout, null);
     return next === null
-      ? routeLayoutFor(activeLayout)
-      : activateTabLayout(set, next, routeLayoutFor(existing.layout));
-  }
-  const active = state.tabs.find((tab) => tab.id === state.activeTabId);
-  if (active?.name === null && isBlankComposeLayout(activeLayout)) {
-    set(splitTabsAtom, markActiveTabInbox(state));
-    return routeLayoutFor(activeLayout);
-  }
-  const next = insertSplitTab(state, activeLayout, NEW_THREAD_LAYOUT, null);
-  return next === null
-    ? null
-    : activateTabLayout(set, markActiveTabInbox(next), NEW_THREAD_LAYOUT);
-});
+      ? null
+      : activateTabLayout(set, markActiveTab(next, open.owner), layout);
+  },
+);
+
+export const landOwnedPanelRedirectAtom = atom(
+  null,
+  (get, set, thread: ThreadRef): boolean => {
+    const state = get(splitTabsAtom);
+    const active = state.tabs.find((tab) => tab.id === state.activeTabId);
+    const activeLayout = get(splitLayoutAtom);
+    const focused =
+      activeLayout === null
+        ? null
+        : findPane(activeLayout.root, activeLayout.focusedPaneId);
+    const panel = active?.panel;
+    if (
+      panel === undefined ||
+      focused?.content.kind !== "plugin-panel" ||
+      focused.content.pluginId !== panel.pluginId ||
+      focused.content.panelPath !== panel.panelPath
+    ) {
+      return false;
+    }
+    const content: PaneContent = { kind: "thread", ...thread };
+    const tabs = state.tabs.filter(
+      (tab) =>
+        tab.id === state.activeTabId ||
+        tab.layout === null ||
+        tab.layout.root.type !== "pane" ||
+        !isSamePaneContent(tab.layout.root.content, content),
+    );
+    if (tabs.length !== state.tabs.length) {
+      set(splitTabsAtom, { ...state, tabs });
+    }
+    return true;
+  },
+);
 
 export const seedSplitComposeProjectAtom = atom(
   null,
@@ -403,12 +527,12 @@ export const openThreadInTabAtom = atom(
   },
 );
 
-export const openOutsideInboxTabAtom = atom(
+export const openOutsideOwnedTabAtom = atom(
   null,
   (get, set, content: PaneContent): boolean => {
     const state = get(splitTabsAtom);
     const active = state.tabs.find((tab) => tab.id === state.activeTabId);
-    if (active?.kind !== "inbox") return false;
+    if (active === undefined || !isOwnedTab(active)) return false;
     const activeLayout = get(splitLayoutAtom);
     const focused =
       activeLayout === null
@@ -674,6 +798,7 @@ export const closeSplitTabAtom = atom(
         layout: result.closed.layout,
         projectId: result.closed.projectId,
         name: result.closed.name,
+        owner: tabOwner(result.closed),
       }),
     );
     if (tabId !== current.activeTabId) return null;
@@ -805,9 +930,19 @@ export const reopenClosedSplitItemAtom = atom(
     if (item === undefined) return null;
     const activeLayout = get(splitLayoutAtom);
     if (item.kind === "tab") {
+      const state = get(splitTabsAtom);
       const layout = routeLayoutFor(item.layout);
+      const existing =
+        item.owner === null ? undefined : findOwnedTab(state.tabs, item.owner);
+      if (existing !== undefined) {
+        set(closedSplitItemsAtom, items.slice(0, -1));
+        const selected = selectSplitTab(state, activeLayout, existing.id);
+        return selected === null
+          ? routeLayoutFor(activeLayout)
+          : activateTabLayout(set, selected, routeLayoutFor(existing.layout));
+      }
       const next = insertSplitTab(
-        get(splitTabsAtom),
+        state,
         activeLayout,
         layout,
         item.projectId,
@@ -815,7 +950,11 @@ export const reopenClosedSplitItemAtom = atom(
       );
       if (next === null) return null;
       set(closedSplitItemsAtom, items.slice(0, -1));
-      return activateTabLayout(set, next, layout);
+      return activateTabLayout(
+        set,
+        item.owner === null ? next : markActiveTab(next, item.owner),
+        layout,
+      );
     }
     const base = routeLayoutFor(activeLayout);
     const alreadyOpen = findPaneByContent(base.root, item.content);
