@@ -31,7 +31,7 @@ interface InboxSectionSpec {
 const SECTIONS: readonly InboxSectionSpec[] = [
   { key: "needsAnswer", label: "Needs an answer", collapsedByDefault: false },
   { key: "waitingOnYou", label: "Waiting on you", collapsedByDefault: false },
-  { key: "working", label: "Working", collapsedByDefault: true },
+  { key: "working", label: "Working", collapsedByDefault: false },
   { key: "snoozed", label: "Snoozed", collapsedByDefault: true },
 ];
 
