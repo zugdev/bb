@@ -114,6 +114,7 @@ import {
 import { THREAD_INFO_FIXED_TAB_REFERENCE } from "@/components/secondary-panel/thread-info-fixed-tab-navigation";
 import { ThreadDetailHeader } from "./ThreadDetailHeader";
 import { InboxFloatingNavigator } from "./InboxTabController";
+import { PluginThreadComposerOverlay } from "@/components/plugin/PluginThreadComposerOverlay";
 import {
   CORE_THREAD_CONTEXT_CARD_ROWS,
   CORE_THREAD_CONTEXT_CARD_SECTIONS,
@@ -1567,7 +1568,12 @@ function ThreadDetailViewInternal(
         onCreateNewThreadInEnvironment,
         onOpenThreadInfo: openThreadInfo,
         permissionPolicy: "editable",
-        footerOverlay: <InboxFloatingNavigator thread={threadActionTarget} />,
+        footerOverlay: (
+          <>
+            <InboxFloatingNavigator thread={threadActionTarget} />
+            <PluginThreadComposerOverlay threadId={thread.id} />
+          </>
+        ),
       }}
       environment={environment ?? null}
       presentation={THREAD_DETAIL_SCREEN_PRESENTATION}

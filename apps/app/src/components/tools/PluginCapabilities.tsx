@@ -230,6 +230,18 @@ function pluginAppSurfaceItems(
     ),
     ...namedSlotItems(
       pluginId,
+      slots.threadHeaderTrailings,
+      "thread-header-trailing",
+      "Renders content after the thread title in thread headers.",
+    ),
+    ...namedSlotItems(
+      pluginId,
+      slots.threadComposerOverlays,
+      "thread-composer-overlay",
+      "Renders content just above the thread composer.",
+    ),
+    ...namedSlotItems(
+      pluginId,
       slots.threadLists,
       "thread-list",
       "Can replace the sidebar thread list; configured in Appearance.",

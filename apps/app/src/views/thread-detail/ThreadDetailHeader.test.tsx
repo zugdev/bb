@@ -39,6 +39,7 @@ import { RenameControllerProvider } from "@/components/sidebar/SidebarInlineRena
 import type {
   PluginThreadActionRegistration,
   ExperimentalThreadHeaderLeadingProps,
+  ExperimentalThreadHeaderTrailingProps,
   PluginThreadActionTarget,
 } from "@get-bb/plugin-sdk";
 
@@ -1067,5 +1068,58 @@ describe("ThreadDetailHeader", () => {
 
       expect(screen.getByText("Child")).not.toBeNull();
     });
+  });
+
+  describe("plugin trailing slot", () => {
+    function renderTrailingHeader(headerWidth: number) {
+      vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockReturnValue(
+        DOMRect.fromRect({ width: headerWidth, height: 40 }),
+      );
+      setPluginSlotRegistrations(
+        "trailing-plugin",
+        makePluginRegistrationSet({
+          threadHeaderTrailings: [
+            {
+              id: "controls",
+              component: (props: ExperimentalThreadHeaderTrailingProps) => (
+                <span data-testid="trailing">
+                  {props.threadId}:{props.placement}
+                </span>
+              ),
+            },
+          ],
+        }),
+      );
+      render(
+        <MemoryRouter>
+          <PaneContext.Provider value={PANE_CONTEXT}>
+            <ThreadDetailHeader
+              actionsMenu={null}
+              isSecondaryPanelOpen={false}
+              onToggleSecondaryPanel={vi.fn()}
+              thread={THREAD_TARGET}
+              threadTitle="Child"
+            />
+          </PaneContext.Provider>
+        </MemoryRouter>,
+      );
+    }
+
+    it.each([
+      { headerWidth: 900, placement: "inline" },
+      { headerWidth: 500, placement: "below" },
+    ])(
+      "renders once with placement $placement in a $headerWidth px header",
+      ({ headerWidth, placement }) => {
+        renderTrailingHeader(headerWidth);
+
+        const trailing = screen.getAllByTestId("trailing");
+        expect(trailing).toHaveLength(1);
+        expect(trailing[0]!.textContent).toBe(`${THREAD_ID}:${placement}`);
+        expect(
+          trailing[0]!.closest("header") === null,
+        ).toBe(placement === "below");
+      },
+    );
   });
 });

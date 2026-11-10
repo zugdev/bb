@@ -5,6 +5,8 @@ import type {
   ComposerCustomization,
   ExperimentalAppOverlayRegistration,
   ExperimentalThreadHeaderLeadingRegistration,
+  ExperimentalThreadHeaderTrailingRegistration,
+  ExperimentalThreadComposerOverlayRegistration,
   ExperimentalCodeFenceRendererRegistration,
   ExperimentalSidebarFooter,
   ExperimentalSidebarFooterActionRegistration,
@@ -329,6 +331,8 @@ export interface CollectedPluginAppRegistrations {
   settingsSections: PluginSettingsSectionRegistration[];
   appOverlays: ExperimentalAppOverlayRegistration[];
   threadHeaderLeadings: ExperimentalThreadHeaderLeadingRegistration[];
+  threadHeaderTrailings: ExperimentalThreadHeaderTrailingRegistration[];
+  threadComposerOverlays: ExperimentalThreadComposerOverlayRegistration[];
   navPanels: LegacyNavPanelRegistration[];
   tabs: ExperimentalTabRegistration[];
   threadPanelActions: LegacyThreadPanelActionRegistration[];
@@ -464,6 +468,8 @@ export function collectPluginAppRegistrations(
     settingsSections: [],
     appOverlays: [],
     threadHeaderLeadings: [],
+    threadHeaderTrailings: [],
+    threadComposerOverlays: [],
     navPanels: [],
     tabs: [],
     get threadPanelActions() {
@@ -514,6 +520,8 @@ export function collectPluginAppRegistrations(
     settingsSection: new Set<string>(),
     appOverlay: new Set<string>(),
     threadHeaderLeading: new Set<string>(),
+    threadHeaderTrailing: new Set<string>(),
+    threadComposerOverlay: new Set<string>(),
     navPanel: new Set<string>(),
     tab: new Set<string>(),
     newThreadPanelAction: new Set<string>(),
@@ -774,6 +782,24 @@ export function collectPluginAppRegistrations(
         const id = requireSlotId(kind, registration?.id);
         requireUniqueId(kind, seenIds.threadHeaderLeading, id);
         collected.threadHeaderLeadings.push({
+          id,
+          component: requireComponent(kind, registration.component),
+        });
+      },
+      experimental_threadHeaderTrailing(registration) {
+        const kind = "slots.experimental_threadHeaderTrailing";
+        const id = requireSlotId(kind, registration?.id);
+        requireUniqueId(kind, seenIds.threadHeaderTrailing, id);
+        collected.threadHeaderTrailings.push({
+          id,
+          component: requireComponent(kind, registration.component),
+        });
+      },
+      experimental_threadComposerOverlay(registration) {
+        const kind = "slots.experimental_threadComposerOverlay";
+        const id = requireSlotId(kind, registration?.id);
+        requireUniqueId(kind, seenIds.threadComposerOverlay, id);
+        collected.threadComposerOverlays.push({
           id,
           component: requireComponent(kind, registration.component),
         });

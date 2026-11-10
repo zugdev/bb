@@ -40,6 +40,8 @@ import {
   type ExperimentalThreadInfoProps,
   type ExperimentalThreadContextCardProps,
   type ExperimentalThreadHeaderLeadingProps,
+  type ExperimentalThreadHeaderTrailingProps,
+  type ExperimentalThreadComposerOverlayProps,
   type ExperimentalThreadRowMetadataProps,
   type PluginThreadActionItemInput,
   type ExperimentalPluginBrowserToolbarActionProps,
@@ -295,6 +297,8 @@ type SlotPropsByName = {
   experimental_threadContextCardRow: ExperimentalThreadContextCardProps;
   experimental_threadContextCardSection: ExperimentalThreadContextCardProps;
   experimental_threadHeaderLeading: ExperimentalThreadHeaderLeadingProps;
+  experimental_threadHeaderTrailing: ExperimentalThreadHeaderTrailingProps;
+  experimental_threadComposerOverlay: ExperimentalThreadComposerOverlayProps;
   experimental_threadAction: PluginThreadActionItemInput<unknown>;
   experimental_browserToolbarAction: ExperimentalPluginBrowserToolbarActionProps;
   fileOpener: PluginFileOpenerProps;
@@ -399,6 +403,8 @@ const FRONTEND_SLOT_PROP_FIELDS = {
     "environment",
   ],
   experimental_threadHeaderLeading: ["threadId", "isNarrow"],
+  experimental_threadHeaderTrailing: ["threadId", "placement"],
+  experimental_threadComposerOverlay: ["threadId", "isPhone"],
   experimental_threadRowMetadata: ["thread", "data"],
   experimental_threadAction: [
     "thread",

@@ -44,6 +44,7 @@ Read the installed SDK declarations for the exact current signatures.
 - `useBbNavigate`
 - `experimental_useCanOpenFileExternally`
 - `experimental_useTabVisible`
+- `experimental_useOwnTab`
 - `experimental_useAppPanel`
 - `experimental_usePanelTabs`
 - `experimental_PanelTabIcon`
@@ -240,6 +241,13 @@ Read the installed SDK declarations for the exact current signatures.
 - `ExperimentalThreadContextCardRowProps`
 - `ExperimentalThreadHeaderLeadingProps`
 - `ExperimentalThreadHeaderLeadingRegistration`
+- `ExperimentalThreadHeaderTrailingProps`
+- `ExperimentalThreadHeaderTrailingRegistration`
+- `ExperimentalThreadComposerOverlayProps`
+- `ExperimentalThreadComposerOverlayRegistration`
+- `ExperimentalOwnTab`
+- `ExperimentalOwnTabPane`
+- `ExperimentalOwnTabTarget`
 - `PluginThreadActionTarget`
 - `PluginThreadActionChoice`
 - `PluginThreadActionChoices`

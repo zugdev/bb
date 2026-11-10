@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest";
+import { createStore } from "jotai";
+import { describe, expect, it, vi } from "vitest";
 import {
   findPane,
   findPaneByContent,
@@ -8,7 +9,12 @@ import {
   splitPane,
 } from "@/lib/split-layout";
 import type { SplitLayout } from "@/lib/split-layout";
-import type { SplitTabsState } from "@/lib/split-layout/tabs";
+import { splitLayoutAtom } from "@/lib/split-layout/atoms";
+import {
+  openSplitTabAtom,
+  splitTabsAtom,
+  type SplitTabsState,
+} from "@/lib/split-layout/tabs";
 import {
   applyThreadOpenToLayout,
   applyThreadPaneActionToLayout,
@@ -17,6 +23,7 @@ import {
   placeThreadBesideSplit,
   placeThreadInProjectTab,
   reconcileLayoutForContent,
+  showInOwnedTab,
 } from "./splitThreadNavigation";
 
 function twoPaneLayout(): SplitLayout {
@@ -423,5 +430,41 @@ describe("placeThreadInProjectTab", () => {
     );
     expect(active?.projectId).toBe("p2");
     expect(placed?.layout).toEqual(createSinglePaneLayout(picked));
+  });
+});
+
+describe("showInOwnedTab", () => {
+  const owner = {
+    kind: "panel",
+    panel: { pluginId: "inbox", panelPath: "inbox" },
+  } as const;
+
+  it("opens the owned tab and then replaces its focused pane in place", () => {
+    const store = createStore();
+    const navigate = vi.fn();
+    store.set(splitLayoutAtom, createSinglePaneLayout({ projectId: "p1", threadId: "x" }));
+
+    showInOwnedTab(store, navigate, owner, {
+      kind: "thread",
+      projectId: "p1",
+      threadId: "a",
+    });
+    const ownedTabId = store.get(splitTabsAtom).activeTabId;
+    store.set(openSplitTabAtom);
+    showInOwnedTab(store, navigate, owner, {
+      kind: "thread",
+      projectId: "p1",
+      threadId: "b",
+    });
+
+    const state = store.get(splitTabsAtom);
+    expect(state.activeTabId).toBe(ownedTabId);
+    expect(state.tabs.filter((tab) => tab.panel !== undefined)).toHaveLength(1);
+    expect(focusedPaneRoute(store.get(splitLayoutAtom)!)).toBe(
+      "/projects/p1/threads/b",
+    );
+    expect(navigate).toHaveBeenLastCalledWith("/projects/p1/threads/b", {
+      replace: true,
+    });
   });
 });

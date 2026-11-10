@@ -58,8 +58,8 @@ import {
 import { usePaneContentSplitActions } from "./usePaneContentSplitDrag";
 import {
   useInboxQueueLength,
-  useIsInboxTabActive,
 } from "@/views/thread-detail/InboxTabController";
+import { useActiveTabOwner } from "@/lib/split-layout/useActiveTabOwner";
 import { openInboxTab } from "@/views/thread-detail/splitThreadNavigation";
 import {
   useSidebarNavigationArrangement,
@@ -197,7 +197,7 @@ export function SidebarNavigationModelProvider({
   );
   const newThreadDisabled = host.onNewChat === undefined;
   const inboxQueueLength = useInboxQueueLength();
-  const isInboxTabActive = useIsInboxTabActive();
+  const activeTabOwner = useActiveTabOwner();
 
   const rawItems = useMemo(() => {
     const visibleSet = new Set(arrangement.visibleKeys);
@@ -249,7 +249,7 @@ export function SidebarNavigationModelProvider({
   const activeItemId = resolveActiveSidebarNavigationItemId({
     rows,
     pathname: location.pathname,
-    isInboxTabActive,
+    activeTabOwner,
   });
   const isHomeActive =
     !isSettingsPathname(location.pathname) &&

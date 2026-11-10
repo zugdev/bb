@@ -49,6 +49,7 @@ export function makeThread(
     lastReadAt: null,
     latestAttentionAt: 0,
     experimental_lastUserMessageAt: null,
+    experimental_snoozedUntil: null,
     ...overrides,
   };
 }

@@ -87,6 +87,7 @@ export function makeSidebarThread(
     lastReadAt,
     latestAttentionAt,
     experimental_lastUserMessageAt: null,
+    experimental_snoozedUntil: null,
     ...overrides,
     activity: {
       workflows: 0,

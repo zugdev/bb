@@ -40,6 +40,7 @@ import { AppCommandShortcutHint } from "@/components/commands/AppCommandShortcut
 import { PINNED_TAB_ROUTE_PATH } from "@/lib/route-paths";
 import { usePinnedTabPanel } from "@/lib/pinned-tab";
 import { usePluginSlots } from "@/lib/plugin-slots";
+import { usePanelBadge } from "@/components/sidebar/navigationBadges";
 import type { AppShortcutPresentation } from "@/lib/app-keybindings";
 import {
   useIsSidebarFramed,
@@ -425,14 +426,20 @@ function SplitTabItem({
   const canRename = projectId === null && tabPanel === undefined;
   const dot = useSplitTabDot(layout);
   const inboxQueueLength = useInboxQueueLength();
+  const panelBadge = usePanelBadge(panel);
+  const panelBadgeCount = panelBadge.badge?.count ?? null;
   const extraPanes = layout === null ? 0 : countPanes(layout.root) - 1;
   const secondaryLabel = isInbox
     ? inboxQueueLength > 0
       ? String(inboxQueueLength)
       : null
-    : !isProjectName && extraPanes > 0
-      ? `+${extraPanes}`
-      : null;
+    : panel !== undefined
+      ? panelBadgeCount === null
+        ? null
+        : String(panelBadgeCount)
+      : !isProjectName && extraPanes > 0
+        ? `+${extraPanes}`
+        : null;
   return (
     <ContextMenu modal={false}>
       <Tooltip>
@@ -483,6 +490,7 @@ function SplitTabItem({
                   closeAction={{ onClose, closeLabel: `Close ${title}` }}
                 />
               )}
+              {panelBadge.source}
               {command === undefined ? null : (
                 <AppCommandShortcutHint shortcut={shortcut} />
               )}

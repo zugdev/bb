@@ -23,6 +23,7 @@ function sidebarThread(
   return {
     projectId: "proj_a",
     experimental_lastUserMessageAt: null,
+    experimental_snoozedUntil: null,
     title: null,
     titleFallback: null,
     displayTitle: overrides.id,
