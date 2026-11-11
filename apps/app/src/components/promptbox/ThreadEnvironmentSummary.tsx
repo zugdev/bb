@@ -63,6 +63,7 @@ interface ThreadEnvironmentSummaryProps {
   environmentMachineProvider?: MachineProviderPresentation | null;
   environmentCheckout?: WorkspaceCheckoutDisplay;
   onCreateNewThreadInEnvironment?: () => void;
+  onMentionInNewThread?: () => void;
 }
 
 export const ThreadEnvironmentSummary = memo(function ThreadEnvironmentSummary({
@@ -75,13 +76,15 @@ export const ThreadEnvironmentSummary = memo(function ThreadEnvironmentSummary({
   environmentMachineProvider,
   environmentCheckout,
   onCreateNewThreadInEnvironment,
+  onMentionInNewThread,
 }: ThreadEnvironmentSummaryProps) {
   if (
     !projectName &&
     !environmentLabel &&
     !environmentHost &&
     !environmentCheckout &&
-    !onCreateNewThreadInEnvironment
+    !onCreateNewThreadInEnvironment &&
+    !onMentionInNewThread
   ) {
     return null;
   }
@@ -189,6 +192,24 @@ export const ThreadEnvironmentSummary = memo(function ThreadEnvironmentSummary({
             </button>
           </TooltipTrigger>
           <TooltipContent>New thread in this environment</TooltipContent>
+        </Tooltip>
+      ) : null}
+      {onMentionInNewThread ? (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              aria-label="Fork: mention this thread in a new thread"
+              onClick={onMentionInNewThread}
+              className={cn(
+                "-ml-1 inline-flex cursor-pointer shrink-0 items-center justify-center rounded-md px-1 py-0.5 transition-colors hover:bg-state-hover",
+                CHROME_SUBTLE_ICON_BUTTON_FOREGROUND_CLASS,
+              )}
+            >
+              <Icon name="Fork" className="size-4" />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent>Fork: mention this thread in a new thread</TooltipContent>
         </Tooltip>
       ) : null}
     </div>

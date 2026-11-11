@@ -109,6 +109,7 @@ import { getThreadDisplayTitle } from "@/lib/thread-title";
 import { hasThreadProvisioningFailure } from "@/lib/thread-provisioning-failure";
 import {
   getProjectComposeRoutePath,
+  getRootComposeRoutePath,
   type ThreadRoutePathArgs,
 } from "@/lib/route-paths";
 import { THREAD_INFO_FIXED_TAB_REFERENCE } from "@/components/secondary-panel/thread-info-fixed-tab-navigation";
@@ -1452,6 +1453,14 @@ function ThreadDetailViewInternal(
     isThreadOnReusableEnvironment && projectId && thread.environmentId !== null
       ? createThreadInEnvironment
       : undefined;
+  const onMentionInNewThread = () =>
+    navigate(getRootComposeRoutePath(), {
+      state: {
+        focusPrompt: true,
+        initialPrompt: `@thread:${thread.id} `,
+        replaceInitialPrompt: true,
+      },
+    });
   const threadCheckoutDisplay = workspaceStatus
     ? formatWorkspaceCheckoutDisplay({ checkout: workspaceStatus.checkout })
     : undefined;
@@ -1565,6 +1574,7 @@ function ThreadDetailViewInternal(
         environmentChrome: composerEnvironmentChrome,
         contextEnvironmentId: threadEnvironmentId,
         onCreateNewThreadInEnvironment,
+        onMentionInNewThread,
         onOpenThreadInfo: openThreadInfo,
         permissionPolicy: "editable",
         footerOverlay: <PluginThreadComposerOverlay threadId={thread.id} />,

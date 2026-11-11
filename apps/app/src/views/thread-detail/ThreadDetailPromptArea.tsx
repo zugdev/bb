@@ -202,6 +202,7 @@ interface ThreadDetailPromptAreaProps {
   environmentLabel?: string;
   environmentProviderName?: string;
   onCreateNewThreadInEnvironment?: () => void;
+  onMentionInNewThread?: () => void;
   onOpenThreadInfo?: () => void;
   pendingInteractions: readonly PendingInteraction[];
   queuedMessageCount: number;
@@ -411,6 +412,7 @@ export function ThreadDetailPromptArea({
   environmentLabel,
   environmentProviderName,
   onCreateNewThreadInEnvironment,
+  onMentionInNewThread,
   onOpenThreadInfo,
   pendingInteractions,
   queuedMessageCount,
@@ -1755,6 +1757,7 @@ export function ThreadDetailPromptArea({
           environmentMachineProvider={environmentMachineProvider}
           environmentCheckout={environmentCheckout}
           onCreateNewThreadInEnvironment={onCreateNewThreadInEnvironment}
+          onMentionInNewThread={onMentionInNewThread}
         />
       ) : null,
     [
@@ -1766,6 +1769,7 @@ export function ThreadDetailPromptArea({
       environmentMachineProvider,
       environmentProviderName,
       onCreateNewThreadInEnvironment,
+      onMentionInNewThread,
       projectName,
       thread.environmentId,
     ],
