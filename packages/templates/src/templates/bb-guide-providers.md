@@ -76,8 +76,7 @@ catalog including disabled plugins, without machine/environment selectors.
 SDK: providers.catalog() and providers.setEnabled({ providerId, enabled }).
 Enable restores automatic discovery, so installed-only agents again appear only
 where their CLI is installed. Disabling the default clears its selection; new
-threads use the next enabled provider in saved order, including in projects whose
-last-used provider is disabled. Explicit or existing-thread choices never
+threads use the next enabled provider in saved order. Explicit or existing-thread choices never
 silently switch.
 
 Provider-native memory can be controlled on the separate Settings → Providers
