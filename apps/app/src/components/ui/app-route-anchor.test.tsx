@@ -1,6 +1,10 @@
 // @vitest-environment jsdom
 
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { createStore, Provider } from "jotai";
+import { splitLayoutAtom } from "@/lib/split-layout/atoms";
+import { openOwnedTabAtom, splitTabsAtom } from "@/lib/split-layout/tabs";
+import { createSinglePaneLayout } from "@/views/thread-detail/splitThreadNavigation";
 import { createPortal } from "react-dom";
 import { MemoryRouter, useLocation } from "react-router-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -71,6 +75,66 @@ function CurrentPath() {
 }
 
 describe("RouteAnchor transition navigation", () => {
+  it.each([false, true])(
+    "opens a thread link outside Inbox before routing (delegate: %s)",
+    (delegate) => {
+      const store = createStore();
+      const original = createSinglePaneLayout({
+        projectId: "prj-a",
+        threadId: "thr-old",
+      });
+      store.set(openOwnedTabAtom, {
+        owner: {
+          kind: "panel",
+          panel: { pluginId: "inbox", panelPath: "inbox" },
+        },
+        content:
+          original.root.type === "pane"
+            ? original.root.content
+            : { kind: "new-thread" },
+      });
+      const inboxId = store.get(splitTabsAtom).activeTabId;
+      function Links() {
+        const onClick = useRouteAnchorDelegate();
+        const Link = delegate ? "a" : RouteAnchor;
+        return (
+          <div onClick={delegate ? onClick : undefined}>
+            <Link href="/projects/prj-a/threads/thr-next#msg=42">Mention</Link>
+          </div>
+        );
+      }
+      function Location() {
+        const location = useLocation();
+        return (
+          <output data-testid="location">
+            {location.pathname + location.hash}
+          </output>
+        );
+      }
+      render(
+        <Provider store={store}>
+          <MemoryRouter initialEntries={["/projects/prj-a/threads/thr-old"]}>
+            <RouteNavigationProvider>
+              <Links />
+              <Location />
+            </RouteNavigationProvider>
+          </MemoryRouter>
+        </Provider>,
+      );
+      fireEvent.click(screen.getByRole("link", { name: "Mention" }));
+      const tabs = store.get(splitTabsAtom);
+      expect(tabs.activeTabId).not.toBe(inboxId);
+      expect(tabs.tabs.find((tab) => tab.id === inboxId)?.layout).toEqual(
+        original,
+      );
+      expect(store.get(splitLayoutAtom)).toEqual(
+        createSinglePaneLayout({ projectId: "prj-a", threadId: "thr-next" }),
+      );
+      expect(screen.getByTestId("location").textContent).toBe(
+        "/projects/prj-a/threads/thr-next#msg=42",
+      );
+    },
+  );
   it.each([false, true])(
     "notifies a scoped host only for handled route navigation (delegate: %s)",
     (delegate) => {
