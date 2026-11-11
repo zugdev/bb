@@ -195,6 +195,19 @@ const testState = vi.hoisted(() => ({
         none: [],
       },
     },
+    {
+      command: "thread.archive" as const,
+      desktopOnly: false,
+      shortcut: {
+        key: "a",
+        mod: true,
+        meta: false,
+        control: false,
+        alt: false,
+        shift: false,
+      },
+      when: { all: ["mainSurface" as const], none: ["modalOpen" as const] },
+    },
   ],
 }));
 
@@ -525,6 +538,46 @@ describe("AppCommandProvider", () => {
       expect(document.activeElement).toBe(composer);
     },
   );
+
+  it("archives from an editor that claims select all for itself", () => {
+    renderProvider(
+      <>
+        <Handler command="thread.archive" name="archive" result={true} />
+        <div
+          contentEditable
+          data-testid="composer"
+          onKeyDown={(event) => event.preventDefault()}
+        />
+      </>,
+    );
+    const event = new KeyboardEvent("keydown", {
+      bubbles: true,
+      cancelable: true,
+      ctrlKey: true,
+      key: "a",
+    });
+
+    screen.getByTestId("composer").dispatchEvent(event);
+
+    expect(testState.calls).toEqual(["archive"]);
+  });
+
+  it("leaves select all to the editor when nothing can be archived", () => {
+    const editorKeyDown = vi.fn();
+    renderProvider(
+      <div contentEditable data-testid="composer" onKeyDown={editorKeyDown} />,
+    );
+    const event = new KeyboardEvent("keydown", {
+      bubbles: true,
+      cancelable: true,
+      ctrlKey: true,
+      key: "a",
+    });
+
+    screen.getByTestId("composer").dispatchEvent(event);
+
+    expect(editorKeyDown).toHaveBeenCalledTimes(1);
+  });
 
   it("falls through declining handlers in priority order", () => {
     renderProvider(

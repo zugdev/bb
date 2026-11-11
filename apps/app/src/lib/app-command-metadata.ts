@@ -52,7 +52,7 @@ export const APP_COMMAND_GROUPS: readonly AppCommandGroup[] = [
       command(
         "thread.archive",
         "Archive thread",
-        "Archive the focused thread.",
+        "Archive the focused thread, even from the composer. When the focused pane is not a thread, focus a thread pane and archive it.",
       ),
       command(
         "thread.snooze",

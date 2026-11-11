@@ -391,6 +391,7 @@ export function AppCommandProvider({ children }: { children: ReactNode }) {
           ...PANE_DIRECTION_APP_COMMAND_IDS,
           "pane.focus.previous",
           "pane.focus.next",
+          "thread.archive",
         ]) !== null
       ) {
         handleKeyboardEvent(event);

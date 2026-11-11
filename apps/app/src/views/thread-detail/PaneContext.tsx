@@ -16,6 +16,7 @@ import type { SplitSide } from "@/lib/split-layout";
 export interface PaneContextValue {
   paneId: string;
   isFocused: boolean;
+  requestFocus?: () => void;
   isSplitPane: boolean;
   secondaryPanelHost: PaneSecondaryPanelRegistration | null;
   reservesWindowPanelToggle: boolean;
