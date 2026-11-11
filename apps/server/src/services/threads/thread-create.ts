@@ -21,10 +21,7 @@ import {
   resolveThreadForkPoint,
   type ThreadForkPoint,
 } from "./thread-fork-history.js";
-import {
-  rememberProjectExecutionDefaultsForCreate,
-  resolveProjectExecutionDefaultsForCreate,
-} from "./project-execution-defaults.js";
+import { resolveProjectExecutionDefaultsForCreate } from "./project-execution-defaults.js";
 import {
   appendImportedSessionHistory,
   type ImportedThreadSession,
@@ -534,10 +531,6 @@ async function createPendingThreadAndAttemptFirstDispatch(
       );
     throw error;
   }
-  rememberProjectExecutionDefaultsForCreate(deps, {
-    execution,
-    request: args.request,
-  });
   return getThreadSafe(deps, thread.id);
 }
 

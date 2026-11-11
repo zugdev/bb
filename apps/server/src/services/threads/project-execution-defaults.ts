@@ -1,14 +1,7 @@
-import {
-  getProjectExecutionDefaults,
-  getThread,
-  upsertProjectExecutionDefaults,
-} from "@bb/db";
-import type { ResolvedThreadExecutionOptions, Thread } from "@bb/domain";
+import { getProjectExecutionDefaults, getThread } from "@bb/db";
+import type { Thread } from "@bb/domain";
 import type { AppDeps } from "../../types.js";
-import type {
-  ThreadCreateServiceRequest,
-  ThreadCreateServiceRequestInput,
-} from "./thread-create-request.js";
+import type { ThreadCreateServiceRequestInput } from "./thread-create-request.js";
 import {
   resolveCreateThreadExecutionDefaults,
   resolveThreadExecutionDefaults,
@@ -17,11 +10,6 @@ import {
 } from "./thread-default-policy.js";
 import { getLastExecutionOptions } from "./thread-events.js";
 import { isLiveParentThread } from "./thread-parent.js";
-
-interface RememberProjectExecutionDefaultsForCreateArgs {
-  execution: ResolvedThreadExecutionOptions;
-  request: ThreadCreateServiceRequest;
-}
 
 interface ResolveProjectExecutionDefaultsForCreateArgs {
   executionInputSources?: ThreadCreateServiceRequestInput["executionInputSources"];
@@ -46,19 +34,6 @@ interface ResolveRequestedCreateExecutionValueArgs<TValue> {
   field: CreateExecutionInputField;
   sources: CreateExecutionInputSources;
   value: TValue | undefined;
-}
-
-function shouldRememberProjectExecutionDefaults(args: {
-  environment: ThreadCreateServiceRequest["environment"];
-  origin: ThreadCreateServiceRequest["origin"];
-  originKind?: ThreadCreateServiceRequest["originKind"];
-}): boolean {
-  // Reusing an existing worktree is a one-off in a specific environment, not
-  // a fresh default-shaping event. Don't overwrite the project's stored
-  // execution defaults with the picker selections made for that single thread.
-  if (args.environment.type === "reuse") return false;
-  if (args.originKind !== null) return false;
-  return args.origin === "app";
 }
 
 function loadThreadParentExecution(
@@ -161,22 +136,4 @@ export function resolveProjectExecutionDefaultsForCreate(
     providerFallbackCandidates,
     requestedModel: requestedModel ?? null,
   };
-}
-
-export function rememberProjectExecutionDefaultsForCreate(
-  deps: Pick<AppDeps, "db">,
-  args: RememberProjectExecutionDefaultsForCreateArgs,
-): void {
-  if (!shouldRememberProjectExecutionDefaults(args.request)) {
-    return;
-  }
-
-  upsertProjectExecutionDefaults(deps.db, {
-    projectId: args.request.projectId,
-    providerId: args.request.providerId,
-    model: args.execution.model,
-    reasoningLevel: args.execution.reasoningLevel,
-    permissionMode: args.execution.permissionMode,
-    serviceTier: args.execution.serviceTier,
-  });
 }

@@ -35,7 +35,7 @@ describe("public thread default routes", () => {
     resumeHostMock.mockReset();
   });
 
-  it("remembers resolved execution options after thread creation", async () => {
+  it("does not remember execution options after app thread creation", async () => {
     await withTestHarness(async (harness) => {
       const { host } = seedHostSession(harness.deps);
       await seedModelCatalog(harness, {
@@ -106,13 +106,7 @@ describe("public thread default routes", () => {
         getProjectExecutionDefaults(harness.db, {
           projectId: project.id,
         }),
-      ).toEqual({
-        providerId: "codex",
-        model: "gpt-5-mini",
-        serviceTier: "fast",
-        reasoningLevel: "high",
-        permissionMode: "accept-edits",
-      });
+      ).toBeNull();
     });
   });
 

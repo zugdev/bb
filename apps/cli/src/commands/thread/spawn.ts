@@ -324,7 +324,7 @@ export function registerSpawnCommand(
     .command("spawn")
     .aliases(["create", "new"])
     .description(
-      "Spawn a new thread; omitted execution flags use remembered project defaults, then the target provider catalog default",
+      "Spawn a new thread; omitted execution flags use the default provider and its catalog default model",
     )
     .option(
       "--prompt <prompt>",

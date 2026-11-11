@@ -78,9 +78,10 @@ Spawning:
     --source-thread <id>           Source thread for a fork
     --source-seq-end <seq>         Fork after the source turn containing this event sequence
 
-  Execution defaults resolve from explicit flags, live parent execution, and
-  remembered project defaults. With no remembered model, bb uses the explicitly
-  requested provider or Codex and resolves its provider-reported default model
+  Execution defaults resolve from explicit flags and live parent execution.
+  bb does not remember the last model picked in a project. Otherwise bb uses the
+  explicitly requested provider, the default provider from Settings → Providers,
+  or Codex, and resolves its provider-reported default model
   on the target machine (or the first catalog model when none is marked). The product reasoning and permission defaults are
   medium and auto.
   accept-edits uses workspace sandboxing with user-reviewed escalation. auto uses

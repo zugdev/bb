@@ -214,7 +214,7 @@ describe("session options chosen when a thread is created", () => {
             sessionOptions: { daybreak: false },
           }),
         ),
-      ).toBe("gpt-both");
+      ).toBe("gpt-standard");
 
       upsertProjectExecutionDefaults(harness.db, {
         projectId: project.id,
