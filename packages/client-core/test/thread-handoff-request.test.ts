@@ -189,6 +189,7 @@ describe("buildThreadHandoffCreateRequest", () => {
       reasoningLevel: "high",
       serviceTier: "fast",
       startedOnBehalfOf: null,
+      title: "Source thread",
     });
   });
 
