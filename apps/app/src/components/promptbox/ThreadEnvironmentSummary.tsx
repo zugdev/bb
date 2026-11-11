@@ -199,7 +199,7 @@ export const ThreadEnvironmentSummary = memo(function ThreadEnvironmentSummary({
           <TooltipTrigger asChild>
             <button
               type="button"
-              aria-label="Fork: mention this thread in a new thread"
+              aria-label="Mention this thread in a new thread"
               onClick={onMentionInNewThread}
               className={cn(
                 "-ml-1 inline-flex cursor-pointer shrink-0 items-center justify-center rounded-md px-1 py-0.5 transition-colors hover:bg-state-hover",
@@ -209,7 +209,7 @@ export const ThreadEnvironmentSummary = memo(function ThreadEnvironmentSummary({
               <Icon name="Fork" className="size-4" />
             </button>
           </TooltipTrigger>
-          <TooltipContent>Fork: mention this thread in a new thread</TooltipContent>
+          <TooltipContent>Mention this thread in a new thread</TooltipContent>
         </Tooltip>
       ) : null}
     </div>
