@@ -27,6 +27,7 @@ export const promptAreaMocks = {
   executionInputSources: {} as ExistingThreadExecutionInputSources,
   deleteQueuedMessageMutateAsync: vi.fn(),
   navigate: vi.fn(),
+  requestArchive: vi.fn(),
   pluginComposerHost: null as PluginComposerHost | null,
   composerSubmit: null as
     | ((extras?: ComposerSubmitExtras) => void | Promise<void>)
@@ -731,6 +732,10 @@ vi.mock("@/hooks/mutations/thread-state-mutations", () => ({
     isPending: false,
     mutate: promptAreaMocks.updateThreadMutate,
   }),
+}));
+
+vi.mock("@/components/thread/ThreadActionsProvider", () => ({
+  useThreadActions: () => ({ requestArchive: promptAreaMocks.requestArchive }),
 }));
 
 vi.mock("@/hooks/queries/sidebar-navigation-query", () => ({

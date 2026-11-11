@@ -130,9 +130,11 @@ Spawning:
 
 Handoff:
   The app's Handoff to new thread (in the follow-up model picker) starts a new
-  thread that references the source. From the CLI, run bb thread spawn with
-  --provider, --model, --environment and --prompt 'Continue from
-  @thread:THREAD_ID ...'; SDK callers pass the same fields to threads.spawn.
+  thread that references the source, takes the source's title, and archives
+  the source. From the CLI, run bb thread spawn with --provider, --model,
+  --environment, --title and --prompt 'Continue from @thread:THREAD_ID ...',
+  then bb thread archive THREAD_ID; SDK callers pass the same fields to
+  threads.spawn and then call threads.archiveAll.
 
 Forking:
 

@@ -51,6 +51,7 @@ import {
   type CommittedComposerState,
 } from "@/components/promptbox/composer-selection-settle";
 import { ThreadPendingInteractionBanners } from "@/components/thread/pending-interactions/ThreadPendingInteractionBanner";
+import { useThreadActions } from "@/components/thread/ThreadActionsProvider";
 import {
   type PluginComposerHost,
   useComposerHostDraftNotifier,
@@ -1192,6 +1193,7 @@ export function ThreadDetailPromptArea({
     supportsServiceTier,
   ]);
 
+  const { requestArchive } = useThreadActions();
   const createHandoffThread = useCallback(
     async (
       submittedDraft: PromptDraftState,
@@ -1229,6 +1231,7 @@ export function ThreadDetailPromptArea({
             threadId: created.id,
           }),
         );
+        requestArchive(thread);
       } catch (error) {
         if (clearedSubmittedDraft) {
           promptDraft.restoreIfEmpty(submittedDraft);
@@ -1245,10 +1248,12 @@ export function ThreadDetailPromptArea({
       permissionMode,
       promptDraft,
       reasoningLevel,
+      requestArchive,
       selectedProviderId,
       serviceTier,
       setBottomAttachmentError,
       supportsServiceTier,
+      thread,
     ],
   );
 

@@ -2230,6 +2230,7 @@ describe("ThreadDetailPromptArea", () => {
         model: "claude-opus-5",
         projectId: "proj_source",
         providerId: "claude-code",
+        title: "Source thread",
         executionInputSources: {
           providerId: "explicit",
           model: "explicit",
@@ -2237,6 +2238,9 @@ describe("ThreadDetailPromptArea", () => {
           permissionMode: "explicit",
         },
       }),
+    );
+    expect(mocks.requestArchive).toHaveBeenCalledWith(
+      expect.objectContaining({ id: "thr_source" }),
     );
     expect(mocks.sendMessageMutateAsync).not.toHaveBeenCalled();
     expect(mocks.promptDraft.clearIfCurrentMatches).toHaveBeenCalledTimes(1);

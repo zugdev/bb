@@ -161,5 +161,6 @@ export function buildThreadHandoffCreateRequest({
       : {}),
     ...(sendAt === undefined ? {} : { sendAt }),
     startedOnBehalfOf: null,
+    title: seed.sourceThreadTitle,
   };
 }
