@@ -419,6 +419,22 @@ export default async function plugin(bb: BbPluginApi) {
     },
   });
 
+  bb.ui.registerMentionProvider({
+    id: "assistant",
+    label: "Assistant",
+    search({ query, threadId: composerThreadId }) {
+      if (composerThreadId !== null && composerThreadId === threadId) return [];
+      if (!"assistant".startsWith(query.trim().toLowerCase())) return [];
+      return [{ id: "assistant", title: "Assistant", subtitle: "Reminders, schedules and to-dos", icon: "Bot" }];
+    },
+    resolve() {
+      return {
+        context:
+          "The user tagged @assistant in this message. Forward the request in it to their personal assistant with assistant_ask, then say in one line that you did.",
+      };
+    },
+  });
+
   bb.agents.configure((context) =>
     context.thread.id === threadId
       ? {

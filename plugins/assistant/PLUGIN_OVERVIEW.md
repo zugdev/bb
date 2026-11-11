@@ -20,7 +20,7 @@ The first check after setup records where your Slack and inbox are, so you only 
 
 Only the assistant thread gets these tools: `assistant_notify`, `slack_search`, `slack_thread`, `email_search` and `email_read`. Email is opened read only, so reading an email does not mark it read.
 
-Every other thread gets `assistant_ask`. Tag @assistant in any thread, for example "@assistant remind me on the 16th to merge #12040", and that thread's agent forwards the request to the assistant, which sets the reminder and tells the original thread when it's due.
+Every other thread gets `assistant_ask`. Type @assistant in any thread's composer and pick Assistant from the menu, for example "@assistant remind me on the 16th to merge #12040", and that thread's agent forwards the request to the assistant, which sets the reminder and tells the original thread when it's due.
 
 ## CLI
 
