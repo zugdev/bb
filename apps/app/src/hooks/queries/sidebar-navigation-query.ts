@@ -66,6 +66,15 @@ export function useProjectDisplayName(
   return data.projects.find((project) => project.id === projectId)?.name;
 }
 
+export function useProjectIdByName(name: string): string | undefined {
+  const { data } = useQuery<SidebarBootstrapResponse>({
+    queryKey: sidebarNavigationQueryKey(),
+    queryFn: ({ signal }) => fetchSidebarNavigation(signal),
+    ...REALTIME_OWNED_STATIC_CACHE_QUERY_POLICY,
+  });
+  return data?.projects.find((project) => project.name === name)?.id;
+}
+
 export function useProjectColors(): ReadonlyMap<string, string> {
   const { data } = useQuery<SidebarBootstrapResponse>({
     queryKey: sidebarNavigationQueryKey(),

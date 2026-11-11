@@ -2138,6 +2138,7 @@ export function NewThreadComposer({
             allowNoProject: options.allowNoProject,
             createProject: options.createProject,
             openRequest: options.projectPickerOpenRequest,
+            focusAfterSelect: focusPromptBox,
             isLoading: !sidebarNavigationSettled,
             disabled:
               locks.project ||
@@ -2227,6 +2228,7 @@ export function NewThreadComposer({
       projectSources,
       promptActions,
       promptBoxFocusRequest,
+      focusPromptBox,
       promptDraft,
       promptHistoryDrafts,
       restoreHistoryDraft,
