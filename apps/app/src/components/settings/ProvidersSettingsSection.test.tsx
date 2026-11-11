@@ -257,7 +257,7 @@ describe("ProvidersSettingsSection", () => {
     if (configuration === null)
       throw new Error("Configuration section missing");
     expect(
-      within(configuration).getByText("Collapse finished turns"),
+      within(configuration).getByText("Collapse turns"),
     ).toBeTruthy();
     expect(
       within(configuration).getByRole("switch", {

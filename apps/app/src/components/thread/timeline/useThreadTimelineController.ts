@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   useQueryClient,
   type QueryClient,
   type QueryObserverResult,
 } from "@tanstack/react-query";
 import type { ThreadTimelineResponse, TimelineRow } from "@bb/server-contract";
+import { foldIntermediateAssistantRows } from "@bb/thread-view";
 import {
   areTimelinePaginationCursorsEqual,
   buildLoadedTimelineState,
@@ -39,6 +40,8 @@ interface UseThreadTimelineControllerArgs {
   surfaceKey?: string;
   threadId: string;
 }
+
+const NO_TIMELINE_ROWS: TimelineRow[] = [];
 
 export interface UseThreadTimelineControllerResult {
   activePromptMode: ThreadTimelineResponse["activePromptMode"];
@@ -293,10 +296,19 @@ export function useThreadTimelineController({
     threadId,
     updateLoadedTimeline,
   ]);
-  const timelineRows =
+  const loadedRows =
     loadedTimeline.surfaceKey === surfaceKey && loadedTimeline.rows.length > 0
       ? loadedTimeline.rows
-      : (latestTimeline?.rows ?? []);
+      : (latestTimeline?.rows ?? NO_TIMELINE_ROWS);
+  const foldsIntermediateAssistantRows =
+    latestTimeline?.completedTurnDisplay === "collapse";
+  const timelineRows = useMemo(
+    () =>
+      foldsIntermediateAssistantRows
+        ? foldIntermediateAssistantRows(loadedRows)
+        : loadedRows,
+    [foldsIntermediateAssistantRows, loadedRows],
+  );
   const hasResolvedTimeline =
     latestTimelineQuery.data !== undefined || timelineRows.length > 0;
   const timelineQueryState = useConnectionAwareQueryState({

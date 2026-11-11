@@ -1019,3 +1019,48 @@ export function buildTimelineViewRows(
   }
   return result;
 }
+
+function assistantRowAsThought(
+  row: Extract<TimelineConversationRow, { role: "assistant" }>,
+): TimelineSystemRow {
+  return {
+    id: row.id,
+    threadId: row.threadId,
+    turnId: row.turnId,
+    sourceSeqStart: row.sourceSeqStart,
+    sourceSeqEnd: row.sourceSeqEnd,
+    startedAt: row.startedAt,
+    createdAt: row.createdAt,
+    kind: "system",
+    systemKind: "operation",
+    operationKind: "reasoning",
+    title: "Thought",
+    detail: row.text,
+    status: "completed",
+    completedAt: row.createdAt,
+  };
+}
+
+export function foldIntermediateAssistantRows(
+  rows: TimelineRow[],
+): TimelineRow[] {
+  const workAfterNextAssistantByTurn = new Map<string, boolean>();
+  let folded: TimelineRow[] | null = null;
+  for (let index = rows.length - 1; index >= 0; index -= 1) {
+    const row = rows[index]!;
+    if (row.turnId === null) continue;
+    if (row.kind === "work" || row.kind === "system") {
+      if (workAfterNextAssistantByTurn.has(row.turnId)) {
+        workAfterNextAssistantByTurn.set(row.turnId, true);
+      }
+      continue;
+    }
+    if (row.kind !== "conversation" || row.role !== "assistant") continue;
+    if (workAfterNextAssistantByTurn.get(row.turnId) === true) {
+      folded ??= [...rows];
+      folded[index] = assistantRowAsThought(row);
+    }
+    workAfterNextAssistantByTurn.set(row.turnId, false);
+  }
+  return folded ?? rows;
+}

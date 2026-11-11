@@ -63,6 +63,7 @@ export type { AcceptedClientRequestContext } from "./accepted-client-request-con
 export {
   buildTimelineViewRows,
   createTimelineViewRowsCache,
+  foldIntermediateAssistantRows,
 } from "./timeline-view.js";
 export type {
   BuildTimelineViewRowsOptions,

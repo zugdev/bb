@@ -164,8 +164,10 @@ in a new terminal. Only an installed bb (`npx bb-app` or the desktop app)
 offers this; a source checkout does not.
 
 Completed turns: `bb settings completed-turns` lists how each provider shows a
-finished turn: `collapse` folds the turn's work into one "Worked for" row and
-keeps the final answer visible, and `flat` keeps every step visible. Each
+turn: `collapse` folds a finished turn's work into one "Worked for" row and
+keeps the final answer visible, and in the app it also shows a running turn's
+earlier assistant messages as thoughts inside its steps; `flat` keeps every
+step visible. Each
 provider has a default (Claude Code is `flat`, the other first-party providers
 `collapse`); `--json` shows whether each value comes from your setting or that
 default. `bb settings completed-turns <provider-id> <collapse|flat>` overrides
