@@ -262,8 +262,8 @@ reaching the shell. `hints` (default true) shows or hides the delayed shortcut
 badges shown while holding the modifier key; shortcuts work either way.
 
 `history.back` / `history.forward` start unbound and follow the pages opened
-in the current window. `Mod+[` toggles the left sidebar and `Mod+]` the right
-panel. `thread.previous` /
+in the current window. `Mod+[` toggles the left sidebar. `Mod+]` (`panel.toggleNewTab`)
+opens the right panel on a New tab page, or closes it when open. `thread.previous` /
 `thread.next` follow sidebar order instead: `Mod+Shift+[` / `Mod+Shift+]`
 on desktop and `Control+Shift+[` / `Control+Shift+]` on the web.
 

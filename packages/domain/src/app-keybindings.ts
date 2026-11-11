@@ -103,6 +103,7 @@ export const APP_COMMAND_IDS = [
   "panel.reopenClosedTab",
   "panel.close",
   "panel.toggle",
+  "panel.toggleNewTab",
   "panel.fullScreen.toggle",
   "file.quickOpen",
   "terminal.open",

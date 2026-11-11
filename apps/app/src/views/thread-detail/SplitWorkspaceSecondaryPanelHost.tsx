@@ -155,6 +155,11 @@ export function SplitWorkspaceSecondaryPanelHost({
     toggleWindowPanel();
     return true;
   });
+  useAppCommandHandler("panel.toggleNewTab", () => {
+    if (model !== null) return false;
+    toggleWindowPanel();
+    return true;
+  });
   const isSidebarFramed = useIsSidebarFramed();
   const hidesChromeToggles = useUsesSwipeChrome();
   const pageToggleBoxClassName = useRootComposePinnedPanelToggleBoxClassName();

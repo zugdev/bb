@@ -506,6 +506,12 @@ export function PluginPanelRightPanelHost({
     togglePanel();
     return true;
   });
+  useAppCommandHandler("panel.toggleNewTab", () => {
+    if (!isFocused || panel === null) return false;
+    if (isOpen) panelController.close();
+    else openNewTab();
+    return true;
+  });
   useAppCommandHandler("panel.newTab", () => {
     if (!isFocused || panel === null) return false;
     openNewTab();

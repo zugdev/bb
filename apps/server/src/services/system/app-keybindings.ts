@@ -363,7 +363,7 @@ export const DEFAULT_APP_KEYBINDINGS: AppDefaultKeybindings = [
     mainWithoutModal,
   ),
   binding("panel.toggle", "e", { mod: true }, mainWithoutModal),
-  binding("panel.toggle", "]", { mod: true }, mainWithoutModal),
+  binding("panel.toggleNewTab", "]", { mod: true }, mainWithoutModal),
   unassignedBinding("panel.fullScreen.toggle", mainWithoutModal),
   binding("file.quickOpen", "p", { mod: true }, mainWithoutModal),
   binding(

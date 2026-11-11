@@ -175,6 +175,11 @@ export const APP_COMMAND_GROUPS: readonly AppCommandGroup[] = [
         "Show or hide the secondary panel.",
       ),
       command(
+        "panel.toggleNewTab",
+        "Toggle panel on New tab",
+        "Open the secondary panel on a New tab page, or close it if it is open.",
+      ),
+      command(
         "panel.fullScreen.toggle",
         "Toggle panel full screen",
         "Expand the right panel over the conversation, or restore the conversation.",
