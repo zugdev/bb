@@ -17,6 +17,7 @@ import { useIsCompactViewport } from "@bb/shared-ui/hooks/use-compact-viewport";
 import { isRoutePath, resolveRouteHref } from "@/lib/route-paths";
 import { getDesktopBrowserApi } from "@/lib/bb-desktop";
 import { openPaneContentInSplit } from "@/lib/split-layout/openPaneContentInSplit";
+import { openOutsideOwnedTabAtom } from "@/lib/split-layout/tabs";
 import { paneContentForPathname } from "@/views/thread-detail/splitThreadNavigation";
 import { useOptionalPaneContext } from "@/views/thread-detail/PaneContext";
 import { usePublishPluginDetailOpener } from "@/components/plugin/plugin-detail-opener";
@@ -124,11 +125,15 @@ export function RouteNavigationProvider({
   }, []);
   const navigateRoute = useCallback<RouteNavigate>(
     (path, options) => {
+      const content = paneContentForPathname(path.split(/[?#]/)[0] ?? path);
+      if (content?.kind === "thread") {
+        store.set(openOutsideOwnedTabAtom, content);
+      }
       startNavigationTransition(() => {
         navigateImmediately(path, options);
       });
     },
-    [navigateImmediately, startNavigationTransition],
+    [navigateImmediately, startNavigationTransition, store],
   );
   const openInSplit = useCallback<RouteNavigation["openInSplit"]>(
     (path) => {
