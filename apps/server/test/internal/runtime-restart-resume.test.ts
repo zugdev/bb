@@ -1,11 +1,12 @@
 import { listEvents, listQueuedThreadMessages } from "@bb/db";
-import { turnRequestEventDataSchema } from "@bb/domain";
+import { turnRequestEventDataSchema, turnScope } from "@bb/domain";
 import { HOST_DAEMON_PROTOCOL_VERSION } from "@bb/host-daemon-contract";
 import { describe, expect, it, vi } from "vitest";
 import { internalAuthHeaders } from "../helpers/commands.js";
 import {
   seedThread,
   seedThreadFixture,
+  seedStoredEvent,
   seedThreadRuntimeState,
   seedTurnStarted,
 } from "../helpers/seed.js";
@@ -62,6 +63,55 @@ describe("resume after a runtime restart", () => {
         providerThreadId: "provider-turn-cut-by-update",
         threadId: thread.id,
         turnId: "turn-cut-by-update",
+      });
+      const idleThread = seedThread(harness.deps, {
+        projectId: project.id,
+        environmentId: environment.id,
+        status: "idle",
+      });
+
+      await openRestartedSession(harness, host.id);
+
+      await vi.waitFor(() =>
+        expect(restartResumeCount(harness, thread.id)).toBe(1),
+      );
+      expect(restartResumeCount(harness, idleThread.id)).toBe(0);
+    });
+  });
+
+  it("resumes an idle thread whose background command the restart stopped", async () => {
+    await withTestHarness(async (harness) => {
+      const { host, project, environment, thread } = seedThreadFixture(
+        harness,
+        { thread: { status: "idle" } },
+      );
+      seedThreadRuntimeState(harness.deps, {
+        environmentId: environment.id,
+        providerThreadId: "claude-session-1",
+        threadId: thread.id,
+      });
+      seedStoredEvent(harness.deps, {
+        threadId: thread.id,
+        environmentId: environment.id,
+        sequence: 10,
+        type: "item/started",
+        scope: turnScope("turn-that-started-the-command"),
+        providerThreadId: "claude-session-1",
+        itemId: "task:gates",
+        itemKind: "backgroundTask",
+        data: {
+          providerThreadId: "claude-session-1",
+          item: {
+            id: "task:gates",
+            type: "backgroundTask",
+            taskType: "local_bash",
+            description: "run gates",
+            status: "pending",
+            taskStatus: "running",
+            skipTranscript: false,
+            foreground: false,
+          },
+        },
       });
       const idleThread = seedThread(harness.deps, {
         projectId: project.id,

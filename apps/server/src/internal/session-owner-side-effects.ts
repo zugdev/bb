@@ -112,6 +112,7 @@ export async function handleHostSessionOpened(
   }
 
   const interrupted: InterruptActiveThreadsResult[] = [];
+  let threadsWithStoppedBackgroundTasks: ReadonlySet<string> = new Set();
   if (replacedSession && !sameDaemonInstance) {
     interruptEnvironmentProvisioningForHost(deps, {
       hostId: args.hostId,
@@ -128,7 +129,9 @@ export async function handleHostSessionOpened(
         reason: "host-daemon-restarted",
       }),
     );
-    settleDanglingBackgroundTasks(deps, { hostId: args.hostId });
+    threadsWithStoppedBackgroundTasks = settleDanglingBackgroundTasks(deps, {
+      hostId: args.hostId,
+    });
   }
 
   interrupted.push(
@@ -145,7 +148,11 @@ export async function handleHostSessionOpened(
     openThreadWork: args.openThreadWork,
     undeliveredEventThreadIds: args.undeliveredEventThreadIds,
   });
-  void resumeThreadsInterruptedByRestart(deps, interrupted);
+  void resumeThreadsInterruptedByRestart(
+    deps,
+    interrupted,
+    threadsWithStoppedBackgroundTasks,
+  );
   return { endedInteractiveRequests };
 }
 
