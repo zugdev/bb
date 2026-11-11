@@ -48,8 +48,8 @@ function parseStoredBackgroundTaskItem(
 export function settleDanglingBackgroundTasks(
   deps: SettleDanglingBackgroundTasksDeps,
   args: SettleDanglingBackgroundTasksArgs,
-): void {
-  settleBackgroundTaskRows(
+): ReadonlySet<string> {
+  return settleBackgroundTaskRows(
     deps,
     listOpenBackgroundTaskItemRowsForHost(deps.db, { hostId: args.hostId }),
   );
@@ -78,9 +78,9 @@ export function settleBackgroundTasksTheDaemonNoLongerRuns(
 function settleBackgroundTaskRows(
   deps: SettleDanglingBackgroundTasksDeps,
   rows: readonly OpenBackgroundTaskItemRow[],
-): void {
+): ReadonlySet<string> {
   if (rows.length === 0) {
-    return;
+    return new Set();
   }
 
   const settledThreadIds = new Set<string>();
@@ -104,6 +104,7 @@ function settleBackgroundTaskRows(
       eventTypes: ["item/backgroundTask/completed"],
     });
   }
+  return settledThreadIds;
 }
 
 export function settleDanglingBackgroundTasksForStoppedThreadInTransaction(
