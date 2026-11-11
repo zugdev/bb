@@ -58,8 +58,12 @@ function assistantInstructions(threadId: string): string {
 5. Schedule. For anything recurring or later ("check my email every day at 9am", "remind me Friday"), run \`bb automation create --project proj_personal --target-thread ${threadId} --name <name> --cron "<cron>" --timezone <IANA zone> --prompt "<task>" --provider <your provider id> --model <your model>\`, or \`--at <ISO time>\` or \`--in <duration>\` for one off reminders. The name shows on the bb home page, so write it as a short title in the language the user wrote in, such as "Pay rent", never a slug. \`bb automation list --project proj_personal\` shows them.
 6. Orchestrate. You may start work in any project when the user asks: \`bb project list --json\` for ids, then \`bb thread spawn --project <id> --new-environment worktree --prompt-file -\` for code work, \`bb thread wait <id>\` and \`bb thread output <id>\` to follow it, \`bb thread tell <id>\` to steer it. Keep a short ledger in your replies of threads you started and their state, and notify when one needs the user.
 7. Memory. You own the user's long term memory. Search it with \`bb memory search <words> --scope all\` before answering questions about people, projects or preferences, and save durable facts with \`bb memory add --scope global\`: people and how the user works with them, their timezone, routines and preferences.
-8. You never send Slack messages or email. When a reply is due, write a draft for the user to copy.`;
+8. You never send Slack messages or email. When a reply is due, write a draft for the user to copy.
+9. Requests from other threads. The user can tag @assistant in any bb thread, and that thread's agent forwards the request here as "Request from thread <id>: ...". Handle it as if the user wrote it here. When a reminder concerns work in that thread, such as merging a pull request, put the thread id in the automation prompt, and when it fires notify the user and \`bb thread tell <id>\` that thread what is due. Never take an outward action like a merge on your own; remind and ask.`;
 }
+
+const ASK_ASSISTANT_INSTRUCTIONS =
+  "When the user writes @assistant, or asks for a reminder, a scheduled check, a to-do or a calendar event, call assistant_ask with the whole request, including the date and what it is about (pull request numbers, links, names). The user's personal assistant owns reminders and schedules, so do not create automations yourself for these.";
 
 export default async function plugin(bb: BbPluginApi) {
   const settings = bb.settings.define({
@@ -339,6 +343,22 @@ export default async function plugin(bb: BbPluginApi) {
   });
 
   bb.agents.registerTool({
+    name: "assistant_ask",
+    description:
+      "Forward a request to the user's personal assistant: reminders, scheduled checks, to-dos and calendar events. Include the date and what it is about.",
+    parameters: z.object({ request: z.string().min(1).max(2000) }),
+    async execute({ request }, ctx) {
+      const assistantThreadId = await ensureThread();
+      await bb.sdk.threads.send({
+        threadId: assistantThreadId,
+        mode: "auto",
+        input: [{ type: "text", text: `Request from thread ${ctx.threadId}: ${request}`, mentions: [] }],
+      });
+      return `Sent to the assistant in thread ${assistantThreadId}.`;
+    },
+  });
+
+  bb.agents.registerTool({
     name: "todo_list",
     description: "List open to-dos and those checked off in the last week, with ids and due times.",
     parameters: z.object({}),
@@ -399,6 +419,22 @@ export default async function plugin(bb: BbPluginApi) {
     },
   });
 
+  bb.ui.registerMentionProvider({
+    id: "assistant",
+    label: "Assistant",
+    search({ query, threadId: composerThreadId }) {
+      if (composerThreadId !== null && composerThreadId === threadId) return [];
+      if (!"assistant".startsWith(query.trim().toLowerCase())) return [];
+      return [{ id: "assistant", title: "Assistant", subtitle: "Reminders, schedules and to-dos", icon: "Bot" }];
+    },
+    resolve() {
+      return {
+        context:
+          "The user tagged @assistant in this message. Forward the request in it to their personal assistant with assistant_ask, then say in one line that you did.",
+      };
+    },
+  });
+
   bb.agents.configure((context) =>
     context.thread.id === threadId
       ? {
@@ -406,7 +442,7 @@ export default async function plugin(bb: BbPluginApi) {
           skills: [],
           instructions: assistantInstructions(context.thread.id),
         }
-      : { tools: [], skills: [] },
+      : { tools: ["assistant_ask"], skills: [], instructions: ASK_ASSISTANT_INSTRUCTIONS },
   );
 
   bb.events.on("thread.idle", ({ thread }) => {
