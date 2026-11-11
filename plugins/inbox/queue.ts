@@ -167,6 +167,19 @@ export function nextInboxStep(
   return shownThreadId === null ? { kind: "stay" } : { kind: "done" };
 }
 
+export function adjacentInboxThread(
+  queue: readonly PluginSidebarThread[],
+  shownThreadId: string | null,
+  step: -1 | 1,
+): PluginSidebarThread | undefined {
+  const index = queue.findIndex((thread) => thread.id === shownThreadId);
+  const next =
+    index === -1
+      ? queue.at(step === 1 ? 0 : -1)
+      : queue[(index + step + queue.length) % queue.length];
+  return next?.id === shownThreadId ? undefined : next;
+}
+
 const HOUR_MS = 60 * 60 * 1000;
 const TIME_FORMAT = new Intl.DateTimeFormat(undefined, {
   hour: "2-digit",
