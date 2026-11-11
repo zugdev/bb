@@ -159,11 +159,6 @@ const mainWithoutModalOrBrowser = {
   none: ["modalOpen", "browserFocus"],
 } as const;
 
-const mainWithoutEditable = {
-  all: ["mainSurface"],
-  none: ["modalOpen", "editableFocus", "terminalFocus", "browserFocus"],
-} as const;
-
 const mainWithoutTerminalOrBrowser = {
   all: ["mainSurface"],
   none: ["modalOpen", "terminalFocus", "browserFocus"],
@@ -203,7 +198,7 @@ export const DEFAULT_APP_KEYBINDINGS: AppDefaultKeybindings = [
   ),
   binding("thread.search", "k", { mod: true }, mainWithoutModal),
   unassignedBinding("thread.rename", mainWithoutModal),
-  binding("thread.archive", "a", { mod: true }, mainWithoutEditable),
+  binding("thread.archive", "a", { mod: true }, mainWithoutModal),
   binding("thread.snooze", "s", { mod: true }, mainWithoutModal),
   binding("thread.undo", "z", { mod: true }, mainWithoutTerminalOrBrowser),
   unassignedBinding("thread.markRead", mainWithoutModal),

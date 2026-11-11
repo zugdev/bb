@@ -616,6 +616,14 @@ function SplitThreadAreaContent({ routeContent }: SplitThreadAreaProps) {
     [navigate, setMaximizedPaneId, store],
   );
 
+  const onFocusPane = useCallback(
+    (paneId: string) => {
+      setKeyboardFocusRequest(null);
+      focusPane(paneId);
+    },
+    [focusPane],
+  );
+
   const splitFocusedPane = useCallback(
     (side: SplitSide) => {
       const current = store.get(splitLayoutAtom);
@@ -896,10 +904,6 @@ function SplitThreadAreaContent({ routeContent }: SplitThreadAreaProps) {
   const activeWorkspaceTab = keptTabs.find((tab) => tab.isActive) ?? null;
   const shownTabFocusedPaneId =
     effectiveMaximizedPaneId ?? layout.focusedPaneId;
-  const onFocusPane = (paneId: string) => {
-    setKeyboardFocusRequest(null);
-    focusPane(paneId);
-  };
   const workspace =
     keptTabs.length === 0 ? null : (
       <div
@@ -1227,6 +1231,7 @@ function SplitPaneLeaf(props: SplitPaneLeafProps) {
         content={node.content}
         paneId={node.paneId}
         isFocused={isFocused}
+        onFocusPane={props.onFocusPane}
         isSplitPane
         timelineEnabled={props.isTabActive && !isHiddenByMaximize}
         secondaryPanelRegistry={props.secondaryPanelRegistry}
@@ -1350,6 +1355,7 @@ interface WorkspacePaneContentProps {
   content: PaneContent;
   paneId: string;
   isFocused: boolean;
+  onFocusPane?: (paneId: string) => void;
   isSplitPane: boolean;
   timelineEnabled: boolean;
   secondaryPanelRegistry: PaneSecondaryPanelRegistry | null;
@@ -1368,6 +1374,7 @@ const WorkspacePaneContent = memo(function WorkspacePaneContent({
   content,
   paneId,
   isFocused,
+  onFocusPane,
   isSplitPane,
   timelineEnabled,
   secondaryPanelRegistry,
@@ -1419,10 +1426,15 @@ const WorkspacePaneContent = memo(function WorkspacePaneContent({
           },
     [paneId, secondaryPanelRegistry],
   );
+  const requestFocus = useMemo(
+    () => (onFocusPane === undefined ? undefined : () => onFocusPane(paneId)),
+    [onFocusPane, paneId],
+  );
   const value = useMemo<PaneContextValue>(
     () => ({
       paneId,
       isFocused,
+      requestFocus,
       isSplitPane,
       secondaryPanelHost,
       reservesWindowPanelToggle: false,
@@ -1445,6 +1457,7 @@ const WorkspacePaneContent = memo(function WorkspacePaneContent({
       ownsWindowTopLeft,
       navigateInPane,
       onRequestClose,
+      requestFocus,
       isMaximized,
       onToggleMaximize,
       onMoveToSide,

@@ -22,22 +22,22 @@ const PANE_THREAD_ACTION_KEYS = [
 
 const SNOOZE_SHORTCUT_PRESET = "1h";
 
+const UNFOCUSED_PANE_ARCHIVE_COMMAND = ["thread.archive"] as const;
+
 export function PaneThreadActionCommandHandler({
   thread,
 }: {
   thread: PluginThreadActionTarget;
 }) {
-  const { isFocused } = usePaneContext();
+  const { isFocused, requestFocus } = usePaneContext();
   const entries = useThreadActionEntries(thread, {
     keys: PANE_THREAD_ACTION_KEYS,
   });
+  const isArchiveOfArchivedThread = (index: number) =>
+    PANE_THREAD_ACTION_COMMANDS[index] === "thread.archive" &&
+    thread.archivedAt !== null;
   const entryFor = (index: number) => {
-    if (
-      PANE_THREAD_ACTION_COMMANDS[index] === "thread.archive" &&
-      thread.archivedAt !== null
-    ) {
-      return undefined;
-    }
+    if (isArchiveOfArchivedThread(index)) return undefined;
     const key = PANE_THREAD_ACTION_KEYS[index];
     return entries.find((entry) => entry.key === key);
   };
@@ -46,7 +46,7 @@ export function PaneThreadActionCommandHandler({
     PANE_THREAD_ACTION_COMMANDS,
     (index) => {
       const entry = entryFor(index);
-      if (entry === undefined) return false;
+      if (entry === undefined) return isArchiveOfArchivedThread(index);
       void entry.action.run(
         PANE_THREAD_ACTION_COMMANDS[index] === "thread.snooze"
           ? SNOOZE_SHORTCUT_PRESET
@@ -56,7 +56,23 @@ export function PaneThreadActionCommandHandler({
     },
     0,
     isFocused,
-    (index) => entryFor(index) !== undefined,
+    (index) =>
+      entryFor(index) !== undefined || isArchiveOfArchivedThread(index),
+  );
+
+  const archiveIndex = PANE_THREAD_ACTION_COMMANDS.indexOf("thread.archive");
+  useIndexedAppCommandHandlers(
+    UNFOCUSED_PANE_ARCHIVE_COMMAND,
+    () => {
+      const entry = entryFor(archiveIndex);
+      if (entry === undefined || requestFocus === undefined) return false;
+      requestFocus();
+      void entry.action.run(undefined);
+      return true;
+    },
+    -1,
+    !isFocused && requestFocus !== undefined,
+    () => entryFor(archiveIndex) !== undefined,
   );
 
   return null;

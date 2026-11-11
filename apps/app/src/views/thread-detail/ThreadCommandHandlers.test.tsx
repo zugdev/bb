@@ -98,8 +98,13 @@ function makeThread(id: string, title: string): Thread {
 const firstThread = makeThread("thr_first", "First pane title");
 const secondThread = makeThread("thr_second", "Second pane title");
 
-function paneContext(paneId: string, isFocused: boolean): PaneContextValue {
+function paneContext(
+  paneId: string,
+  isFocused: boolean,
+  requestFocus?: () => void,
+): PaneContextValue {
   return {
+    ...(requestFocus === undefined ? {} : { requestFocus }),
     beginPaneDrag: undefined,
     isBoundedPane: true,
     isFocused,
@@ -120,9 +125,11 @@ function paneContext(paneId: string, isFocused: boolean): PaneContextValue {
 function SplitHandlers({
   firstPaneThread = firstThread,
   focusedThreadId,
+  requestFocus,
 }: {
   firstPaneThread?: Thread;
   focusedThreadId: string | null;
+  requestFocus?: (paneId: string) => void;
 }) {
   const queryClient = new QueryClient();
   for (const thread of [firstPaneThread, secondThread]) {
@@ -140,6 +147,7 @@ function SplitHandlers({
             value={paneContext(
               "pane-first",
               focusedThreadId === firstPaneThread.id,
+              requestFocus && (() => requestFocus("pane-first")),
             )}
           >
             <PaneThreadActionCommandHandler
@@ -150,6 +158,7 @@ function SplitHandlers({
             value={paneContext(
               "pane-second",
               focusedThreadId === secondThread.id,
+              requestFocus && (() => requestFocus("pane-second")),
             )}
           >
             <PaneThreadActionCommandHandler
@@ -252,5 +261,41 @@ describe("pane thread action command handler", () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
 
     expect(mocks.requestArchiveThreads).not.toHaveBeenCalled();
+  });
+
+  it("focuses an unfocused thread pane and archives it when no thread pane is focused", async () => {
+    const requestFocus = vi.fn<(paneId: string) => void>();
+    render(
+      <SplitHandlers focusedThreadId={null} requestFocus={requestFocus} />,
+    );
+
+    pressShortcut("A");
+
+    await waitFor(() =>
+      expect(mocks.requestArchiveThreads).toHaveBeenCalledTimes(1),
+    );
+    const [paneId] = requestFocus.mock.calls[0] ?? [];
+    const [archived] = mocks.requestArchiveThreads.mock.calls[0] ?? [];
+    expect(archived?.map((thread) => thread.id)).toEqual([
+      paneId === "pane-first" ? firstThread.id : secondThread.id,
+    ]);
+  });
+
+  it("archives nothing when the focused thread is archived and another pane could take the fallback", async () => {
+    const archivedThread = { ...firstThread, archivedAt: 2 };
+    const requestFocus = vi.fn();
+    render(
+      <SplitHandlers
+        firstPaneThread={archivedThread}
+        focusedThreadId={archivedThread.id}
+        requestFocus={requestFocus}
+      />,
+    );
+
+    pressShortcut("A");
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(mocks.requestArchiveThreads).not.toHaveBeenCalled();
+    expect(requestFocus).not.toHaveBeenCalled();
   });
 });
