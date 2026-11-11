@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { PluginSidebarThread } from "@get-bb/plugin-sdk/app";
 import { makeThread } from "./fixtures";
 import {
+  adjacentInboxThread,
   inboxQueue,
   inboxSections,
   nextInboxStep,
@@ -141,5 +142,25 @@ describe("nextInboxStep", () => {
       kind: "open",
       thread: queue[0],
     });
+  });
+});
+
+describe("adjacentInboxThread", () => {
+  const queue = [idle("a", 10), idle("b", 20), idle("c", 30)];
+
+  it("wraps around both ends of the queue", () => {
+    expect(adjacentInboxThread(queue, "c", 1)?.id).toBe("a");
+    expect(adjacentInboxThread(queue, "a", -1)?.id).toBe("c");
+    expect(adjacentInboxThread(queue, "a", 1)?.id).toBe("b");
+  });
+
+  it("enters the queue at its first or last thread from outside it", () => {
+    expect(adjacentInboxThread(queue, null, 1)?.id).toBe("a");
+    expect(adjacentInboxThread(queue, "elsewhere", -1)?.id).toBe("c");
+  });
+
+  it("stays put when the shown thread is the only one", () => {
+    expect(adjacentInboxThread(queue.slice(0, 1), "a", 1)).toBeUndefined();
+    expect(adjacentInboxThread([], null, 1)).toBeUndefined();
   });
 });

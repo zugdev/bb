@@ -25,6 +25,7 @@ import {
   DropdownMenuTrigger,
 } from "@bb/shared-ui/dropdown-menu";
 import {
+  adjacentInboxThread,
   inboxQueue,
   inboxSections,
   isSnoozed,
@@ -181,12 +182,8 @@ function useInboxNavigation(threadId: string) {
   );
   const index = queue.findIndex((entry) => entry.id === threadId);
   const go = (step: -1 | 1) => {
-    const next =
-      index === -1
-        ? queue.at(step === 1 ? 0 : -1)
-        : queue[(index + step + queue.length) % queue.length];
-    if (next === undefined || next.id === threadId) return;
-    showThread(ownTab, next);
+    const next = adjacentInboxThread(queue, threadId, step);
+    if (next !== undefined) showThread(ownTab, next);
   };
   return {
     isActive: ownTab.isActive,
@@ -426,6 +423,38 @@ export function openInboxAtTop(): void {
     return;
   }
   showThread(commandTarget.ownTab, top);
+}
+
+function holdsTypedText(element: Element | null): boolean {
+  if (
+    element instanceof HTMLInputElement ||
+    element instanceof HTMLTextAreaElement
+  ) {
+    return element.value !== "";
+  }
+  return (
+    element instanceof HTMLElement &&
+    element.isContentEditable &&
+    element.textContent?.trim() !== ""
+  );
+}
+
+export function canStepInbox(): boolean {
+  return (
+    commandTarget !== null &&
+    commandTarget.ownTab.isActive &&
+    commandTarget.queue.length > 0 &&
+    !holdsTypedText(document.activeElement)
+  );
+}
+
+export function stepInbox(step: -1 | 1): void {
+  if (commandTarget === null) return;
+  const { ownTab, queue } = commandTarget;
+  const shownThreadId =
+    ownTab.focused?.kind === "thread" ? ownTab.focused.threadId : null;
+  const next = adjacentInboxThread(queue, shownThreadId, step);
+  if (next !== undefined) showThread(ownTab, next);
 }
 
 export function InboxController() {

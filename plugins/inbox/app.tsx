@@ -1,5 +1,6 @@
 import { definePluginApp } from "@get-bb/plugin-sdk/app";
 import {
+  canStepInbox,
   INBOX_PANEL_PATH,
   InboxController,
   InboxFloatingControls,
@@ -7,6 +8,7 @@ import {
   InboxPanel,
   InboxTitleProject,
   openInboxAtTop,
+  stepInbox,
   useInboxBadge,
 } from "./inbox";
 import { InboxSidebarList } from "./sidebar";
@@ -49,5 +51,19 @@ export default definePluginApp((app) => {
     title: "Open Inbox",
     defaultShortcut: { key: "i", mod: true },
     run: openInboxAtTop,
+  });
+  app.commands.register({
+    id: "previous",
+    title: "Previous thread in Inbox",
+    defaultShortcut: { key: "ArrowLeft", mod: true },
+    isAvailable: canStepInbox,
+    run: () => stepInbox(-1),
+  });
+  app.commands.register({
+    id: "next",
+    title: "Next thread in Inbox",
+    defaultShortcut: { key: "ArrowRight", mod: true },
+    isAvailable: canStepInbox,
+    run: () => stepInbox(1),
   });
 });
