@@ -498,6 +498,7 @@ describe("app keybindings", () => {
             [
               "sidebar.toggle",
               "panel.toggle",
+              "panel.toggleNewTab",
               "thread.archive",
               "thread.snooze",
               "thread.undo",
@@ -550,7 +551,7 @@ describe("app keybindings", () => {
           when: mainWithoutModal,
         },
         {
-          command: "panel.toggle",
+          command: "panel.toggleNewTab",
           key: "]",
           mod: true,
           shift: false,

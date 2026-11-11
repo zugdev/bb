@@ -1070,6 +1070,12 @@ function ThreadDetailViewInternal(
     toggleSecondaryPanel();
     return true;
   });
+  useAppCommandHandler("panel.toggleNewTab", () => {
+    if (!isFocused || isPanelTabPane) return false;
+    if (isSecondaryPanelOpen) panel.close();
+    else handleOpenNewTab();
+    return true;
+  });
   useAppCommandHandler("panel.fullScreen.toggle", () => {
     if (
       !isFocused ||

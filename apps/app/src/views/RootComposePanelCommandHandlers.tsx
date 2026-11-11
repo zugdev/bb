@@ -20,6 +20,11 @@ export function RootComposePanelCommandHandlers({
     onToggle();
     return true;
   });
+  useAppCommandHandler("panel.toggleNewTab", () => {
+    if (!isFocused) return false;
+    onToggle();
+    return true;
+  });
   useAppCommandHandler("panel.close", () => {
     if (!isFocused) return false;
     return onClose();

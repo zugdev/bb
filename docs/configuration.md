@@ -461,7 +461,7 @@ either way.
 pane shortcuts use `Control+1…9` on macOS and `Ctrl+Shift+1…9` on Windows/Linux in both the web and desktop apps, which leaves `Mod+1…9` to the browser's own tabs and, in the desktop app, to pane tabs. Previous and next thread use `Mod+Shift+[/]` on desktop and
 `Control+Shift+[/]` on the web; they follow the sidebar order.
 
-`history.back` / `history.forward` (Go back / Go forward) move through the pages opened in the current window, like browser history. They start unassigned and appear in the command palette only when there is somewhere to go. `Mod+[` toggles the left sidebar and `Mod+]` toggles the right panel, which `Mod+E` also toggles.
+`history.back` / `history.forward` (Go back / Go forward) move through the pages opened in the current window, like browser history. They start unassigned and appear in the command palette only when there is somewhere to go. `Mod+[` toggles the left sidebar and `Mod+E` toggles the right panel, and `Mod+]` (`panel.toggleNewTab`) opens it on a New tab page or closes it whatever it shows.
 
 On macOS, `panel.previousTab` / `panel.nextTab` default to
 `Command+Control+ArrowLeft/Right` (cycling visible right-panel tabs and each
@@ -510,7 +510,7 @@ Pane tab shortcuts use `Alt` on the web, because the browser keeps `Mod+W` and `
 | Window    | Open local logs                              | Unassigned                  | Desktop                  |
 | Window    | Show all notifications                       | Unassigned                  | All clients              |
 | Plugins   | Turn plugin safe mode on / off               | Unassigned                  | All clients              |
-| Panel     | New tab / close tab / toggle                 | `Mod+T` / `Mod+W` / `Mod+]` or `Mod+E`; desktop `Mod+Alt+T` / `Mod+Alt+W` / `Mod+]` or `Mod+E` | All clients |
+| Panel     | New tab / close tab / toggle                 | `Mod+T` / `Mod+W` / `Mod+E`, or `Mod+]` to open on New tab; desktop `Mod+Alt+T` / `Mod+Alt+W` / `Mod+E` or `Mod+]` | All clients |
 | Panel     | Reopen closed tab                            | `Mod+Alt+Shift+T`           | Desktop                  |
 | Workspace | Quick open file / toggle diff                | `Mod+P` / `Mod+D`           | All clients              |
 | Workspace | Open terminal                                | `Mod+Shift+Enter`           | All clients              |
