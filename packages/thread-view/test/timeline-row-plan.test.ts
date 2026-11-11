@@ -6,6 +6,10 @@ import {
   buildThreadTimelineTurnDetailsFromEvents,
 } from "../src/build-thread-timeline.js";
 import {
+  buildTimelineViewRows,
+  foldIntermediateAssistantRows,
+} from "../src/timeline-view.js";
+import {
   createTimelineEventFactory,
   fromRows,
 } from "./timeline-test-harness.js";
@@ -192,5 +196,59 @@ describe("timeline row planning", () => {
       });
       expect(details).toEqual({ kind: "matched", rows: group.children });
     }
+  });
+
+  it("folds narration of a running turn into its steps and keeps the latest message", () => {
+    const event = createTimelineEventFactory({ threadId: "thread-1" });
+    const finishedTurn = [
+      event.turnStarted({ turnId: "done" }),
+      event.commandCompleted({ turnId: "done", command: "ls" }),
+      event.assistantCompleted({ turnId: "done", text: "First answer." }),
+      event.assistantCompleted({ turnId: "done", text: "Second answer." }),
+      event.turnCompleted({ turnId: "done" }),
+    ];
+    const runningTurn = [
+      event.turnStarted({ turnId: "live" }),
+      event.assistantCompleted({ turnId: "live", text: "Checking the log." }),
+      event.commandCompleted({ turnId: "live", command: "cat log" }),
+      event.assistantCompleted({ turnId: "live", text: "Fixing the bug." }),
+      event.commandCompleted({ turnId: "live", command: "edit" }),
+    ];
+    const rows = foldIntermediateAssistantRows(
+      timeline([...finishedTurn, ...runningTurn], false).rows,
+    );
+
+    expect(
+      buildTimelineViewRows(rows).map((row) =>
+        row.kind === "conversation" ? row.text : row.kind,
+      ),
+    ).toEqual([
+      "turn",
+      "First answer.",
+      "Second answer.",
+      "step-summary",
+      "Fixing the bug.",
+      "work",
+    ]);
+    const step = buildTimelineViewRows(rows)[3];
+    expect(
+      step?.kind === "step-summary" &&
+        step.children.map((child) =>
+          child.kind === "system" ? child.detail : child.kind,
+        ),
+    ).toEqual(["Checking the log.", "work"]);
+  });
+
+  it("leaves rows untouched when no narration needs folding", () => {
+    const event = createTimelineEventFactory({ threadId: "thread-1" });
+    const rows = timeline(
+      [
+        event.turnStarted(),
+        event.commandCompleted({ command: "ls" }),
+        event.assistantCompleted({ text: "Done" }),
+      ],
+      false,
+    ).rows;
+    expect(foldIntermediateAssistantRows(rows)).toBe(rows);
   });
 });

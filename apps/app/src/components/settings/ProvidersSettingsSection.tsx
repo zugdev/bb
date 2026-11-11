@@ -450,12 +450,13 @@ export function ProvidersSettingsSection({
           <div className="mt-4 space-y-3 border-t border-border pt-4">
             <div>
               <h3 className="text-sm font-medium text-foreground">
-                Collapse finished turns
+                Collapse turns
               </h3>
               <p className="mt-0.5 text-xs leading-snug text-subtle-foreground/75">
-                When a turn finishes, fold its work into one Worked for row and
-                keep the final answer visible. Turn off collapsing to keep every
-                step of a finished turn visible.
+                While a turn runs, fold earlier messages into its steps as
+                thoughts and keep the latest one visible. When it finishes, fold
+                its work into one Worked for row and keep the final answer
+                visible. Turn off collapsing to keep every step visible.
               </p>
             </div>
             <SettingsRowList>

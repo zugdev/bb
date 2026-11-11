@@ -317,10 +317,12 @@ coarse-pointer touch devices, the software-keyboard Return inserts a newline
 and the submit button sends; iPadOS WebKit keeps the Enter and Command+Enter
 shortcuts for a connected Magic Keyboard.
 
-**Completed turn display.** The "Collapse finished turns" switches in Settings
+**Completed turn display.** The "Collapse turns" switches in Settings
 → Providers store `providerCompletedTurnDisplay`, a map of provider id to
-`collapse` (finished work folds into one "Worked for" row and the final answer
-stays visible) or `flat` (every step stays visible, as while the turn ran). A
+`collapse` or `flat`. With `collapse`, a finished turn folds into one "Worked
+for" row with the final answer visible, and in the app a running turn shows
+its earlier assistant messages as thoughts inside its steps and keeps the
+latest one visible. With `flat`, every step and message stays visible. A
 provider without an entry uses its registration's `completedTurnDisplay`
 default: Claude Code is `flat`, other first-party providers `collapse`. It
 applies to existing threads, the outline, and `bb thread log`. Set it with
