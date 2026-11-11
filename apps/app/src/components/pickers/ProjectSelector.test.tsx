@@ -1,7 +1,13 @@
 // @vitest-environment jsdom
 
 import { useState } from "react";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ProjectSelector } from "./ProjectSelector";
 
@@ -38,6 +44,31 @@ describe("ProjectSelector", () => {
     expect(screen.queryByRole("option", { name: "Bravo API" })).toBeNull();
     rerender(<ProjectSelector {...props} openRequest={3} />);
     expect(screen.getByRole("option", { name: "Bravo API" })).toBeTruthy();
+  });
+
+  it("hands focus back after a selection but not after dismissing", async () => {
+    const focusAfterSelect = vi.fn();
+    const props = {
+      projects: PROJECTS,
+      value: "proj_alpha",
+      onChange: () => {},
+      focusAfterSelect,
+    };
+    const { rerender } = render(<ProjectSelector {...props} openRequest={0} />);
+    rerender(<ProjectSelector {...props} openRequest={1} />);
+    fireEvent.keyDown(
+      screen.getByRole("combobox", { name: "Search projects" }),
+      { key: "Escape" },
+    );
+    expect(screen.queryByRole("option", { name: "Bravo API" })).toBeNull();
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    expect(focusAfterSelect).not.toHaveBeenCalled();
+    rerender(<ProjectSelector {...props} openRequest={2} />);
+    fireEvent.click(screen.getByRole("option", { name: "Bravo API" }));
+    await waitFor(() => expect(focusAfterSelect).toHaveBeenCalledTimes(1));
+    expect(document.activeElement).not.toBe(
+      screen.getByRole("button", { name: "Project: Alpha Web" }),
+    );
   });
 
   it("selects a searched project and returns to all projects without falling back to the first project", () => {

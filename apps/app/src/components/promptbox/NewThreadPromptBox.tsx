@@ -108,6 +108,7 @@ export interface NewThreadProjectConfig {
   isLoading?: boolean;
   showChevronWhenDisabled?: boolean;
   openRequest?: number;
+  focusAfterSelect?: () => void;
 }
 
 export interface NewThreadModeConfig {
@@ -353,6 +354,7 @@ const DefaultNewThreadComposer = memo(function DefaultNewThreadComposer({
               isLoading={project.isLoading}
               showChevronWhenDisabled={project.showChevronWhenDisabled}
               openRequest={project.openRequest}
+              focusAfterSelect={project.focusAfterSelect}
               className="shrink-0"
             />
           ) : null}

@@ -103,6 +103,8 @@ import {
 } from "@/lib/environment-workspace-display";
 import { useSystemEnvironmentProviders } from "@/hooks/queries/environment-provider-queries";
 import { useSystemMachineProviders } from "@/hooks/queries/machine-provider-queries";
+import { useProjectIdByName } from "@/hooks/queries/sidebar-navigation-query";
+import { useSetRootComposeProjectId } from "@/lib/root-compose-selection";
 import { formatWorkspaceCheckoutDisplay } from "@bb/shared-ui/lib/workspace-checkout-display";
 import { resolveAbsoluteFilePath } from "@bb/shared-ui/lib/absolute-file-path";
 import { getThreadDisplayTitle } from "@/lib/thread-title";
@@ -722,6 +724,8 @@ function ThreadDetailViewInternal(
     sectionId: thread?.sectionId ?? null,
     pinned: thread?.pinnedAt != null,
   });
+  const forkProjectId = useProjectIdByName("bb");
+  const setRootComposeProjectId = useSetRootComposeProjectId();
   const { providers: registeredEnvironmentProviders } =
     useSystemEnvironmentProviders();
   const { providers: registeredMachineProviders } = useSystemMachineProviders();
@@ -1453,7 +1457,8 @@ function ThreadDetailViewInternal(
     isThreadOnReusableEnvironment && projectId && thread.environmentId !== null
       ? createThreadInEnvironment
       : undefined;
-  const onMentionInNewThread = () =>
+  const onMentionInNewThread = () => {
+    if (forkProjectId) setRootComposeProjectId(forkProjectId);
     navigate(getRootComposeRoutePath(), {
       state: {
         focusPrompt: true,
@@ -1461,6 +1466,7 @@ function ThreadDetailViewInternal(
         replaceInitialPrompt: true,
       },
     });
+  };
   const threadCheckoutDisplay = workspaceStatus
     ? formatWorkspaceCheckoutDisplay({ checkout: workspaceStatus.checkout })
     : undefined;

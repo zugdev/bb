@@ -54,6 +54,7 @@ interface ProjectSelectorProps {
   defaultOpen?: boolean;
   openRequest?: number;
   onOpenChange?: (open: boolean) => void;
+  focusAfterSelect?: () => void;
   modal?: boolean;
 }
 
@@ -72,6 +73,7 @@ export function ProjectSelector({
   defaultOpen,
   openRequest = 0,
   onOpenChange,
+  focusAfterSelect,
   modal = true,
 }: ProjectSelectorProps) {
   const [open, setOpen] = useState(defaultOpen ?? false);
@@ -80,6 +82,7 @@ export function ProjectSelector({
   const commandRef = useRef<HTMLDivElement>(null);
   const keyboardNavigationRef = useRef(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const closedBySelectRef = useRef(false);
   const listRef = useResetPickerScroll<HTMLDivElement>(searchQuery);
   const [listElement, setListElement] = useState<HTMLDivElement | null>(null);
   const { scrollRef, belowOverflow } = useScrollOverflowState<HTMLDivElement>({
@@ -161,6 +164,7 @@ export function ProjectSelector({
     }
   };
   const selectProject = (projectId: string | null) => {
+    closedBySelectRef.current = true;
     onChange(projectId);
     handleOpenChange(false);
   };
@@ -218,6 +222,13 @@ export function ProjectSelector({
           } else {
             commandRef.current?.focus();
           }
+        }}
+        onCloseAutoFocus={(event) => {
+          const closedBySelect = closedBySelectRef.current;
+          closedBySelectRef.current = false;
+          if (!closedBySelect || !focusAfterSelect) return;
+          event.preventDefault();
+          focusAfterSelect();
         }}
         className="flex max-h-[min(var(--radix-popover-content-available-height),calc(100dvh-0.5rem))] w-52 flex-col overflow-hidden p-0 max-md:min-h-0 max-md:flex-1"
       >
