@@ -111,6 +111,7 @@ export interface ThreadScreenComposerHost {
   contextEnvironmentId: string | null;
   focusRequest?: number;
   onCreateNewThreadInEnvironment?: () => void;
+  onMentionInNewThread?: () => void;
   onOpenThreadInfo?: () => void;
   permissionPolicy: ThreadComposerPermissionPolicy;
   footerOverlay?: ReactNode;
@@ -569,6 +570,7 @@ export function ThreadScreen({
       environmentGoneStatus={resolveEnvironmentGoneStatus(environment)}
       environmentHostId={environment?.hostId}
       onCreateNewThreadInEnvironment={composer.onCreateNewThreadInEnvironment}
+      onMentionInNewThread={composer.onMentionInNewThread}
       onOpenThreadInfo={composer.onOpenThreadInfo}
       projectId={projectId}
       resolveMentionLink={resolveMentionLink}
