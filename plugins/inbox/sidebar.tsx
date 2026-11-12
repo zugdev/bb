@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, type MouseEvent } from "react";
 import {
   experimental_Icon as Icon,
   experimental_useOwnTab,
@@ -91,8 +91,10 @@ export function InboxSidebarList({
         ),
       ),
   );
-  const open = (thread: PluginSidebarThread) => {
-    if (ownTab.isActive) {
+  const open = (thread: PluginSidebarThread, event: MouseEvent) => {
+    if (event.metaKey || event.ctrlKey) {
+      navigate.toThread(thread.id, { experimental_tab: true });
+    } else if (ownTab.isActive) {
       ownTab.show({
         kind: "thread",
         projectId: thread.projectId,
@@ -165,7 +167,7 @@ export function InboxSidebarList({
                           })
                     }
                     dot={threadDot(thread, descendants)}
-                    onOpen={() => open(thread)}
+                    onOpen={(event) => open(thread, event)}
                   />
                 ))}
               </ul>
@@ -197,7 +199,7 @@ function ArchivedThreads({
   projects: readonly PluginSidebarProject[];
   now: number;
   descendants: ThreadDescendants;
-  onOpen: (thread: PluginSidebarThread) => void;
+  onOpen: (thread: PluginSidebarThread, event: MouseEvent) => void;
 }) {
   const { threads, experimental_archived: archived } =
     experimental_useSidebarThreads({ experimental_lifecycles: ["archived"] });
@@ -245,7 +247,7 @@ function ArchivedThreads({
             now,
           })}
           dot={threadDot(thread, descendants)}
-          onOpen={() => onOpen(thread)}
+          onOpen={(event) => onOpen(thread, event)}
         />
       ))}
       {hasMore ? (
@@ -269,7 +271,7 @@ function ArchivedInboxSection(props: {
   projects: readonly PluginSidebarProject[];
   now: number;
   descendants: ThreadDescendants;
-  onOpen: (thread: PluginSidebarThread) => void;
+  onOpen: (thread: PluginSidebarThread, event: MouseEvent) => void;
 }) {
   const [isExpanded, setIsExpanded] = useState(false);
   return (
@@ -304,7 +306,7 @@ function InboxRow({
   isCurrent: boolean;
   trailing: string;
   dot: ThreadDot | null;
-  onOpen: () => void;
+  onOpen: (event: MouseEvent) => void;
 }) {
   const target = useMemo(() => actionTarget(thread), [thread]);
   return (
