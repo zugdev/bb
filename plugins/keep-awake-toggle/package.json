@@ -1,0 +1,40 @@
+{
+  "name": "bb-plugin-keep-awake-toggle",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Turns Keep Awake on or off from a coffee button in the sidebar footer.",
+  "engines": {
+    "bb": ">=0.0",
+    "bbPluginSdk": ">=0.6.86"
+  },
+  "bb": {
+    "name": "Keep Awake toggle",
+    "description": "Turns Keep Awake on or off from a coffee button in the sidebar footer.",
+    "branding": {
+      "icon": "Coffee"
+    },
+    "server": "./server.ts",
+    "app": "./app.tsx"
+  },
+  "scripts": {
+    "typecheck": "tsrs --noEmit",
+    "lint": "oxlint --ignore-pattern node_modules --ignore-pattern dist ."
+  },
+  "dependencies": {
+    "@bb/shared-ui": "workspace:*",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@bb/plugin-build": "workspace:*",
+    "@get-bb/plugin-sdk": "workspace:*",
+    "@types/node": "^22.0.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "tsrs": "0.18.0-ts7.1.0-dev.20260929",
+    "typescript": "npm:@typescript/typescript6@^6.0.2",
+    "vitest": "^4.1.1"
+  }
+}
