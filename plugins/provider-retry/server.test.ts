@@ -14,7 +14,10 @@ import {
 import type { PluginTurnFailedEvent } from "@get-bb/plugin-sdk";
 import plugin from "./server.js";
 import {
+  MAX_OUTAGE_RETRY_ATTEMPTS,
   MAX_RETRY_ATTEMPTS,
+  OUTAGE_RETRY_MAX_DELAY_MS,
+  isOutageFailure,
   OVERLOAD_RETRY_BASE_MS,
   RESET_BUFFER_MS,
   RESET_JITTER_MS,
@@ -353,7 +356,12 @@ describe("provider retry policy", () => {
     });
     expect(fourthAttempt.kind).toBe("retry");
     if (fourthAttempt.kind !== "retry") return;
-    const fourthDelay = UNAVAILABLE_RETRY_BASE_MS * 2 ** 3;
+    const fourthDelay = Math.min(
+      UNAVAILABLE_RETRY_BASE_MS * 2 ** 3,
+      isOutageFailure(unavailable)
+        ? OUTAGE_RETRY_MAX_DELAY_MS
+        : Number.POSITIVE_INFINITY,
+    );
     expect(fourthAttempt.sendAt).toBeGreaterThan(NOW_MS + fourthDelay);
     expect(fourthAttempt.sendAt).toBeLessThan(NOW_MS + fourthDelay * 2);
   });
@@ -392,6 +400,34 @@ describe("provider retry policy", () => {
         random: 0,
       }),
     ).toEqual({ kind: "decline", reason: "not-resettable" });
+  });
+
+  it("keeps retrying a lost connection every five minutes until the outage cap", () => {
+    const outage = failure({
+      errorInfo: {
+        category: "connection-failed",
+        providerCode: "host-daemon-restarted",
+        httpStatusCode: null,
+      },
+      rateLimits: null,
+    });
+    const decide = (attemptNumber: number) =>
+      decideRetry({
+        availability: { kind: "not-routed" },
+        failure: { ...outage, attemptNumber },
+        maximumWaitMs: null,
+        now: NOW_MS,
+        random: 0,
+      });
+    expect(decide(MAX_RETRY_ATTEMPTS + 10)).toEqual({
+      kind: "retry",
+      sendAt: NOW_MS + OUTAGE_RETRY_MAX_DELAY_MS,
+      reason: "Provider unavailable",
+    });
+    expect(decide(MAX_OUTAGE_RETRY_ATTEMPTS)).toEqual({
+      kind: "decline",
+      reason: "attempts-exhausted",
+    });
   });
 
   it("gives up once a turn has been retried its maximum number of times", () => {

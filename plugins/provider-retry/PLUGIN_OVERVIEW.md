@@ -6,7 +6,8 @@ Keep threads moving when a provider is overloaded or unreachable, or your subscr
 - Automatic retry after a server error or unreachable provider (HTTP 500, 502, 503, or 504, or a dropped connection), starting at one minute and doubling on each attempt.
 - Automatic retry after a subscription limit, timed to the reset the provider reports.
 - A queued message card on the thread that you can send now or cancel.
-- A cap of four retries per turn.
+- Automatic retry after a lost connection, including a host that went offline or a network outage. The delay caps at five minutes, so work resumes within about five minutes of the connection coming back, for up to about six hours.
+- A cap of four retries per turn for every other failure.
 - No retry of a scheduled run of a recurring automation. That automation runs again on its own schedule.
 
 ## How it works

@@ -436,6 +436,32 @@ describe("the turn.failed announcement", () => {
     });
   });
 
+  it("labels a turn cut off by a lost host as a connection failure", async () => {
+    await withTestHarness(async (harness) => {
+      const { environment, thread } = seedFailableThread(harness, "host-lost");
+      seedRateLimitFailure(harness, {
+        environmentId: environment.id,
+        threadId: thread.id,
+        resetsAtMs: Date.now() + 3_600_000,
+        category: "unknown",
+      });
+      seedEvent(harness.deps, {
+        threadId: thread.id,
+        sequence: getLatestThreadSequence(harness.db, { threadId: thread.id }) + 1,
+        type: "system/thread/interrupted",
+        scope: { kind: "thread" },
+        data: { reason: "host-daemon-restarted", cause: "host-connection-lost" },
+      });
+      failThread(harness, thread.id);
+
+      expect(buildTurnFailedEvent(harness.db, thread.id)?.errorInfo).toEqual({
+        category: "connection-failed",
+        providerCode: "host-daemon-restarted",
+        httpStatusCode: null,
+      });
+    });
+  });
+
   it("labels a typed door rejection and reports the input as never accepted", async () => {
     await withTestHarness(async (harness) => {
       const { environment, requestId, thread } = seedFailableThread(
