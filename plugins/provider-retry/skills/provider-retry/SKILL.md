@@ -16,6 +16,10 @@ accepted, for one of three failures:
 - An unavailable provider (HTTP 500, 502, 503, or 504, an internal error, or a
   failed or dropped connection, including an Account Pooler that could not
   reach the provider): retried after about a minute, doubling on each attempt.
+  A lost connection (a failed or dropped connection, or a turn cut off because
+  the host daemon disconnected) keeps retrying with the delay capped at five
+  minutes for about six hours, so work resumes soon after the network or host
+  comes back.
 - A subscription-window limit with a reported reset time: retried shortly
   after the window opens, with random spread so threads on one account do not
   wake together. Credit and spend limits are not retried.

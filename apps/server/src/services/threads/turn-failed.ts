@@ -11,6 +11,7 @@ import {
 import {
   providerErrorInfoSchema,
   providerRateLimitStateSchema,
+  systemThreadInterruptedReasonSchema,
   type ClientTurnRequestId,
   type ProviderErrorInfo,
   type ProviderRateLimitState,
@@ -33,6 +34,10 @@ const rateLimitsDataSchema = z.object({
 
 const rejectedReasonDataSchema = z.object({
   reason: z.string(),
+});
+
+const interruptedDataSchema = z.object({
+  reason: systemThreadInterruptedReasonSchema,
 });
 
 function parseRowData(row: StoredThreadEventDataRow): unknown {
@@ -194,11 +199,33 @@ export function buildTurnFailedEvent(
     requestId: failed.request.requestId,
     turnId: providerError?.turnId ?? null,
     errorInfo:
-      providerErrorInfo ?? doorRejectionErrorInfo(db, { threadId, failed }),
+      hostInterruptionErrorInfo(db, { threadId, failed }) ??
+      providerErrorInfo ??
+      doorRejectionErrorInfo(db, { threadId, failed }),
     inputAccepted: wasFailedTurnInputAccepted(db, { threadId, failed }),
     rateLimits: latestRateLimits(db, thread),
     attemptNumber: retryChain(failed.request).attemptNumber,
     originPluginId: failed.request.originPluginId ?? null,
+  };
+}
+
+function hostInterruptionErrorInfo(
+  db: DbConnection,
+  args: { threadId: string; failed: FailedTurnRecord },
+): ProviderErrorInfo | null {
+  const row = getLatestStoredThreadEventOfTypes(db, {
+    threadId: args.threadId,
+    types: ["system/thread/interrupted"],
+    afterSequence: args.failed.requestSequence,
+  });
+  if (row === null) return null;
+  const reason = interruptedDataSchema.safeParse(parseRowData(row)).data
+    ?.reason;
+  if (reason !== "host-daemon-restarted") return null;
+  return {
+    category: "connection-failed",
+    providerCode: reason,
+    httpStatusCode: null,
   };
 }
 

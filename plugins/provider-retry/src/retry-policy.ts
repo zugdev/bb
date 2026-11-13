@@ -13,6 +13,10 @@ export const UNAVAILABLE_RETRY_BASE_MS = 60_000;
 
 export const MAX_RETRY_ATTEMPTS = 5;
 
+export const OUTAGE_RETRY_MAX_DELAY_MS = 5 * 60_000;
+
+export const MAX_OUTAGE_RETRY_ATTEMPTS = 76;
+
 export type RetryDeclineReason =
   | "not-retryable"
   | "no-rate-limit-state"
@@ -62,11 +66,15 @@ export function sendAtMs(args: {
 
 export function backoffSendAtMs(args: {
   baseMs: number;
+  maxDelayMs: number;
   attemptNumber: number;
   now: number;
   random: number;
 }): number {
-  const delay = args.baseMs * 2 ** (args.attemptNumber - 1);
+  const delay = Math.min(
+    args.baseMs * 2 ** (args.attemptNumber - 1),
+    args.maxDelayMs,
+  );
   return args.now + delay + Math.floor(args.random * delay);
 }
 
@@ -75,6 +83,17 @@ const UNAVAILABLE_HTTP_STATUS_CODES = new Set([500, 502, 503, 504]);
 const UNAVAILABLE_CATEGORIES = new Set<
   NonNullable<PluginTurnFailedEvent["errorInfo"]>["category"]
 >(["connection-failed", "internal", "stream-disconnected"]);
+
+const OUTAGE_CATEGORIES = new Set<
+  NonNullable<PluginTurnFailedEvent["errorInfo"]>["category"]
+>(["connection-failed", "stream-disconnected"]);
+
+export function isOutageFailure(failure: PluginTurnFailedEvent): boolean {
+  return (
+    failure.errorInfo !== null &&
+    OUTAGE_CATEGORIES.has(failure.errorInfo.category)
+  );
+}
 
 export function isUnavailableFailure(failure: PluginTurnFailedEvent): boolean {
   const errorInfo = failure.errorInfo;
@@ -95,7 +114,9 @@ export function isRateLimitFailure(failure: PluginTurnFailedEvent): boolean {
 
 export function decideRetry(input: RetryPolicyInput): RetryDecision {
   const { failure } = input;
-  if (failure.attemptNumber >= MAX_RETRY_ATTEMPTS) {
+  const isOutage = isOutageFailure(failure);
+  const maxAttempts = isOutage ? MAX_OUTAGE_RETRY_ATTEMPTS : MAX_RETRY_ATTEMPTS;
+  if (failure.attemptNumber >= maxAttempts) {
     return { kind: "decline", reason: "attempts-exhausted" };
   }
   if (failure.errorInfo?.category === "overloaded") {
@@ -103,6 +124,7 @@ export function decideRetry(input: RetryPolicyInput): RetryDecision {
       kind: "retry",
       sendAt: backoffSendAtMs({
         baseMs: OVERLOAD_RETRY_BASE_MS,
+        maxDelayMs: Number.POSITIVE_INFINITY,
         attemptNumber: failure.attemptNumber,
         now: input.now,
         random: input.random,
@@ -117,6 +139,9 @@ export function decideRetry(input: RetryPolicyInput): RetryDecision {
       kind: "retry",
       sendAt: backoffSendAtMs({
         baseMs: UNAVAILABLE_RETRY_BASE_MS,
+        maxDelayMs: isOutage
+          ? OUTAGE_RETRY_MAX_DELAY_MS
+          : Number.POSITIVE_INFINITY,
         attemptNumber: failure.attemptNumber,
         now: input.now,
         random: input.random,

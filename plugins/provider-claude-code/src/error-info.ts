@@ -63,7 +63,7 @@ function getProviderErrorCategoryFromClaudeCode(
     case "unknown":
       return httpStatusCode !== null
         ? getProviderErrorCategoryFromHttpStatus(httpStatusCode)
-        : "unknown";
+        : "connection-failed";
   }
 }
 
