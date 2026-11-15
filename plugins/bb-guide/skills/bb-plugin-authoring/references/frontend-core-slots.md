@@ -104,7 +104,7 @@ Slot props contracts (versioned, additive-only):
   unencoded segments (bb encodes them) — browser back/forward then walks
   panel-internal history (prefer this over hash routing).
   Registration:
-  `{ id, title, icon, path, component, experimental_useBadge?, experimental_usePageTitle?, headerContent?, experimental_sidebar?, experimental_pinnedTab?, experimental_ownTab? }`.
+  `{ id, title, icon, path, component, experimental_useBadge?, experimental_usePageTitle?, headerContent?, experimental_sidebar?, experimental_pinnedTab?, experimental_ownTab?, experimental_permanentTab? }`.
   `experimental_ownTab: true` opens the panel in a pane tab of its own, at most
   one per panel; opening it again focuses that tab. The tab takes the panel's
   title and icon, and a thread the panel opens with `experimental_replace`
@@ -115,6 +115,11 @@ Slot props contracts (versioned, additive-only):
   or `other`) and `show({ kind: "thread", projectId, threadId })` or
   `show({ kind: "compose" })` opens or focuses the tab and replaces its
   focused pane.
+  `experimental_permanentTab: true`, with `experimental_ownTab`, keeps that
+  tab open as the first pane tab after the pinned tab: bb creates it when it
+  is missing, draws it without a close action, keeps it first when tabs move,
+  and leaves the panel out of sidebar navigation. The first permanent
+  registration wins.
   `experimental_pinnedTab: true` makes the panel the first pane tab at `/home`:
   bb draws the tab with its icon and title before every other tab, binds the
   first tab shortcut to it, renders it under the tab bar outside every split

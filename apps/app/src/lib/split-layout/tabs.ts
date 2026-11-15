@@ -178,6 +178,49 @@ export const splitTabsAtom = atomWithStorage<SplitTabsState>(
 
 export const closedSplitItemsAtom = atom<ClosedSplitItem[]>([]);
 
+export const permanentTabPanelAtom = atom<SplitTabPanel | null>(null);
+
+export function isPermanentTab(
+  tab: SplitTab,
+  panel: SplitTabPanel | null,
+): boolean {
+  return (
+    panel !== null &&
+    tab.panel?.pluginId === panel.pluginId &&
+    tab.panel.panelPath === panel.panelPath
+  );
+}
+
+export function withPermanentTabFirst(
+  state: SplitTabsState,
+  panel: SplitTabPanel | null,
+): SplitTabsState {
+  if (panel === null) return state;
+  const index = state.tabs.findIndex((tab) => isPermanentTab(tab, panel));
+  if (index === 0) return state;
+  const permanent = state.tabs[index] ?? {
+    id: nextTabId(state.tabs),
+    layout: null,
+    projectId: null,
+    name: null,
+    panel,
+  };
+  return {
+    ...state,
+    tabs: [permanent, ...state.tabs.filter((_, at) => at !== index)],
+  };
+}
+
+export const setPermanentTabPanelAtom = atom(
+  null,
+  (get, set, panel: SplitTabPanel | null) => {
+    set(permanentTabPanelAtom, panel);
+    const state = get(splitTabsAtom);
+    const next = withPermanentTabFirst(state, panel);
+    if (next !== state) set(splitTabsAtom, next);
+  },
+);
+
 const NEW_THREAD_LAYOUT: SplitLayout = {
   root: { type: "pane", paneId: "pane-1", content: { kind: "new-thread" } },
   focusedPaneId: "pane-1",
@@ -660,7 +703,8 @@ export const moveSplitTabAtom = atom(
   null,
   (get, set, move: { tabId: string; toIndex: number }) => {
     const next = moveSplitTab(get(splitTabsAtom), move.tabId, move.toIndex);
-    if (next !== null) set(splitTabsAtom, next);
+    if (next === null) return;
+    set(splitTabsAtom, withPermanentTabFirst(next, get(permanentTabPanelAtom)));
   },
 );
 
@@ -786,6 +830,14 @@ export const closeSplitTabAtom = atom(
   null,
   (get, set, tabId: string): SplitLayout | null => {
     const current = get(splitTabsAtom);
+    const permanentPanel = get(permanentTabPanelAtom);
+    if (
+      current.tabs.some(
+        (tab) => tab.id === tabId && isPermanentTab(tab, permanentPanel),
+      )
+    ) {
+      return null;
+    }
     const result = removeSplitTab(current, get(splitLayoutAtom), tabId);
     if (result === null) return null;
     set(splitTabsAtom, result.state);

@@ -300,6 +300,20 @@ Docs: `frontend-core-slots.md`.
 1. **Redirect rule.** The thread stays in the tab only when the focused pane is still the panel. Decide whether a panel should declare which threads belong to its tab.
 2. **Compact viewports.** Tabs do not render on compact viewports, so the flag has no effect there.
 
+## `PluginNavPanelRegistration.experimental_permanentTab`
+
+`experimental_permanentTab: true` on a panel that also sets `experimental_ownTab` keeps its own tab open as the first pane tab, after the pinned tab. `SplitTabBar` mounts `useKeepPermanentTab`, which writes the first permanent registration to `permanentTabPanelAtom` through `setPermanentTabPanelAtom`; that atom inserts the tab with a blank layout when `bb.splitTabs` has none and moves it to index 0 when it sits elsewhere. `moveSplitTabAtom` puts it back first after a drag, `closeSplitTabAtom` refuses to close it, so closing its last pane resets the pane to the composer, and `SplitTabBar` draws it without a close button or Close tab item. Sidebar navigation and the remembered panel chrome leave the panel out. The first permanent registration wins. The collector drops the flag when `experimental_ownTab` is not set.
+
+**Core callers.** `setPermanentTabPanelAtom`, `moveSplitTabAtom` and `closeSplitTabAtom` in `apps/app/src/lib/split-layout/tabs.ts`; `SplitTabBar`, `SplitThreadArea`'s `closePane`, `SidebarNavigationModel` and `plugin-nav-panel-chrome.ts` read it. The inbox plugin (`plugins/inbox`, fork) sets it.
+
+Docs: `frontend-core-slots.md`.
+
+**Audit before stabilizing.**
+
+1. **Slot.** The tab is always first after the pinned tab. Decide whether a panel should choose another slot, or take the pinned slot itself.
+2. **Unload.** When the plugin goes away the tab stays as a plain owned tab that can be closed. Decide whether it should close.
+3. **Compact viewports.** Tabs do not render on compact viewports, so the flag has no effect there.
+
 ## `experimental_useOwnTab` (`@get-bb/plugin-sdk/app`)
 
 `experimental_useOwnTab(panelPath)` reads and drives the calling plugin's nav panel own tab: `isActive` while it is the active pane tab, `focused` with the focused pane (`thread` with ids, `compose` with `hasDraft()` reading that pane composer's draft scope at call time, or `other`), and `show(target)` which opens or focuses the tab through `openOwnedTabAtom` and replaces its focused pane with a thread or the new thread composer, then routes there.

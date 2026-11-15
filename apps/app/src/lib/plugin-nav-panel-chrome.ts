@@ -1,5 +1,5 @@
 import { useEffect, useMemo } from "react";
-import { pinnedTabPanel } from "@/lib/pinned-tab";
+import { permanentTabPanel, pinnedTabPanel } from "@/lib/pinned-tab";
 import { z } from "zod";
 import { createLastKnownCache } from "@/lib/last-known-cache";
 import {
@@ -91,7 +91,11 @@ export function rememberPluginNavPanelChrome(
   if (!bootComplete) return;
   writeLastKnownPluginNavPanelChrome(
     navPanels
-      .filter((panel) => panel !== pinnedTabPanel(navPanels))
+      .filter(
+        (panel) =>
+          panel !== pinnedTabPanel(navPanels) &&
+          panel !== permanentTabPanel(navPanels),
+      )
       .map(pluginNavPanelChromeOf),
   );
 }

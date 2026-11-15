@@ -94,14 +94,12 @@ export function InboxSidebarList({
   const open = (thread: PluginSidebarThread, event: MouseEvent) => {
     if (event.metaKey || event.ctrlKey) {
       navigate.toThread(thread.id, { experimental_tab: true });
-    } else if (ownTab.isActive) {
+    } else {
       ownTab.show({
         kind: "thread",
         projectId: thread.projectId,
         threadId: thread.id,
       });
-    } else {
-      navigate.toThread(thread.id);
     }
     onNavigate();
   };

@@ -662,13 +662,13 @@ function SplitThreadAreaContent({ routeContent }: SplitThreadAreaProps) {
       }
       const pane = findPane(current.root, paneId);
       if (pane === null) return;
-      if (
+      const closedTabLayout =
         countPanes(current.root) === 1 &&
         store.get(splitTabsAtom).tabs.length > 1
-      ) {
-        showTabLayout(
-          store.set(closeSplitTabAtom, store.get(splitTabsAtom).activeTabId),
-        );
+          ? store.set(closeSplitTabAtom, store.get(splitTabsAtom).activeTabId)
+          : null;
+      if (closedTabLayout !== null) {
+        showTabLayout(closedTabLayout);
         return;
       }
       store.set(recordClosedPaneAtom, pane.content);

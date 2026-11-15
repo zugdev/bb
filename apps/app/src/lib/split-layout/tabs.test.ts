@@ -25,6 +25,7 @@ import {
   reopenClosedSplitItemAtom,
   seedSplitComposeProjectAtom,
   selectSplitTabAtom,
+  setPermanentTabPanelAtom,
   splitTabsAtom,
   tabProjectId,
 } from "./tabs";
@@ -62,6 +63,41 @@ const ASSISTANT = {
   },
   content: ASSISTANT_PANEL,
 } as const;
+
+describe("permanent tab", () => {
+  it("adds the tab first, keeps it first after a move and refuses to close it", () => {
+    const store = createStore();
+    store.set(splitLayoutAtom, threadLayout("a"));
+    const threadTabId = store.get(splitTabsAtom).activeTabId;
+
+    store.set(setPermanentTabPanelAtom, INBOX_PANEL);
+    const [inboxTab, threadTab] = store.get(splitTabsAtom).tabs;
+    expect(inboxTab?.panel).toEqual(INBOX_PANEL);
+    expect(threadTab?.id).toBe(threadTabId);
+    expect(store.get(splitTabsAtom).activeTabId).toBe(threadTabId);
+
+    store.set(moveSplitTabAtom, { tabId: threadTabId, toIndex: 0 });
+    expect(store.get(splitTabsAtom).tabs[0]?.id).toBe(inboxTab?.id);
+
+    expect(store.set(closeSplitTabAtom, inboxTab!.id)).toBeNull();
+    expect(store.get(splitTabsAtom).tabs).toHaveLength(2);
+  });
+
+  it("moves an existing owned tab to the front instead of adding one", () => {
+    const store = createStore();
+    store.set(splitLayoutAtom, threadLayout("a"));
+    store.set(openSplitTabAtom);
+    store.set(splitLayoutAtom, threadLayout("b"));
+    store.set(openOwnedTabAtom, INBOX);
+    const inboxTabId = store.get(splitTabsAtom).activeTabId;
+
+    store.set(setPermanentTabPanelAtom, INBOX_PANEL);
+
+    const { tabs } = store.get(splitTabsAtom);
+    expect(tabs).toHaveLength(3);
+    expect(tabs[0]?.id).toBe(inboxTabId);
+  });
+});
 
 describe("owned tabs", () => {
   it("keeps one Inbox tab and one tab per panel, focusing the existing one", () => {
