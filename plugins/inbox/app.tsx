@@ -21,6 +21,7 @@ export default definePluginApp((app) => {
     path: INBOX_PANEL_PATH,
     component: InboxPanel,
     experimental_ownTab: true,
+    experimental_permanentTab: true,
     experimental_useBadge: useInboxBadge,
   });
   app.slots.experimental_threadList({

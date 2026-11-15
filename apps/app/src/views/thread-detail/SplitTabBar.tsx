@@ -39,7 +39,7 @@ import {
 } from "@/components/commands/AppCommandProvider";
 import { AppCommandShortcutHint } from "@/components/commands/AppCommandShortcutHint";
 import { PINNED_TAB_ROUTE_PATH } from "@/lib/route-paths";
-import { usePinnedTabPanel } from "@/lib/pinned-tab";
+import { useKeepPermanentTab, usePinnedTabPanel } from "@/lib/pinned-tab";
 import { usePluginSlots } from "@/lib/plugin-slots";
 import { usePanelBadge } from "@/components/sidebar/navigationBadges";
 import type { AppShortcutPresentation } from "@/lib/app-keybindings";
@@ -69,7 +69,9 @@ import { threadDot } from "@/components/thread/thread-dot";
 import type { PaneContent, SplitLayout } from "@/lib/split-layout";
 import {
   closeSplitTabAtom,
+  isPermanentTab,
   moveSplitTabAtom,
+  permanentTabPanelAtom,
   renameSplitTabAtom,
   reopenClosedSplitItemAtom,
   selectSplitTabAtom,
@@ -379,6 +381,7 @@ function SplitTabItem({
   command,
   shortcut,
   isRenaming,
+  isPermanent,
   noDragClassName,
   hasTabsToRight,
   hasOtherTabs,
@@ -396,6 +399,7 @@ function SplitTabItem({
   command: string | undefined;
   shortcut: AppShortcutPresentation | null;
   isRenaming: boolean;
+  isPermanent: boolean;
   noDragClassName: string | false;
   hasTabsToRight: boolean;
   hasOtherTabs: boolean;
@@ -479,7 +483,11 @@ function SplitTabItem({
                   isActive={isActive}
                   onSelect={() => undefined}
                   labelMaxWidthClass="max-w-[160px]"
-                  closeAction={{ onClose, closeLabel: `Close ${title}` }}
+                  closeAction={
+                    isPermanent
+                      ? null
+                      : { onClose, closeLabel: `Close ${title}` }
+                  }
                 />
               )}
               {panelBadge.source}
@@ -499,8 +507,12 @@ function SplitTabItem({
         {canRename ? (
           <ContextMenuItem onSelect={onRename}>Rename tab</ContextMenuItem>
         ) : null}
-        <ContextMenuItem onSelect={onClose}>Close tab</ContextMenuItem>
-        <ContextMenuSeparator />
+        {isPermanent ? null : (
+          <>
+            <ContextMenuItem onSelect={onClose}>Close tab</ContextMenuItem>
+            <ContextMenuSeparator />
+          </>
+        )}
         <ContextMenuItem disabled={!hasOtherTabs} onSelect={onCloseOthers}>
           Close other tabs
         </ContextMenuItem>
@@ -562,6 +574,8 @@ export function SplitTabBar() {
   const location = useLocation();
   const show = useShowSplitTabLayout();
   const pinnedTab = usePinnedTabPanel();
+  useKeepPermanentTab();
+  const permanentPanel = useAtomValue(permanentTabPanelAtom);
   const isPinnedTab = location.pathname === PINNED_TAB_ROUTE_PATH;
   const [renamingTabId, setRenamingTabId] = useState<string | null>(null);
   const [isPickingProject, setIsPickingProject] = useState(false);
@@ -694,6 +708,7 @@ export function SplitTabBar() {
                   hasOtherTabs={state.tabs.length > 1}
                   hasTabsToRight={index < state.tabs.length - 1}
                   isRenaming={renamingTabId === tab.id}
+                  isPermanent={isPermanentTab(tab, permanentPanel)}
                   noDragClassName={noDragClassName}
                   onSelect={(event) => {
                     show(store.set(selectSplitTabAtom, tab.id));

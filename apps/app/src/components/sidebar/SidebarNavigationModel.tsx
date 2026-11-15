@@ -8,7 +8,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { usePinnedTabPanel } from "@/lib/pinned-tab";
+import { usePermanentTabPanel, usePinnedTabPanel } from "@/lib/pinned-tab";
 import { useStore } from "jotai";
 import { splitLayoutAtom } from "@/lib/split-layout/atoms";
 import { matchPath, useLocation, useNavigate } from "react-router-dom";
@@ -153,14 +153,17 @@ export function SidebarNavigationModelProvider({
   const store = useStore();
   const panelEntries = usePluginNavPanelChrome();
   const pinnedTab = usePinnedTabPanel();
+  const permanentTab = usePermanentTabPanel();
   const rows = useMemo(
     () =>
       createSidebarNavigationRows(
         panelEntries.filter(
-          (entry) => entry.panel === null || entry.panel !== pinnedTab,
+          (entry) =>
+            entry.panel === null ||
+            (entry.panel !== pinnedTab && entry.panel !== permanentTab),
         ),
       ),
-    [panelEntries, pinnedTab],
+    [panelEntries, pinnedTab, permanentTab],
   );
   const arrangement = useSidebarNavigationArrangement(
     rows,

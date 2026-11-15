@@ -1124,6 +1124,15 @@ export interface PluginNavPanelRegistration {
    */
   experimental_ownTab?: boolean;
   /**
+   * With `experimental_ownTab`, keep the panel's tab open as the first pane
+   * tab after the pinned tab. bb creates it when it is missing, draws it
+   * without a close action, keeps it first when other tabs move, and leaves
+   * the panel out of sidebar navigation. When several panels set it, the
+   * first registered wins and the others behave as plain own tab panels.
+   * Experimental: see docs/api_to_audit.md.
+   */
+  experimental_permanentTab?: boolean;
+  /**
    * Optional component rendered on the right side of the shared title bar
    * (e.g. a sync button or a count). Contained separately from the body: a
    * throwing headerContent is hidden without breaking the title bar.
