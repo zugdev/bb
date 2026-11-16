@@ -2622,6 +2622,19 @@ Docs: `frontend-core-slots.md`.
    standard slot-owned CSS retention are the right failure semantics for UI
    that may have no in-layout representation.
 
+## `app.slots.experimental_threadSearchMode` (`@get-bb/plugin-sdk/app`)
+
+Adds a search mode to bb's thread search palette (Cmd+K). When any mode is registered the palette shows a toggle with Keyword first, and Tab cycles it. A mode runs only on Enter: bb calls the function that the registration's `useSearch` hook returns with the trimmed query, loads the returned thread ids with `threads.list`, and shows them in that order in the palette's usual Active and Archived groups, with split, lifecycle filter and keyboard selection unchanged. bb mounts `useSearch` under `PluginSlotMount` only while the mode is selected, so a crash leaves the palette on its message.
+
+Core caller: `ThreadSearchPaletteMode` through `ThreadSearchModeSource`. First plugin: `plugins/thread-finder` (fork), which asks a model to match a description.
+
+**Audit before stabilizing.**
+
+1. **Result shape.** Thread ids only, so a mode can't show why a thread matched. Decide whether results should carry an excerpt or message seq like keyword search.
+2. **Selection persistence.** The selected mode resets each time the palette opens. Decide whether it should persist like the lifecycle filter.
+3. **Run trigger.** Enter only. Decide whether fast modes should run while typing with a debounce.
+4. **Tab.** Tab cycles modes, so it can't move focus to the toggle. Check that against the palette's other keyboard rules.
+
 ## `app.slots.experimental_threadHeaderLeading` (`@get-bb/plugin-sdk/app`)
 
 Renders a plugin component before the thread title in every open thread's header, including each split pane's, with `threadId` and `isNarrow` props. A component that wants to open a thread in its own pane calls `useBbNavigate().toThread(id, { experimental_inPane: true })` (see "Opening a thread in the caller's pane"). `isNarrow` is true at compact width and in split panes narrower than 560px, the same rule that folds `placement: "header"` thread actions into the thread menu. A crash hides only that component, and a component that renders nothing leaves no gap before the title.

@@ -876,6 +876,33 @@ export interface ExperimentalAppOverlayRegistration {
   component: ComponentType<ExperimentalAppOverlayProps>;
 }
 
+/**
+ * Finds threads for a query the user submits in a thread search mode. Resolves
+ * to thread ids, best match first; unknown or deleted ids are left out.
+ */
+export type ExperimentalThreadSearchModeSearch = (
+  query: string,
+) => Promise<readonly string[]>;
+
+/**
+ * A search mode in bb's thread search palette (Cmd+K), shown as a toggle next
+ * to bb's keyword search and cycled with Tab. It runs only when the user
+ * presses Enter, so it suits slow searches such as asking a model.
+ */
+export interface ExperimentalThreadSearchModeRegistration {
+  /** Unique within the plugin; letters, digits, `-`, `_`. */
+  id: string;
+  /** The toggle's label, e.g. "Description". */
+  label: string;
+  /** Input placeholder while the mode is on. */
+  placeholder: string;
+  /**
+   * React hook, called while the palette shows this mode, that returns the
+   * search function. Use it to reach plugin RPC hooks.
+   */
+  useSearch(): ExperimentalThreadSearchModeSearch;
+}
+
 /** Props passed to an `experimental_threadHeaderLeading` component. */
 export interface ExperimentalThreadHeaderLeadingProps {
   /** The thread whose header renders the component. */
@@ -3972,6 +3999,14 @@ export interface PluginAppSlots {
    */
   experimental_appOverlay(
     registration: ExperimentalAppOverlayRegistration,
+  ): void;
+  /**
+   * Add a search mode to bb's thread search palette (see
+   * {@link ExperimentalThreadSearchModeRegistration}). Experimental: see
+   * docs/api_to_audit.md.
+   */
+  experimental_threadSearchMode(
+    registration: ExperimentalThreadSearchModeRegistration,
   ): void;
   /**
    * Render a component before the thread title in the thread header (see

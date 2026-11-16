@@ -339,3 +339,32 @@ export function buildPaletteThreadSearchRows({
     rows: normalizeThreadLifecycleFilter(lifecycles).flatMap(rowsFor),
   };
 }
+
+export function buildDescribedThreadRows({
+  lifecycles,
+  now,
+  projectNamesById,
+  sort,
+  threads,
+}: {
+  lifecycles: readonly ThreadArchiveFilter[];
+  now: number;
+  projectNamesById: ReadonlyMap<string, string>;
+  sort: PaletteThreadSort;
+  threads: readonly ThreadListEntry[];
+}): PaletteThreadSearchRowsResult {
+  return {
+    isRecent: false,
+    rows: normalizeThreadLifecycleFilter(lifecycles).flatMap((lifecycle) =>
+      threads
+        .filter((thread) =>
+          lifecycle === "archived"
+            ? thread.archivedAt !== null
+            : thread.archivedAt === null,
+        )
+        .map((thread) =>
+          serverRow(thread, [], lifecycle, projectNamesById, now, sort),
+        ),
+    ),
+  };
+}

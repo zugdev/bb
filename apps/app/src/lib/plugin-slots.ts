@@ -6,6 +6,7 @@ import type {
   ExperimentalTabRegistration,
   ComposerCustomization,
   ExperimentalAppOverlayRegistration,
+  ExperimentalThreadSearchModeRegistration,
   ExperimentalThreadHeaderLeadingRegistration,
   ExperimentalThreadHeaderTrailingRegistration,
   ExperimentalThreadComposerOverlayRegistration,
@@ -55,6 +56,7 @@ export interface PluginRegistrationSet {
   homepageSections: readonly PluginHomepageSectionRegistration[];
   settingsSections: readonly PluginSettingsSectionRegistration[];
   appOverlays?: readonly ExperimentalAppOverlayRegistration[];
+  threadSearchModes?: readonly ExperimentalThreadSearchModeRegistration[];
   threadHeaderLeadings?: readonly ExperimentalThreadHeaderLeadingRegistration[];
   threadHeaderTrailings?: readonly ExperimentalThreadHeaderTrailingRegistration[];
   threadComposerOverlays?: readonly ExperimentalThreadComposerOverlayRegistration[];
@@ -104,6 +106,8 @@ export interface PluginSettingsSectionSlot
   extends PluginSettingsSectionRegistration, PluginSlotBase {}
 export interface ExperimentalAppOverlaySlot
   extends ExperimentalAppOverlayRegistration, PluginSlotBase {}
+export interface ExperimentalThreadSearchModeSlot
+  extends ExperimentalThreadSearchModeRegistration, PluginSlotBase {}
 export interface ExperimentalThreadHeaderLeadingSlot
   extends ExperimentalThreadHeaderLeadingRegistration, PluginSlotBase {}
 export interface ExperimentalThreadHeaderTrailingSlot
@@ -196,6 +200,7 @@ export interface PluginSlotSnapshot {
   homepageSections: readonly PluginHomepageSectionSlot[];
   settingsSections: readonly PluginSettingsSectionSlot[];
   appOverlays: readonly ExperimentalAppOverlaySlot[];
+  threadSearchModes: readonly ExperimentalThreadSearchModeSlot[];
   threadHeaderLeadings: readonly ExperimentalThreadHeaderLeadingSlot[];
   threadHeaderTrailings: readonly ExperimentalThreadHeaderTrailingSlot[];
   threadComposerOverlays: readonly ExperimentalThreadComposerOverlaySlot[];
@@ -237,6 +242,7 @@ export const EMPTY_PLUGIN_SLOT_SNAPSHOT: PluginSlotSnapshot = {
   homepageSections: [],
   settingsSections: [],
   appOverlays: [],
+  threadSearchModes: [],
   threadHeaderLeadings: [],
   threadHeaderTrailings: [],
   threadComposerOverlays: [],
@@ -285,6 +291,7 @@ const SLOT_KINDS: readonly SlotKind[] = [
   "homepageSections",
   "settingsSections",
   "appOverlays",
+  "threadSearchModes",
   "threadHeaderLeadings",
   "threadHeaderTrailings",
   "threadComposerOverlays",
@@ -372,6 +379,7 @@ function flattenRegistrations(
     homepageSections: stamp(set.homepageSections),
     settingsSections: stamp(set.settingsSections),
     appOverlays: stamp(set.appOverlays),
+    threadSearchModes: stamp(set.threadSearchModes),
     threadHeaderLeadings: stamp(set.threadHeaderLeadings),
     threadHeaderTrailings: stamp(set.threadHeaderTrailings),
     threadComposerOverlays: stamp(set.threadComposerOverlays),

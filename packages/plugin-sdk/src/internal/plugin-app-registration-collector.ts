@@ -4,6 +4,7 @@ import type {
   ExperimentalTabRegistration,
   ComposerCustomization,
   ExperimentalAppOverlayRegistration,
+  ExperimentalThreadSearchModeRegistration,
   ExperimentalThreadHeaderLeadingRegistration,
   ExperimentalThreadHeaderTrailingRegistration,
   ExperimentalThreadComposerOverlayRegistration,
@@ -331,6 +332,7 @@ export interface CollectedPluginAppRegistrations {
   homepageSections: PluginHomepageSectionRegistration[];
   settingsSections: PluginSettingsSectionRegistration[];
   appOverlays: ExperimentalAppOverlayRegistration[];
+  threadSearchModes: ExperimentalThreadSearchModeRegistration[];
   threadHeaderLeadings: ExperimentalThreadHeaderLeadingRegistration[];
   threadHeaderTrailings: ExperimentalThreadHeaderTrailingRegistration[];
   threadComposerOverlays: ExperimentalThreadComposerOverlayRegistration[];
@@ -468,6 +470,7 @@ export function collectPluginAppRegistrations(
     homepageSections: [],
     settingsSections: [],
     appOverlays: [],
+    threadSearchModes: [],
     threadHeaderLeadings: [],
     threadHeaderTrailings: [],
     threadComposerOverlays: [],
@@ -520,6 +523,7 @@ export function collectPluginAppRegistrations(
     homepageSection: new Set<string>(),
     settingsSection: new Set<string>(),
     appOverlay: new Set<string>(),
+    threadSearchMode: new Set<string>(),
     threadHeaderLeading: new Set<string>(),
     threadHeaderTrailing: new Set<string>(),
     threadComposerOverlay: new Set<string>(),
@@ -776,6 +780,26 @@ export function collectPluginAppRegistrations(
         collected.appOverlays.push({
           id,
           component: requireComponent(kind, registration.component),
+        });
+      },
+      experimental_threadSearchMode(registration) {
+        const kind = "slots.experimental_threadSearchMode";
+        const id = requireSlotId(kind, registration?.id);
+        requireUniqueId(kind, seenIds.threadSearchMode, id);
+        for (const field of ["label", "placeholder"] as const) {
+          const value: unknown = registration[field];
+          if (typeof value !== "string" || value.trim() === "") {
+            throw new Error(`${kind}: "${field}" must be a non-empty string`);
+          }
+        }
+        if (typeof registration.useSearch !== "function") {
+          throw new Error(`${kind}: "useSearch" must be a React hook function`);
+        }
+        collected.threadSearchModes.push({
+          id,
+          label: registration.label,
+          placeholder: registration.placeholder,
+          useSearch: registration.useSearch,
         });
       },
       experimental_threadHeaderLeading(registration) {

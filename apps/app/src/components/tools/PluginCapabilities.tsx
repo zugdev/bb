@@ -224,6 +224,12 @@ function pluginAppSurfaceItems(
     ),
     ...namedSlotItems(
       pluginId,
+      slots.threadSearchModes.map((mode) => ({ ...mode, title: mode.label })),
+      "thread-search-mode",
+      "Adds a search mode to the thread search palette.",
+    ),
+    ...namedSlotItems(
+      pluginId,
       slots.threadHeaderLeadings,
       "thread-header-leading",
       "Renders content before the thread title in thread headers.",

@@ -1,4 +1,4 @@
-import { useState, useSyncExternalStore, type FormEvent } from "react";
+import { useCallback, useState, useSyncExternalStore, type FormEvent } from "react";
 import {
   definePluginApp,
   experimental_Icon as Icon,
@@ -131,7 +131,23 @@ function FinderDialog() {
   );
 }
 
+function useDescriptionSearch() {
+  const { mutate } = experimental_useRpcMutation({ contract: threadFinderRpcContract, method: "find" });
+  return useCallback(
+    async (description: string) => (await mutate({ description })).matches.map((match) => match.threadId),
+    [mutate],
+  );
+}
+
 export default definePluginApp((app) => {
+  if ("experimental_threadSearchMode" in app.slots) {
+    app.slots.experimental_threadSearchMode({
+      id: "description",
+      label: "Description",
+      placeholder: "Describe the thread, then press Enter…",
+      useSearch: useDescriptionSearch,
+    });
+  }
   app.slots.experimental_appOverlay({ id: "dialog", component: FinderDialog });
   app.commands.register({
     id: "find",
