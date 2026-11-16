@@ -487,10 +487,6 @@ describe("app keybindings", () => {
           ),
         ).toBe(false);
       }
-      const withoutEditable = {
-        all: ["mainSurface"],
-        none: ["modalOpen", "editableFocus", "terminalFocus", "browserFocus"],
-      };
       const mainWithoutModal = { all: ["mainSurface"], none: ["modalOpen"] };
       expect(
         assignedDefaultKeybindings
@@ -516,8 +512,8 @@ describe("app keybindings", () => {
           command: "thread.archive",
           key: "a",
           mod: true,
-          shift: false,
-          when: withoutEditable,
+          shift: true,
+          when: mainWithoutModal,
         },
         {
           command: "thread.snooze",

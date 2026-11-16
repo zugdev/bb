@@ -4,12 +4,23 @@ import {
   pluginCommandId,
   type AppDefaultKeybindings,
   type AppKeybindingOverrides,
+  type AppShortcut,
 } from "@bb/domain";
 import { useSystemConfig } from "@/hooks/queries/system-queries";
 import { useBuiltinPluginIds, usePluginSlots } from "@/lib/plugin-slots";
 import { browserPlatform } from "@/lib/app-keybindings";
 import { getBbDesktopInfo } from "@/lib/bb-desktop";
 import { resolvePluginCommandDefaults } from "@/lib/plugin-command-keybindings";
+
+function isBareKeyShortcut(shortcut: AppShortcut | null): boolean {
+  return (
+    shortcut !== null &&
+    !shortcut.mod &&
+    !shortcut.meta &&
+    !shortcut.control &&
+    !shortcut.alt
+  );
+}
 
 const EMPTY_DEFAULTS: AppDefaultKeybindings = [];
 const EMPTY_OVERRIDES: AppKeybindingOverrides = [];
@@ -34,7 +45,17 @@ export function usePluginCommandBindings() {
                 all: ["mainSurface", "promptAvailable"],
                 none: ["modalOpen", "terminalFocus", "browserFocus"],
               }
-            : { all: ["mainSurface"], none: ["modalOpen"] },
+            : isBareKeyShortcut(command.defaultShortcut)
+              ? {
+                  all: ["mainSurface"],
+                  none: [
+                    "modalOpen",
+                    "questionFocus",
+                    "terminalFocus",
+                    "browserFocus",
+                  ],
+                }
+              : { all: ["mainSurface"], none: ["modalOpen"] },
       }),
     );
     const bundledCommands = new Set(

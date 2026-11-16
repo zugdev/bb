@@ -328,6 +328,11 @@ export const APP_COMMAND_GROUPS: readonly AppCommandGroup[] = [
         "Focus composer",
         "Focus the active composer's input and move the caret to the end.",
       ),
+      paletteHiddenCommand(
+        "thread.editLastMessage",
+        "Edit last message",
+        "From an empty thread composer, edit your last message. Sending the edit while the thread runs asks before it stops the work.",
+      ),
       command(
         "modelPicker.toggle",
         "Toggle model picker",

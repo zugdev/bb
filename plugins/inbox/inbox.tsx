@@ -448,6 +448,45 @@ export function canStepInbox(): boolean {
   );
 }
 
+let archiveShownThread: (() => void) | null = null;
+
+function ShownThreadArchive({ thread }: { thread: PluginSidebarThread }) {
+  const target = useMemo(() => actionTarget(thread), [thread]);
+  const [archive] = experimental_useThreadActions(target, {
+    keys: ARCHIVE_ACTION_KEYS,
+  });
+  const action = archive?.action;
+  useEffect(() => {
+    if (action === undefined || action.disabled) return;
+    archiveShownThread = () => void action.run();
+    return () => {
+      archiveShownThread = null;
+    };
+  }, [action]);
+  return null;
+}
+
+function isEmptyEditable(element: Element | null): boolean {
+  return (
+    (element instanceof HTMLInputElement ||
+      element instanceof HTMLTextAreaElement ||
+      (element instanceof HTMLElement && element.isContentEditable)) &&
+    !holdsTypedText(element)
+  );
+}
+
+export function canArchiveFromInbox(): boolean {
+  return (
+    canStepInbox() &&
+    archiveShownThread !== null &&
+    isEmptyEditable(document.activeElement)
+  );
+}
+
+export function archiveShownInboxThread(): void {
+  archiveShownThread?.();
+}
+
 export function stepInbox(step: -1 | 1): void {
   if (commandTarget === null) return;
   const { ownTab, queue } = commandTarget;
@@ -463,6 +502,10 @@ export function InboxController() {
   const { isLoaded, queue, threads } = useInbox();
   const tracked = useRef<string | null | undefined>(undefined);
   const { isActive, focused } = ownTab;
+  const shownThread =
+    isActive && focused?.kind === "thread"
+      ? queue.find((thread) => thread.id === focused.threadId)
+      : undefined;
 
   useEffect(() => {
     commandTarget = { ownTab, navigate, queue };
@@ -504,5 +547,7 @@ export function InboxController() {
     }
   }, [focused, isActive, isLoaded, ownTab, queue, threads]);
 
-  return null;
+  return shownThread === undefined ? null : (
+    <ShownThreadArchive key={shownThread.id} thread={shownThread} />
+  );
 }
