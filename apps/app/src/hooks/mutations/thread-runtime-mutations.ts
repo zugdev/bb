@@ -18,6 +18,7 @@ import { wsManager } from "@/lib/ws";
 import type { QueuedMessageReorderRequest } from "@/lib/queued-message-reorder";
 import type {
   EditMessageMutationRequest,
+  UnsendMessageMutationRequest,
   SendThreadMessageMutationRequest,
 } from "./mutation-request-types";
 import {
@@ -224,6 +225,28 @@ export function editThreadMessageMutationOptions(queryClient: QueryClient) {
 export function useEditThreadMessage() {
   const queryClient = useQueryClient();
   return useMutation(editThreadMessageMutationOptions(queryClient));
+}
+
+export function useUnsendThreadMessage() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    meta: {
+      errorMessage: "Failed to unsend the message.",
+      lifecycleOperation: "unsend_message",
+      showErrorToast: false,
+    },
+    mutationFn: ({ id, ...request }: UnsendMessageMutationRequest) =>
+      sdk.threads.unsendMessage({ threadId: id, ...request }),
+    onSuccess: (_result, variables) => {
+      if (wsManager.getConnectionState() === "connected") {
+        return;
+      }
+      invalidateThreadHistoryRewriteQueries({
+        queryClient,
+        threadId: variables.id,
+      });
+    },
+  });
 }
 
 export function useUpdateThreadQueuedMessage() {

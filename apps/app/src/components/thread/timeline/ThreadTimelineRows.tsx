@@ -174,6 +174,7 @@ export interface ThreadTimelineRowsProps {
   canSpawnChild?: boolean;
   onForkMessage?: ThreadTimelineForkMessageHandler;
   onEditMessage?: ThreadTimelineEditMessageHandler;
+  onUnsendMessage?: ThreadTimelineEditMessageHandler;
   inlineMessageEditor?: ThreadTimelineInlineMessageEditor;
   onMessageAddToChat?: ThreadTimelineAddToChatHandler;
   onSelectionAddToChat?: ThreadTimelineAddToChatHandler;
@@ -200,6 +201,8 @@ interface TimelineRendererStaticContextValue {
   getViewRows: GetTimelineViewRows;
   onForkMessage: ThreadTimelineForkMessageHandler | undefined;
   onEditMessage: ThreadTimelineEditMessageHandler | undefined;
+  onUnsendMessage: ThreadTimelineEditMessageHandler | undefined;
+  unsendableUserMessageId: string | null;
   inlineMessageEditor: ThreadTimelineInlineMessageEditor | undefined;
   onMessageAddToChat: ThreadTimelineAddToChatHandler | undefined;
   onSelectionAddToChat: ThreadTimelineAddToChatHandler | undefined;
@@ -729,6 +732,31 @@ function findLastActionableUserMessageId(
   return lastMessageId;
 }
 
+function findUnsendableUserMessageId(
+  rows: readonly ThreadTimelineViewRow[],
+): string | null {
+  let lastMessageId: string | null = null;
+  const visitRows = (candidateRows: readonly ThreadTimelineViewRow[]): void => {
+    for (const row of candidateRows) {
+      if (row.kind === "conversation") {
+        if (row.role === "user" && row.initiator === "user") {
+          lastMessageId = userMessageEditTarget(row) === null ? null : row.id;
+        }
+        continue;
+      }
+      if (
+        row.kind === "turn" &&
+        row.status === "pending" &&
+        row.children !== null
+      ) {
+        visitRows(row.children);
+      }
+    }
+  };
+  visitRows(rows);
+  return lastMessageId;
+}
+
 const EMPTY_CONSUMER_MESSAGE_ACTIONS: readonly ThreadTimelineConsumerMessageAction[] =
   [];
 
@@ -860,6 +888,8 @@ const ConversationRowContent = memo(function ConversationRowContent({
     canSpawnChild,
     inlineMessageEditor,
     onEditMessage,
+    onUnsendMessage,
+    unsendableUserMessageId,
     onForkMessage,
     onMessageAddToChat,
     onSelectionAddToChat,
@@ -945,11 +975,19 @@ const ConversationRowContent = memo(function ConversationRowContent({
         ? null
         : (senderThreadMetadataById.get(row.senderThreadId) ?? null);
     const editTarget =
-      onEditMessage === undefined ? null : userMessageEditTarget(row);
+      onEditMessage === undefined && onUnsendMessage === undefined
+        ? null
+        : userMessageEditTarget(row);
     const onEdit =
       onEditMessage === undefined || editTarget === null
         ? undefined
         : () => onEditMessage(editTarget);
+    const onUnsend =
+      onUnsendMessage === undefined ||
+      editTarget === null ||
+      unsendableUserMessageId !== row.id
+        ? undefined
+        : () => onUnsendMessage(editTarget);
     return (
       <>
         <MessageMetadata placement="above" {...metadata} />
@@ -961,6 +999,7 @@ const ConversationRowContent = memo(function ConversationRowContent({
           onAddToChat={onSelectionAddToChat}
           onCopyLink={onCopyLink}
           onEdit={onEdit}
+          onUnsend={onUnsend}
           projectId={projectId}
           resolveMentionLink={resolveMentionLink}
           resolveUserAttachmentImageSrc={resolveUserAttachmentImageSrc}
@@ -2270,6 +2309,13 @@ function ThreadTimelineRowsForTimelineView(props: ThreadTimelineRowsProps) {
       ),
     [props.onEditMessage, props.onSelectionAddToChat, rows],
   );
+  const unsendableUserMessageId = useMemo(
+    () =>
+      props.onUnsendMessage === undefined
+        ? null
+        : findUnsendableUserMessageId(rows),
+    [props.onUnsendMessage, rows],
+  );
   const scopeActive = isRunningThreadRuntimeDisplayStatus(
     props.threadRuntimeDisplayStatus,
   );
@@ -2426,6 +2472,8 @@ function ThreadTimelineRowsForTimelineView(props: ThreadTimelineRowsProps) {
       getViewRows,
       onForkMessage: props.onForkMessage,
       onEditMessage: props.onEditMessage,
+      onUnsendMessage: props.onUnsendMessage,
+      unsendableUserMessageId,
       inlineMessageEditor: props.inlineMessageEditor,
       onMessageAddToChat: props.onMessageAddToChat,
       onSelectionAddToChat: selectionAddToChatHandler,
@@ -2451,6 +2499,8 @@ function ThreadTimelineRowsForTimelineView(props: ThreadTimelineRowsProps) {
       getViewRows,
       props.onForkMessage,
       props.onEditMessage,
+      props.onUnsendMessage,
+      unsendableUserMessageId,
       props.inlineMessageEditor,
       props.onMessageAddToChat,
       selectionAddToChatHandler,

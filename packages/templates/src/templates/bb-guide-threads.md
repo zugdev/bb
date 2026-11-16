@@ -224,6 +224,19 @@ Editing a sent message:
   shared with another thread. Use bb thread clear <id> to start a new session
   while keeping the history and its ownership evidence.
 
+Unsending the last message:
+
+  bb thread unsend-message <id>
+    --self                              Target the current thread (BB_THREAD_ID)
+    --expected-request-sequence <seq>   Reject the unsend if the latest message moved
+
+  Removes the latest eligible user message and every later turn, keeps
+  workspace changes, and starts no new turn. It accepts the same messages,
+  providers and running threads as edit-message and stops the thread first. The
+  provider session is forked at the turn before the message, so the next message
+  continues from there. Messages queued meanwhile dispatch once the fork is
+  ready. The app shows it as Unsend message on the last user message.
+
 Lifecycle ownership:
   spawn and fork accept --lifecycle-owner-thread <id> (SDK
   lifecycleOwnerThreadId, also returned in thread responses, null if

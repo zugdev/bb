@@ -373,6 +373,21 @@ export const editMessageResponseSchema = z
   .strict();
 export type EditMessageResponse = z.infer<typeof editMessageResponseSchema>;
 
+export const unsendMessageRequestSchema = z
+  .object({
+    expectedRequestSequence: z.number().int().nonnegative().optional(),
+  })
+  .strict();
+export type UnsendMessageRequest = z.infer<typeof unsendMessageRequestSchema>;
+
+export const unsendMessageResponseSchema = z
+  .object({
+    ok: z.literal(true),
+    removedRequestSequence: z.number().int().nonnegative(),
+  })
+  .strict();
+export type UnsendMessageResponse = z.infer<typeof unsendMessageResponseSchema>;
+
 /**
  * The reason a retry carries when the caller names none. Filled here at the
  * boundary so the queued row, its card and `bb thread queue list` all read the

@@ -63,7 +63,10 @@ import {
   ensureThreadQueueIsWritable,
 } from "../../services/threads/thread-send.js";
 import { acceptThreadSendRequest } from "../../services/threads/thread-send-request.js";
-import { editThreadMessage } from "../../services/threads/thread-edit-message.js";
+import {
+  editThreadMessage,
+  unsendThreadMessage,
+} from "../../services/threads/thread-edit-message.js";
 import { clearThreadContext } from "../../services/threads/thread-context-clear.js";
 import {
   buildExecutionOptions,
@@ -227,6 +230,19 @@ export function registerThreadActionRoutes(app: Hono, deps: AppDeps): void {
       thread,
     });
     const result = await editThreadMessage(deps, {
+      environment,
+      payload,
+      thread,
+    });
+    return context.json(result);
+  });
+
+  post(routes.unsendMessage, async (context, payload) => {
+    const thread = requirePublicThread(deps.db, context.req.param("id"));
+    const environment = await requireThreadCommandEnvironment(deps, {
+      thread,
+    });
+    const result = await unsendThreadMessage(deps, {
       environment,
       payload,
       thread,

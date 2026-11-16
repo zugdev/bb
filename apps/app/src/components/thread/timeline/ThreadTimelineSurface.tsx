@@ -46,6 +46,7 @@ export interface ThreadTimelineSurfaceProps {
   leadingContent?: ReactNode;
   onForkMessage?: ThreadTimelineForkMessageHandler;
   onEditMessage?: ThreadTimelineEditMessageHandler;
+  onUnsendMessage?: ThreadTimelineEditMessageHandler;
   inlineMessageEditor?: ThreadTimelineInlineMessageEditor;
   onMessageAddToChat?: ThreadTimelineAddToChatHandler;
   onSelectionAddToChat?: ThreadTimelineAddToChatHandler;
@@ -143,6 +144,7 @@ export function ThreadTimelineSurface({
   leadingContent,
   onForkMessage,
   onEditMessage,
+  onUnsendMessage,
   inlineMessageEditor,
   onMessageAddToChat,
   onSelectionAddToChat,
@@ -223,6 +225,7 @@ export function ThreadTimelineSurface({
             canSpawnChild={canSpawnChild}
             onForkMessage={onForkMessage}
             onEditMessage={onEditMessage}
+            onUnsendMessage={onUnsendMessage}
             inlineMessageEditor={inlineMessageEditor}
             onMessageAddToChat={onMessageAddToChat}
             onSelectionAddToChat={onSelectionAddToChat}

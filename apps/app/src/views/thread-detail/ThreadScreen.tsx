@@ -76,6 +76,7 @@ import {
 } from "@/hooks/queries/child-thread-pending-interactions";
 import {
   useEditThreadMessage,
+  useUnsendThreadMessage,
   useSendThreadMessage,
 } from "@/hooks/mutations/thread-runtime-mutations";
 import {
@@ -545,6 +546,25 @@ export function ThreadScreen({
       timelineRows,
     });
 
+  const unsendMessage = useUnsendThreadMessage();
+  const handleUnsendSentMessage = useCallback<ThreadTimelineEditMessageHandler>(
+    (target) => {
+      void unsendMessage
+        .mutateAsync({
+          id: thread.id,
+          expectedRequestSequence: target.expectedRequestSequence,
+        })
+        .catch((error) => {
+          showMutationErrorToast({
+            error,
+            fallbackMessage: "Failed to unsend the message",
+            lifecycleOperation: "unsend_message",
+          });
+        });
+    },
+    [thread.id, unsendMessage],
+  );
+
   const promptAreaRef = useRef<HTMLDivElement>(null);
   const lastEditTarget = useMemo(
     () => lastUserMessageEditTarget(timelineRows),
@@ -594,6 +614,11 @@ export function ThreadScreen({
         includePluginMessageActions={timelineHost.includePluginMessageActions}
         onForkMessage={timelineHost.onForkMessage}
         onEditMessage={handleEditSentMessage}
+        onUnsendMessage={
+          handleEditSentMessage !== undefined && !unsendMessage.isPending
+            ? handleUnsendSentMessage
+            : undefined
+        }
         inlineMessageEditor={inlineMessageEditor}
         onMessageAddToChat={selectionAddToChat}
         onSelectionAddToChat={selectionAddToChat}
