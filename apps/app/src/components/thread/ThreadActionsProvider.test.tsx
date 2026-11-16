@@ -448,6 +448,16 @@ describe("ThreadActionsProvider archive confirmation", () => {
     ).toBeNull();
   });
 
+  it("confirms before archiving a running thread without children", async () => {
+    mockCascade({});
+    renderProvider(<ArchiveButton thread={makeThread({ status: "active" })} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Archive" }));
+
+    await screen.findByText(/This will stop current work\./);
+    expect(sdk.threads.archiveAll).not.toHaveBeenCalled();
+  });
+
   it("reports child threads and archives nothing before confirmation", async () => {
     mockCascade({
       thr_parent: ["thr_child1", "thr_child2", "thr_child3", "thr_child4"],

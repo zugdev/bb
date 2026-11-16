@@ -38,7 +38,7 @@ export const INBOX_PANEL_PATH = "inbox";
 
 const MAX_TIMEOUT_MS = 2_147_483_647;
 const CORE_ACTION_OWNER = "bb--core";
-const ARCHIVE_ACTION_KEYS = [`${CORE_ACTION_OWNER}/archive`];
+export const ARCHIVE_ACTION_KEYS = [`${CORE_ACTION_OWNER}/archive`];
 const SNOOZE_ACTION_KEYS = [`${CORE_ACTION_OWNER}/snooze`];
 
 export interface InboxState {
