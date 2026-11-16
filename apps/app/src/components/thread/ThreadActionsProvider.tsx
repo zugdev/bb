@@ -14,7 +14,7 @@ import { appToast } from "@/components/ui/app-toast";
 import { showUndoToast } from "@/components/ui/undo-toast";
 import type { ClosePanesForThreadsResult } from "@/lib/split-layout/atoms";
 import { closeThreadsInAllTabsAtom } from "@/lib/split-layout/tabs";
-import type { Thread } from "@bb/domain";
+import { isArchivableThread, type Thread } from "@bb/domain";
 import {
   useArchiveThreadAndChildren,
   useDeleteThread,
@@ -436,7 +436,9 @@ export function ThreadActionsProvider({
 
   const requestArchiveThreads = useCallback(
     async (threads: readonly Thread[]) => {
-      const active = threads.filter((thread) => thread.archivedAt === null);
+      const active = threads.filter(
+        (thread) => thread.archivedAt === null && isArchivableThread(thread),
+      );
       if (active.length === 0) return;
       const plan = await claimSelectionPlan(active, "archive");
       if (plan === null) return;

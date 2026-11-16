@@ -11,6 +11,7 @@ import {
 import {
   threadParentNotificationsSchema,
   type ThreadListEntry,
+  isArchivableThread,
 } from "@bb/domain";
 import { useIsCompactViewport } from "@bb/shared-ui/hooks/use-compact-viewport";
 import { useThreadActions } from "@/components/thread/ThreadActionsProvider";
@@ -19,7 +20,7 @@ import { copyToClipboardWithToast } from "@/lib/clipboard";
 import { appToast } from "@/components/ui/app-toast";
 import { showUndoToast } from "@/components/ui/undo-toast";
 import { showMutationErrorToast } from "@/lib/mutation-errors";
-import { resolveThread } from "@/lib/cached-thread";
+import { lookupCachedThread, resolveThread } from "@/lib/cached-thread";
 import { PARENT_NOTIFICATIONS_OPTIONS } from "@/lib/parent-notifications";
 import { getThreadRoutePath } from "@/lib/route-paths";
 import {
@@ -235,6 +236,7 @@ function childThreads(
 }
 
 interface LifecycleHandlers {
+  isArchivable: (threadId: string) => boolean;
   archive: (threadIds: readonly string[]) => Promise<void>;
   requestDelete: (threadIds: readonly string[]) => Promise<void>;
 }
@@ -248,6 +250,10 @@ function useLifecycleHandlers(): LifecycleHandlers {
   });
   return useMemo(
     () => ({
+      isArchivable: (threadId: string) => {
+        const cached = lookupCachedThread(queryClient, threadId);
+        return cached === null || isArchivableThread(cached);
+      },
       archive: async (threadIds: readonly string[]) => {
         try {
           latest.current.requestArchiveThreads(
@@ -527,6 +533,7 @@ export const CORE_THREAD_ACTIONS: readonly PluginThreadActionRegistration<unknow
       useData: useLifecycleHandlers,
       item: ({ thread, data, sdk }) => {
         const isArchived = thread.archivedAt !== null;
+        if (!isArchived && !data.isArchivable(thread.id)) return null;
         return {
           label: isArchived ? "Unarchive" : "Archive",
           icon: isArchived ? "ArchiveRestore" : "Archive",
@@ -547,7 +554,10 @@ export const CORE_THREAD_ACTIONS: readonly PluginThreadActionRegistration<unknow
         };
       },
       experimental_bulkItem: ({ threads, data, sdk }) => {
-        const active = threads.filter((thread) => thread.archivedAt === null);
+        const active = threads.filter(
+          (thread) =>
+            thread.archivedAt === null && data.isArchivable(thread.id),
+        );
         if (active.length > 0) {
           return {
             label: `Archive ${describeThreadCount(active.length)}`,

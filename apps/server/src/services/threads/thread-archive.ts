@@ -15,7 +15,8 @@ import {
   listNonDeletedHiddenSourceThreads,
 } from "@bb/db";
 import type { EnvironmentRow } from "@bb/db";
-import type { Thread } from "@bb/domain";
+import { isArchivableThread, type Thread } from "@bb/domain";
+import { ApiError } from "../../errors.js";
 import type { AppDeps } from "../../types.js";
 import {
   pruneThreadEventHistoryBestEffort,
@@ -106,7 +107,7 @@ export function archiveEnvironmentThreads(
 ): string[] {
   const roots = listLiveThreadsInEnvironment(deps.db, {
     environmentId: args.environment.id,
-  });
+  }).filter(isArchivableThread);
   return archiveThreadTrees(deps, roots, (thread) =>
     thread.environmentId === null
       ? null
@@ -118,6 +119,13 @@ export function archiveThreadAndChildren(
   deps: AppDeps,
   args: ArchiveThreadAndChildrenArgs,
 ): string[] {
+  if (!isArchivableThread(args.parentThread)) {
+    throw new ApiError(
+      409,
+      "invalid_request",
+      "This thread belongs to a plugin and can't be archived",
+    );
+  }
   const environment = resolveThreadHostCommandEnvironment({
     db: deps.db,
     thread: args.parentThread,

@@ -185,4 +185,41 @@ describe("POST /threads/cascade", () => {
       expect(response.status).toBe(400);
     });
   });
+
+  it("refuses to archive a plugin's standalone hidden thread and keeps its owned helpers archivable", async () => {
+    await withTestHarness(async (harness) => {
+      const { host } = seedHostSession(harness.deps);
+      const { project } = seedProjectWithSource(harness.deps, {
+        hostId: host.id,
+        path: "/tmp/public-thread-plugin-home",
+      });
+      const assistant = seedThread(harness.deps, {
+        projectId: project.id,
+        visibility: "hidden",
+        originPluginId: "assistant",
+      });
+      const sideChat = seedThread(harness.deps, {
+        projectId: project.id,
+        visibility: "hidden",
+        originPluginId: "side-chat",
+        lifecycleOwnerThreadId: assistant.id,
+      });
+
+      const refused = await request(
+        harness,
+        `/threads/${assistant.id}/archive-all`,
+        "POST",
+      );
+      expect(refused.status).toBe(409);
+      expect(getThread(harness.db, assistant.id)?.archivedAt).toBeNull();
+
+      const archived = await request(
+        harness,
+        `/threads/${sideChat.id}/archive-all`,
+        "POST",
+      );
+      expect(archived.status).toBe(200);
+      expect(getThread(harness.db, sideChat.id)?.archivedAt).not.toBeNull();
+    });
+  });
 });

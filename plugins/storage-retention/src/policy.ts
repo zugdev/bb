@@ -10,6 +10,7 @@ export type RetentionThread = Pick<
   | "parentThreadId"
   | "sourceThreadId"
   | "lifecycleOwnerThreadId"
+  | "originPluginId"
   | "visibility"
   | "archivedAt"
   | "deletedAt"
@@ -72,6 +73,14 @@ export function selectCandidates(
     id !== null && byId.has(id) && byId.get(id)!.archivedAt === null;
   for (const root of live) {
     if (root.lifecycleOwnerThreadId !== null) continue;
+    if (
+      root.visibility === "hidden" &&
+      root.originPluginId !== null &&
+      root.parentThreadId === null &&
+      root.sourceThreadId === null
+    ) {
+      continue;
+    }
     if (
       policy.archiveAfterDays !== null &&
       root.archivedAt === null &&

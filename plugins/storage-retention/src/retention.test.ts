@@ -21,6 +21,7 @@ function thread(
     parentThreadId: null,
     lifecycleOwnerThreadId: null,
     sourceThreadId: null,
+    originPluginId: null,
     visibility: "visible",
     environmentId: "env_test",
     status: "idle",
@@ -54,6 +55,17 @@ describe("retention eligibility", () => {
         ]);
       }
     }
+  });
+  it("never archives a plugin's standalone hidden thread", () => {
+    const result = selectCandidates(
+      [
+        thread("assistant", { visibility: "hidden", originPluginId: "assistant" }),
+        thread("old"),
+      ],
+      { archiveAfterDays: 30, deleteAfterDays: null },
+      NOW,
+    );
+    expect(result.archive.map((group) => group.rootId)).toEqual(["old"]);
   });
   it("deletes only fully old archived lifecycle groups, while ordinary children have independent deletion lifetimes", () => {
     const result = selectCandidates(
