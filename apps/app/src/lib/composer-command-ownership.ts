@@ -1,4 +1,13 @@
 export const APP_COMPOSER_SELECTOR = "[data-app-composer]";
+export const COMPOSER_MENU_OPEN_ATTRIBUTE = "data-composer-menu-open";
+
+export function isComposerTabTarget(target: EventTarget | null): boolean {
+  return (
+    target instanceof Element &&
+    target.closest(APP_COMPOSER_SELECTOR) !== null &&
+    target.closest(`[${COMPOSER_MENU_OPEN_ATTRIBUTE}]`) === null
+  );
+}
 
 export interface ComposerCommandScope {
   isFocusedPane: boolean;

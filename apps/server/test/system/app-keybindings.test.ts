@@ -346,26 +346,28 @@ describe("app keybindings", () => {
           config.keybindings.some((binding) => binding.command === command),
         ).toBe(false);
       }
-      for (const command of [
-        "pane.focus.previous",
-        "pane.focus.next",
+      for (const [command, shift] of [
+        ["pane.focus.previous", true],
+        ["pane.focus.next", false],
       ] as const) {
         expect(
-          config.defaultKeybindings.find(
-            (binding) => binding.command === command,
-          ),
+          config.keybindings.find((binding) => binding.command === command),
         ).toMatchObject({
           desktopOnly: false,
-          shortcut: null,
+          shortcut: { key: "Tab", mod: false, shift },
           when: {
-            all: ["mainSurface", "splitActive"],
-            none: ["modalOpen"],
+            all: ["mainSurface", "splitActive", "editableFocus"],
+            none: ["modalOpen", "terminalFocus", "browserFocus", "questionFocus"],
           },
         });
-        expect(
-          config.keybindings.some((binding) => binding.command === command),
-        ).toBe(false);
       }
+      expect(
+        config.keybindings.find(
+          (binding) =>
+            binding.command === "composer.focus" &&
+            binding.shortcut.key === "Tab",
+        )?.when.none,
+      ).toContain("editableFocus");
       expect(
         config.keybindings
           .filter((binding) => binding.command === "thread.new")
@@ -726,6 +728,23 @@ describe("app keybindings", () => {
           when: {
             all: ["mainSurface", "splitActive", "macPlatform"],
             none: ["modalOpen"],
+          },
+        })),
+        ...(
+          [
+            ["pane.focus.previous", true],
+            ["pane.focus.next", false],
+          ] as const
+        ).map(([command, shift]) => ({
+          command,
+          desktopOnly: false,
+          key: "Tab",
+          mod: false,
+          control: false,
+          shift,
+          when: {
+            all: ["mainSurface", "splitActive", "editableFocus"],
+            none: ["modalOpen", "terminalFocus", "browserFocus", "questionFocus"],
           },
         })),
         ...PANE_FOCUS_APP_COMMAND_IDS.flatMap((command, index) => [

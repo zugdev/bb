@@ -182,6 +182,11 @@ const splitWithoutModal = {
   none: ["modalOpen"],
 } as const;
 
+const tabBetweenPanes = {
+  all: ["mainSurface", "splitActive", "editableFocus"],
+  none: ["modalOpen", "terminalFocus", "browserFocus", "questionFocus"],
+} as const;
+
 export const DEFAULT_APP_KEYBINDINGS: AppDefaultKeybindings = [
   unassignedBinding("history.back", mainWithoutModalOrBrowser),
   unassignedBinding("history.forward", mainWithoutModalOrBrowser),
@@ -256,8 +261,8 @@ export const DEFAULT_APP_KEYBINDINGS: AppDefaultKeybindings = [
       splitWithoutModal,
     ),
   ),
-  unassignedBinding("pane.focus.previous", splitWithoutModal),
-  unassignedBinding("pane.focus.next", splitWithoutModal),
+  binding("pane.focus.previous", "Tab", { shift: true }, tabBetweenPanes),
+  binding("pane.focus.next", "Tab", {}, tabBetweenPanes),
   ...numberedChatBindings(PANE_FOCUS_APP_COMMAND_IDS, splitWithoutModal),
   ...webAndDesktopBindings(
     "pane.split.right",
@@ -391,6 +396,16 @@ export const DEFAULT_APP_KEYBINDINGS: AppDefaultKeybindings = [
     { mod: true, shift: true },
     composerWithoutModal,
   ),
+  binding("composer.focus", "Tab", {}, {
+    all: ["mainSurface", "promptAvailable"],
+    none: [
+      "modalOpen",
+      "editableFocus",
+      "terminalFocus",
+      "browserFocus",
+      "questionFocus",
+    ],
+  }),
   binding("thread.editLastMessage", "ArrowUp", {}, composerWithoutModal),
   binding(
     "modelPicker.toggle",

@@ -497,7 +497,7 @@ Pane tab shortcuts use `Alt` on the web, because the browser keeps `Mod+W` and `
 | Threads   | Pin or unpin focused thread                  | Unassigned                  | Thread view              |
 | Threads   | Previous / next thread                       | Surface defaults above      | Desktop / web            |
 | Threads   | Open visible thread 1–9                      | Platform defaults above     | Web / desktop            |
-| Layout    | Previous / next chat pane                    | Unassigned                  | While split              |
+| Layout    | Previous / next chat pane                    | `Shift+Tab` / `Tab`         | Split, from a composer   |
 | Layout    | Focus chat pane 1–8                          | Platform defaults above     | Split (web / desktop)    |
 | Layout    | Split chat pane / the other way              | `Alt+D` / `Alt+Shift+D`; desktop `Mod+D` / `Mod+Shift+D` | All clients |
 | Layout    | Maximize / restore chat pane                 | `Mod+Shift+E`               | While split              |
@@ -518,7 +518,7 @@ Pane tab shortcuts use `Alt` on the web, because the browser keeps `Mod+W` and `
 | Workspace | Open terminal                                | `Mod+Shift+Enter`           | All clients              |
 | Terminal  | Find in scrollback                           | `Cmd+F` / `Ctrl+Shift+F`    | Terminal focus           |
 | Workspace | Open in preferred app                        | `Mod+O`                     | All clients              |
-| Composer  | Focus composer                               | `Mod+Shift+C`               | All clients              |
+| Composer  | Focus composer                               | `Mod+Shift+C`, or `Tab` outside text fields | All clients |
 | Composer  | Edit last message                            | `ArrowUp`                   | Empty thread composer    |
 | Composer  | Toggle model picker                          | `Mod+Shift+M`               | All clients              |
 | Composer  | Cycle model forward / backward               | `Alt+M` / `Alt+Shift+M`     | All clients              |
@@ -537,6 +537,8 @@ skip text fields outside the card, so the composer keeps its own keys;
 Previous / next need focus in the card, outside its answer field.
 
 `ArrowUp` in an empty thread composer opens your last message for editing when the provider supports edits, and otherwise recalls earlier prompts. Sending an edit while the thread is running asks before it stops the work.
+
+`Tab` outside a text field focuses the composer. In a split, `Tab` / `Shift+Tab` from a composer move to the next or previous chat pane and focus its composer, except while the composer's suggestion menu is open, where `Tab` still picks the suggestion. Other text fields keep their normal `Tab`.
 
 Cycle shortcuts act only from the active composer or an open picker; other
 editable controls keep their Option-composed input. Reasoning cycles through

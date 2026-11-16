@@ -18,6 +18,7 @@ import {
 import { PluginComposerCommands } from "@/components/plugin/PluginComposerCommands";
 import {
   APP_COMPOSER_SELECTOR,
+  COMPOSER_MENU_OPEN_ATTRIBUTE,
   composerOwnsCommand,
   resolveComposerCommandScope,
 } from "@/lib/composer-command-ownership";
@@ -128,6 +129,10 @@ export function ComposerRoot({
   }, [key, registerEditor, stateKey]);
   useEffect(() => () => publishedRef.current?.unregister(), []);
   useLayoutEffect(() => attachEditor(() => editorRef.current), [attachEditor]);
+
+  useLayoutEffect(() => {
+    rootRef.current?.toggleAttribute(COMPOSER_MENU_OPEN_ATTRIBUTE, menuOpen);
+  }, [menuOpen, rootRef]);
 
   const { reportMenuLayout } = host;
   useLayoutEffect(() => {
