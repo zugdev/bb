@@ -81,8 +81,30 @@ rm -f "$swap_failed"
 verify_bundled_plugins "$app" || fail "bundled plugins in $app differ from their .bundled-runtime build, see the fork-updater log"
 commit="$(git -C "$repo" rev-parse HEAD)"
 
+create_signing_keychain() {
+  work="$(mktemp -d)"
+  printf '[req]\ndistinguished_name=dn\nx509_extensions=ext\nprompt=no\n[dn]\nCN=%s\n[ext]\nbasicConstraints=critical,CA:false\nkeyUsage=critical,digitalSignature\nextendedKeyUsage=critical,codeSigning\n' "$signing_identity" > "$work/cert.cnf"
+  openssl req -x509 -newkey rsa:2048 -nodes -days 3650 -config "$work/cert.cnf" -keyout "$work/key.pem" -out "$work/cert.pem"
+  openssl pkcs12 -export -inkey "$work/key.pem" -in "$work/cert.pem" -out "$work/identity.p12" -passout pass:"$signing_password"
+  security create-keychain -p "$signing_password" "$signing_keychain"
+  security set-keychain-settings "$signing_keychain"
+  security unlock-keychain -p "$signing_password" "$signing_keychain"
+  security import "$work/identity.p12" -k "$signing_keychain" -P "$signing_password" -T /usr/bin/codesign
+  security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$signing_password" "$signing_keychain" >/dev/null
+  rm -rf "$work"
+}
+
+signing_identity="bb fork"
+signing_keychain="$HOME/.bb/codesign.keychain-db"
+signing_password=bbfork
+[ -f "$signing_keychain" ] || create_signing_keychain
+security unlock-keychain -p "$signing_password" "$signing_keychain"
+security list-keychains -d user | grep -qF "$signing_keychain" \
+  || eval "security list-keychains -d user -s $(security list-keychains -d user | tr '\n' ' ') \"\$signing_keychain\""
+
 rm -rf "$staged"
 ditto "$app" "$staged"
+codesign --force --deep --sign "$signing_identity" --keychain "$signing_keychain" "$staged"
 test -x "$staged/Contents/MacOS/bb"
 
 app_running() {
