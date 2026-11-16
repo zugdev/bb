@@ -12,6 +12,7 @@ const SEED_BUILT_COMMIT = "5008564189";
 const DEFAULT_CHECKOUT = "/Users/gus/prog/bb/.claude/worktrees/trunk";
 const LONG_STEP_TIMEOUT_MS = 30 * 60_000;
 const SELF_RELOAD_DELAY_MS = 1_000;
+const IDLE_POLL_MS = 60_000;
 
 const JSON_OPTION = { type: "boolean", description: "Emit machine-readable JSON" } as const;
 
@@ -40,6 +41,13 @@ export default async function forkUpdaterPlugin(bb: BbPluginApi): Promise<void> 
       label: "Checkout path",
       description: "A clean checkout of main on zugdev/bb that the updater fetches, builds and installs from.",
       default: DEFAULT_CHECKOUT,
+    },
+    autoUpdate: {
+      type: "boolean",
+      label: "Update automatically when idle",
+      description:
+        "Apply pending updates on the 5 minute check when no thread is running. A rebuild packages first and waits for running threads to finish before it restarts bb.",
+      default: true,
     },
   });
   const host = bb.hosts.experimental_client({ contract: forkUpdaterHostContract });
@@ -71,6 +79,17 @@ export default async function forkUpdaterPlugin(bb: BbPluginApi): Promise<void> 
   async function checkoutPath(): Promise<string> {
     const value = (await settings.get()).checkoutPath;
     return typeof value === "string" && value !== "" ? value : DEFAULT_CHECKOUT;
+  }
+
+  async function isIdle(): Promise<boolean> {
+    return (await bb.sdk.threads.listRunning()).length === 0;
+  }
+
+  async function waitForIdle(): Promise<void> {
+    while (!(await isIdle())) {
+      setStatus({ progress: "Waiting for running threads to finish before restarting bb" });
+      await new Promise((resolve) => setTimeout(resolve, IDLE_POLL_MS));
+    }
   }
 
   async function serverHostId(): Promise<string> {
@@ -176,7 +195,7 @@ export default async function forkUpdaterPlugin(bb: BbPluginApi): Promise<void> 
     await bb.storage.kv.set(BUILT_COMMIT_KEY, commit);
   }
 
-  async function applyUpdate(): Promise<ForkUpdaterStatus> {
+  async function applyUpdate(whenIdle: boolean): Promise<ForkUpdaterStatus> {
     swapError = null;
     const current = await check();
     if (current.error !== null) throw new Error(current.error);
@@ -203,6 +222,7 @@ export default async function forkUpdaterPlugin(bb: BbPluginApi): Promise<void> 
       await runStep("install", path);
       setStatus({ progress: "Packaging bb.app, this takes several minutes" });
       await runStep("package", path);
+      if (whenIdle) await waitForIdle();
       setStatus({ progress: "Restarting bb with the new build" });
       await runStep("swap-and-reopen", path);
       return status;
@@ -212,8 +232,8 @@ export default async function forkUpdaterPlugin(bb: BbPluginApi): Promise<void> 
     }
   }
 
-  function update(): Promise<ForkUpdaterStatus> {
-    updating ??= applyUpdate()
+  function update(whenIdle = false): Promise<ForkUpdaterStatus> {
+    updating ??= applyUpdate(whenIdle)
       .finally(() => {
         updating = null;
       })
@@ -265,6 +285,9 @@ export default async function forkUpdaterPlugin(bb: BbPluginApi): Promise<void> 
   );
 
   bb.background.schedule("check", "*/5 * * * *", async () => {
-    await check();
+    const current = await check();
+    if ((await settings.get()).autoUpdate !== true) return;
+    if (current.kind === "up-to-date" || current.error !== null || !(await isIdle())) return;
+    void update(true).catch(() => undefined);
   });
 }

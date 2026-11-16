@@ -9,9 +9,15 @@ interface SwapReport {
   swapError: string | null;
 }
 
-function setup(changedFiles: string[], failStep: string | null = null, forkPluginDirs: string[] = []) {
+function setup(
+  changedFiles: string[],
+  failStep: string | null = null,
+  forkPluginDirs: string[] = [],
+  settings: Record<string, boolean> = {},
+) {
   const report: SwapReport = { installedCommit: null, swapError: null };
   const steps: string[] = [];
+  const running: { id: string }[] = [];
   const reload = vi.fn(async () => ({}));
   const install = vi.fn(async (args: { source: string }) => {
     steps.push(`install ${args.source}`);
@@ -19,8 +25,10 @@ function setup(changedFiles: string[], failStep: string | null = null, forkPlugi
   });
   const host = createFakePluginHost({
     pluginId: "fork-updater",
+    settings,
     sdk: {
       system: { config: async () => ({ primaryHostId: "host-1" }) },
+      threads: { listRunning: async () => running },
       plugins: {
         list: async () => ({
           plugins: [
@@ -50,7 +58,7 @@ function setup(changedFiles: string[], failStep: string | null = null, forkPlugi
       return { headCommit: "bbbbbbb" };
     },
   });
-  return { host, steps, reload, install, report };
+  return { host, steps, reload, install, report, running };
 }
 
 describe("fork updater", () => {
@@ -172,5 +180,49 @@ describe("fork updater", () => {
     report.installedCommit = "bbbbbbb";
     await host.harness.callRpc("status", { refresh: true });
     expect(steps.at(-1)).toBe(`install path:${CHECKOUT}/plugins/home`);
+  });
+
+  it("applies a pending update on the scheduled check when no thread is running", async () => {
+    const { host, steps, reload } = setup(["plugins/assistant/app.tsx"]);
+    await plugin(host.bb);
+    await host.harness.runSchedule("check");
+    await vi.waitFor(() => expect(reload).toHaveBeenCalledWith({ pluginId: "assistant" }));
+    expect(steps).toEqual(["fast-forward"]);
+  });
+
+  it("leaves a pending update alone while a thread is running", async () => {
+    const { host, steps, running } = setup(["plugins/assistant/app.tsx"]);
+    running.push({ id: "thr_busy" });
+    await plugin(host.bb);
+    await host.harness.runSchedule("check");
+    expect(steps).toEqual([]);
+  });
+
+  it("packages a scheduled rebuild but waits for running threads before the swap", async () => {
+    vi.useFakeTimers();
+    try {
+      const { host, steps, running } = setup(["pnpm-lock.yaml"]);
+      await plugin(host.bb);
+      await host.harness.runSchedule("check");
+      running.push({ id: "thr_busy" });
+      await vi.waitFor(() =>
+        expect(host.harness.callRpc("status", { refresh: false })).resolves.toMatchObject({
+          progress: expect.stringContaining("Waiting for running threads"),
+        }),
+      );
+      expect(steps).toEqual(["fast-forward", "install", "package"]);
+      running.length = 0;
+      await vi.advanceTimersByTimeAsync(60_000);
+      expect(steps.at(-1)).toBe("swap-and-reopen");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("does not update on the scheduled check when automatic updates are off", async () => {
+    const { host, steps } = setup(["plugins/assistant/app.tsx"], null, [], { autoUpdate: false });
+    await plugin(host.bb);
+    await host.harness.runSchedule("check");
+    expect(steps).toEqual([]);
   });
 });
