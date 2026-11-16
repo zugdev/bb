@@ -81,6 +81,7 @@ Slot props contracts (versioned, additive-only):
   for data. Enabled plugins appear in the
   settings sidebar when they declare settings descriptors OR register
   settings sections.
+- `experimental_threadSearchMode` → no component. Registers `{ id, label, placeholder, useSearch }`. `useSearch` is a hook that returns `(query) => Promise<threadIds>`; bb calls it on Enter while the mode is selected in the Cmd+K thread search toggle (Tab cycles modes) and lists the threads in that order.
 - `experimental_appOverlay` → `{}` (deliberately no props). An additive,
   app-wide React owner for floating plugin UI. Registration:
   `{ id, component }`. BB mounts every registration once per app window

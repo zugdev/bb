@@ -38,6 +38,7 @@ import {
   type ComposerView,
   type ExperimentalTabRegistration,
   type ExperimentalAppOverlayRegistration,
+  type ExperimentalThreadSearchModeRegistration,
   type ExperimentalThreadHeaderLeadingRegistration,
   type ExperimentalOwnTab,
   type ExperimentalThreadHeaderTrailingRegistration,
@@ -2148,6 +2149,7 @@ export interface CapturedPluginApp {
   homepageSections: PluginHomepageSectionRegistration[];
   settingsSections: PluginSettingsSectionRegistration[];
   appOverlays: ExperimentalAppOverlayRegistration[];
+  threadSearchModes: ExperimentalThreadSearchModeRegistration[];
   threadHeaderLeadings: ExperimentalThreadHeaderLeadingRegistration[];
   threadHeaderTrailings: ExperimentalThreadHeaderTrailingRegistration[];
   threadComposerOverlays: ExperimentalThreadComposerOverlayRegistration[];

@@ -217,6 +217,7 @@ vi.mock("@/lib/app-query-client", () => ({
 
 vi.mock("@/components/ui/app-route-anchor", () => ({
   useRouteNavigate: () => routeNavigateMock,
+  useRouteAnchorDelegate: () => () => undefined,
 }));
 
 vi.mock("@/hooks/usePromptDraftStorage", () => ({
@@ -249,6 +250,15 @@ vi.mock("@/hooks/queries/palette-thread-queries", () => ({
     isLoading: false,
     isError: false,
   }),
+}));
+
+vi.mock("@/lib/command-palette/palette-described-threads", () => ({
+  listThreadsInOrder: async (ids: readonly string[]) =>
+    ids.flatMap((id) =>
+      [...modeState.activeRecents, ...modeState.archivedRecents].filter(
+        (thread) => thread.id === id,
+      ),
+    ),
 }));
 
 vi.mock("@/hooks/queries/thread-queries", async (importOriginal) => {
@@ -408,6 +418,7 @@ afterEach(() => {
   cleanup();
   removePluginSlotRegistrations("linear");
   removePluginSlotRegistrations("automations");
+  removePluginSlotRegistrations("finder");
   resetPluginLogoStoreForTest();
   resetPluginThreadRowStatusesForTest();
   testState.calls.length = 0;
@@ -529,6 +540,57 @@ describe("CommandPalette", () => {
       }
     },
   );
+
+  it("runs a plugin search mode on Enter and lists its threads in the returned order", async () => {
+    const search = vi.fn(async () => ["second", "first"]);
+    setPluginSlotRegistrations(
+      "finder",
+      makePluginRegistrationSet({
+        threadSearchModes: [
+          {
+            id: "description",
+            label: "Description",
+            placeholder: "Describe it",
+            useSearch: () => search,
+          },
+        ],
+      }),
+    );
+    modeState.activeRecents = [
+      makeThread("first"),
+      makeThread("second", { updatedAt: 1 }),
+      makeThread("third"),
+    ];
+    renderPalette();
+    openThreadSearch();
+    await screen.findByRole("option", { name: /Title third/ });
+    fireEvent.keyDown(searchField(), { key: "Tab" });
+    expect(
+      screen
+        .getByRole("radio", { name: "Description" })
+        .getAttribute("aria-checked"),
+    ).toBe("true");
+    fireEvent.change(searchField(), { target: { value: "the second one" } });
+    expect(screen.queryByRole("option")).toBeNull();
+    expect(search).not.toHaveBeenCalled();
+    fireEvent.keyDown(searchField(), { key: "Enter" });
+    await waitFor(() =>
+      expect(optionTitles()).toEqual([
+        expect.stringContaining("Title second"),
+        expect.stringContaining("Title first"),
+      ]),
+    );
+    expect(search).toHaveBeenCalledOnce();
+    expect(search).toHaveBeenCalledWith("the second one");
+    fireEvent.keyDown(searchField(), { key: "Enter" });
+    await waitFor(() =>
+      expect(routeNavigateMock).toHaveBeenCalledWith(
+        expect.stringContaining("second"),
+        expect.anything(),
+      ),
+    );
+    expect(search).toHaveBeenCalledOnce();
+  });
 
   it("keeps the split column on every row when the highlighted thread is already open", async () => {
     modeState.activeRecents = [

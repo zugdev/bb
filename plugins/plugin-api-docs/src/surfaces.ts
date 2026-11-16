@@ -621,12 +621,15 @@ export const SURFACE_GROUPS: SurfaceGroup[] = [
         summary:
           "Add commands to bb's command palette. With this, a plugin can:",
         bullets: [
-          "Run plugin actions from the palette or a keyboard shortcut",
-          "Suggest a default shortcut that people can rebind",
+          "Run plugin actions from the palette or a rebindable keyboard shortcut",
           "Show a command only when the current thread or project fits",
           "Open a plugin panel for the focused thread or New thread screen",
+          "Add a search mode to thread search, such as search by description",
         ],
         apiSymbols: [
+          "PluginAppSlots.experimental_threadSearchMode",
+          "ExperimentalThreadSearchModeRegistration",
+          "ExperimentalThreadSearchModeSearch",
           "PluginAppBuilder.commands",
           "PluginAppCommands",
           "PluginCommandRegistration",

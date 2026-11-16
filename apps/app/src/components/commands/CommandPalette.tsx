@@ -258,6 +258,7 @@ export function CommandPalette({ threadId, projectId }: CommandPaletteProps) {
         onKeyDownCapture={(event) => {
           if (
             !open ||
+            event.key === "Tab" ||
             !(event.target instanceof Node) ||
             !event.currentTarget.contains(event.target)
           ) {
