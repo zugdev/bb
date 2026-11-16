@@ -16,6 +16,14 @@ export interface ThreadArchiveDialogTarget {
   childThreadCount: number;
 }
 
+export function isThreadRunning(thread: Thread): boolean {
+  return (
+    thread.status === "starting" ||
+    thread.status === "active" ||
+    thread.status === "stopping"
+  );
+}
+
 interface ThreadArchiveDialogProps<Target extends ThreadArchiveDialogTarget> {
   target: Target | null;
   pending: boolean;
@@ -74,12 +82,7 @@ export function ThreadArchiveDialogContent<
 }: ThreadArchiveDialogContentProps<Target>) {
   const { childThreadCount, threads } = target;
   const single = threads.length === 1;
-  const active = threads.some(
-    (thread) =>
-      thread.status === "starting" ||
-      thread.status === "active" ||
-      thread.status === "stopping",
-  );
+  const active = threads.some(isThreadRunning);
 
   return (
     <form
@@ -97,12 +100,16 @@ export function ThreadArchiveDialogContent<
         </DialogTitle>
         <DialogDescription>
           {active ? "This will stop current work. " : null}
-          {single ? "Its" : "Their"}{" "}
-          <span className="font-semibold">
-            {formatChildThreadCount(childThreadCount)}
-          </span>{" "}
-          will be archived too. Archived threads stay available and can be
-          unarchived.
+          {childThreadCount > 0 ? (
+            <>
+              {single ? "Its" : "Their"}{" "}
+              <span className="font-semibold">
+                {formatChildThreadCount(childThreadCount)}
+              </span>{" "}
+              will be archived too.{" "}
+            </>
+          ) : null}
+          Archived threads stay available and can be unarchived.
         </DialogDescription>
       </DialogHeader>
       <DialogFooter>

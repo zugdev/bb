@@ -3,9 +3,11 @@ import {
   experimental_Icon as Icon,
   experimental_useOwnTab,
   experimental_useSidebarThreads,
+  experimental_useThreadActions,
   useBbNavigate,
   type PluginSidebarProject,
   type PluginSidebarThread,
+  type PluginThreadActionTarget,
   type PluginThreadListProps,
 } from "@get-bb/plugin-sdk/app";
 import { cn } from "@bb/shared-ui/lib/utils";
@@ -13,6 +15,7 @@ import { CHROME_SECTION_LABEL_CLASS } from "@bb/shared-ui/chrome-style-tokens";
 import { formatCompactRelativeTime } from "@bb/shared-ui/info-list-row";
 import {
   actionTarget,
+  ARCHIVE_ACTION_KEYS,
   INBOX_PANEL_PATH,
   InboxProjectLabel,
   SnoozeMenu,
@@ -40,6 +43,9 @@ const SECTIONS: readonly InboxSectionSpec[] = [
   { key: "working", label: "Working", collapsedByDefault: false },
   { key: "snoozed", label: "Snoozed", collapsedByDefault: true },
 ];
+
+const ROW_ACTION_BUTTON_CLASS =
+  "flex size-6 items-center justify-center rounded-md text-muted-foreground pointer-coarse:size-9 hover:bg-state-hover hover:text-foreground";
 
 const SECTION_BUTTON_CLASS = cn(
   CHROME_SECTION_LABEL_CLASS,
@@ -335,16 +341,44 @@ function InboxRow({
         </span>
       </button>
       <div className="absolute inset-y-0 right-1 hidden items-center group-focus-within:flex group-hover:flex group-has-data-[state=open]:flex pointer-coarse:static pointer-coarse:flex">
-        <SnoozeMenu thread={target}>
-          <button
-            type="button"
-            aria-label={`Snooze ${thread.displayTitle}`}
-            className="flex size-6 items-center justify-center rounded-md text-muted-foreground pointer-coarse:size-9 hover:bg-state-hover hover:text-foreground"
-          >
-            <Icon name="AlarmClock" className="size-3.5" />
-          </button>
-        </SnoozeMenu>
+        {thread.archivedAt === null ? (
+          <SnoozeMenu thread={target}>
+            <button
+              type="button"
+              aria-label={`Snooze ${thread.displayTitle}`}
+              className={ROW_ACTION_BUTTON_CLASS}
+            >
+              <Icon name="AlarmClock" className="size-3.5" />
+            </button>
+          </SnoozeMenu>
+        ) : null}
+        <ArchiveToggleButton target={target} title={thread.displayTitle} />
       </div>
     </li>
+  );
+}
+
+function ArchiveToggleButton({
+  target,
+  title,
+}: {
+  target: PluginThreadActionTarget;
+  title: string;
+}) {
+  const [archive] = experimental_useThreadActions(target, {
+    keys: ARCHIVE_ACTION_KEYS,
+  });
+  if (archive === undefined) return null;
+  const { label, icon, disabled } = archive.action;
+  return (
+    <button
+      type="button"
+      aria-label={`${label} ${title}`}
+      disabled={disabled}
+      className={ROW_ACTION_BUTTON_CLASS}
+      onClick={() => void archive.action.run()}
+    >
+      <Icon name={icon} className="size-3.5" />
+    </button>
   );
 }

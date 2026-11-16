@@ -39,6 +39,7 @@ import {
   type ThreadDeleteDialogTarget,
 } from "@/components/dialogs/ThreadDeleteDialog";
 import {
+  isThreadRunning,
   ThreadArchiveDialog,
   type ThreadArchiveDialogTarget,
 } from "@/components/dialogs/ThreadArchiveDialog";
@@ -444,7 +445,10 @@ export function ThreadActionsProvider({
         roots: plan.roots,
         childThreadCount: plan.childThreadCount,
       };
-      if (confirmThreadArchive && plan.childThreadCount > 0) {
+      if (
+        confirmThreadArchive &&
+        (plan.childThreadCount > 0 || active.some(isThreadRunning))
+      ) {
         openArchiveDialog(request);
       } else {
         await performArchiveThreads(request);

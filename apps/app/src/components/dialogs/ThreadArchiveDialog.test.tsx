@@ -66,6 +66,13 @@ describe("ThreadArchiveDialog", () => {
     },
   );
 
+  it("leaves out the child sentence for a running thread without children", () => {
+    renderDialog({ status: "active", childThreadCount: 0 });
+    expect(screen.getByRole("dialog").textContent).toContain(
+      "This will stop current work. Archived threads stay available and can be unarchived.",
+    );
+  });
+
   it("omits the active-work warning for an idle thread", () => {
     renderDialog();
     expect(screen.queryByText(/This will stop current work\./)).toBeNull();
