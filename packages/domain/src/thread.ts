@@ -135,6 +135,25 @@ export const threadSchema = z.object({
 });
 export type Thread = z.infer<typeof threadSchema>;
 
+export function isArchivableThread(
+  thread: Pick<
+    Thread,
+    | "visibility"
+    | "originPluginId"
+    | "parentThreadId"
+    | "lifecycleOwnerThreadId"
+    | "sourceThreadId"
+  >,
+): boolean {
+  return !(
+    thread.visibility === "hidden" &&
+    thread.originPluginId !== null &&
+    thread.parentThreadId === null &&
+    thread.lifecycleOwnerThreadId === null &&
+    thread.sourceThreadId === null
+  );
+}
+
 export const threadWithRuntimeSchema = threadSchema.extend({
   runtime: threadRuntimeStateSchema,
 });
