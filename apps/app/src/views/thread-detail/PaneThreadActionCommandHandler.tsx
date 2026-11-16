@@ -1,3 +1,4 @@
+import { useState } from "react";
 import type { PluginThreadActionTarget } from "@get-bb/plugin-sdk";
 import { useIndexedAppCommandHandlers } from "@/components/commands/AppCommandProvider";
 import {
@@ -5,6 +6,7 @@ import {
   useThreadActionEntries,
 } from "@/lib/thread-actions/thread-action-registry";
 import { usePaneContext } from "./PaneContext";
+import { SnoozePicker } from "./SnoozePicker";
 
 const PANE_THREAD_ACTION_COMMANDS = [
   "thread.pin",
@@ -20,8 +22,6 @@ const PANE_THREAD_ACTION_KEYS = [
   `${CORE_THREAD_ACTION_OWNER}/snooze`,
 ];
 
-const SNOOZE_SHORTCUT_PRESET = "1h";
-
 const UNFOCUSED_PANE_ARCHIVE_COMMAND = ["thread.archive"] as const;
 
 export function PaneThreadActionCommandHandler({
@@ -29,7 +29,8 @@ export function PaneThreadActionCommandHandler({
 }: {
   thread: PluginThreadActionTarget;
 }) {
-  const { isFocused, requestFocus } = usePaneContext();
+  const { isFocused, paneId, requestFocus } = usePaneContext();
+  const [isPickingSnooze, setIsPickingSnooze] = useState(false);
   const entries = useThreadActionEntries(thread, {
     keys: PANE_THREAD_ACTION_KEYS,
   });
@@ -47,11 +48,11 @@ export function PaneThreadActionCommandHandler({
     (index) => {
       const entry = entryFor(index);
       if (entry === undefined) return isArchiveOfArchivedThread(index);
-      void entry.action.run(
-        PANE_THREAD_ACTION_COMMANDS[index] === "thread.snooze"
-          ? SNOOZE_SHORTCUT_PRESET
-          : undefined,
-      );
+      if (PANE_THREAD_ACTION_COMMANDS[index] === "thread.snooze") {
+        setIsPickingSnooze(true);
+        return true;
+      }
+      void entry.action.run(undefined);
       return true;
     },
     0,
@@ -75,5 +76,17 @@ export function PaneThreadActionCommandHandler({
     () => entryFor(archiveIndex) !== undefined,
   );
 
-  return null;
+  const snooze = entryFor(PANE_THREAD_ACTION_COMMANDS.indexOf("thread.snooze"));
+  const snoozeChoices = snooze?.action.choices?.items;
+  if (!isPickingSnooze || snooze === undefined || snoozeChoices === undefined) {
+    return null;
+  }
+  return (
+    <SnoozePicker
+      paneId={paneId}
+      choices={snoozeChoices}
+      onSelect={(choiceId) => void snooze.action.run(choiceId)}
+      onDone={() => setIsPickingSnooze(false)}
+    />
+  );
 }

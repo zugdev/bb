@@ -29,11 +29,16 @@ const sdkThreads = vi.hoisted(() => ({
   markUnread: vi.fn(),
   unarchive: vi.fn(),
   get: vi.fn(),
+  experimental_snooze: vi.fn(),
 }));
 
 const testState = vi.hoisted(() => {
   const keybinding = (
-    command: "thread.archive" | "thread.markRead" | "thread.pin",
+    command:
+      | "thread.archive"
+      | "thread.markRead"
+      | "thread.pin"
+      | "thread.snooze",
     key: string,
   ) => ({
     command,
@@ -53,6 +58,7 @@ const testState = vi.hoisted(() => {
       keybinding("thread.archive", "a"),
       keybinding("thread.markRead", "m"),
       keybinding("thread.pin", "p"),
+      keybinding("thread.snooze", "s"),
     ],
   };
 });
@@ -171,7 +177,7 @@ function SplitHandlers({
   );
 }
 
-function pressShortcut(letter: "A" | "M" | "P") {
+function pressShortcut(letter: "A" | "M" | "P" | "S") {
   fireEvent.keyDown(window, {
     key: letter,
     code: `Key${letter}`,
@@ -247,6 +253,27 @@ describe("pane thread action command handler", () => {
       expect(targets()).toEqual([]);
     },
   );
+
+  it("opens a duration picker for thread.snooze and snoozes the focused pane's thread with the picked choice", async () => {
+    sdkThreads.experimental_snooze.mockImplementation(async ({ threadId }) =>
+      makeThread(threadId, threadId),
+    );
+    const view = render(<SplitHandlers focusedThreadId={secondThread.id} />);
+
+    pressShortcut("S");
+    const choice = await view.findByRole("option", { name: "3 hours" });
+    expect(sdkThreads.experimental_snooze).not.toHaveBeenCalled();
+    const before = Date.now();
+    fireEvent.click(choice);
+
+    await waitFor(() =>
+      expect(sdkThreads.experimental_snooze).toHaveBeenCalledTimes(1),
+    );
+    const [args] = sdkThreads.experimental_snooze.mock.calls[0] ?? [];
+    expect(args?.threadId).toBe(secondThread.id);
+    expect(args?.until).toBeGreaterThanOrEqual(before + 3 * 60 * 60 * 1000);
+    await waitFor(() => expect(view.queryByRole("option")).toBeNull());
+  });
 
   it("does nothing when the focused thread is archived", async () => {
     const archivedThread = { ...firstThread, archivedAt: 2 };

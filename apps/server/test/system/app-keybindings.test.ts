@@ -523,7 +523,7 @@ describe("app keybindings", () => {
           command: "thread.snooze",
           key: "s",
           mod: true,
-          shift: false,
+          shift: true,
           when: mainWithoutModal,
         },
         {
