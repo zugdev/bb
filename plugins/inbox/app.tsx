@@ -58,21 +58,21 @@ export default definePluginApp((app) => {
   app.commands.register({
     id: "previous",
     title: "Previous thread in Inbox",
-    defaultShortcut: { key: "ArrowLeft" },
+    defaultShortcut: { key: "ArrowLeft", mod: true },
     isAvailable: canStepInbox,
     run: () => stepInbox(-1),
   });
   app.commands.register({
     id: "next",
     title: "Next thread in Inbox",
-    defaultShortcut: { key: "ArrowRight" },
+    defaultShortcut: { key: "ArrowRight", mod: true },
     isAvailable: canStepInbox,
     run: () => stepInbox(1),
   });
   app.commands.register({
     id: "archive-next",
     title: "Archive and go to next thread in Inbox",
-    defaultShortcut: { key: "ArrowDown" },
+    defaultShortcut: { key: "ArrowDown", mod: true },
     isAvailable: canArchiveFromInbox,
     run: archiveShownInboxThread,
   });
