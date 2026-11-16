@@ -57,7 +57,7 @@ export const APP_COMMAND_GROUPS: readonly AppCommandGroup[] = [
       command(
         "thread.snooze",
         "Snooze thread",
-        "Snooze the focused thread for 1 hour.",
+        "Pick how long to snooze the focused thread.",
       ),
       command(
         "thread.undo",

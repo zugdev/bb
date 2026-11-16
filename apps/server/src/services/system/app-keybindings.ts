@@ -199,7 +199,7 @@ export const DEFAULT_APP_KEYBINDINGS: AppDefaultKeybindings = [
   binding("thread.search", "k", { mod: true }, mainWithoutModal),
   unassignedBinding("thread.rename", mainWithoutModal),
   binding("thread.archive", "a", { mod: true, shift: true }, mainWithoutModal),
-  binding("thread.snooze", "s", { mod: true }, mainWithoutModal),
+  binding("thread.snooze", "s", { mod: true, shift: true }, mainWithoutModal),
   binding("thread.undo", "z", { mod: true }, mainWithoutTerminalOrBrowser),
   unassignedBinding("thread.markRead", mainWithoutModal),
   unassignedBinding("thread.pin", mainWithoutModal),
