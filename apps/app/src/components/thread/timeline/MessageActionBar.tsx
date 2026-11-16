@@ -62,6 +62,7 @@ interface MessageActionBarProps {
   ) => void;
   onCopyLink?: () => void;
   onEdit?: () => void;
+  onUnsend?: () => void;
   onFork?: () => void;
   disabled?: boolean;
   pluginActions?: readonly ThreadTimelinePluginMessageAction[];
@@ -69,7 +70,7 @@ interface MessageActionBarProps {
 }
 
 interface MessageOverflowAction {
-  icon: "Copy" | "Link" | "Edit" | "MessageSquarePlus" | "Fork";
+  icon: "Copy" | "Link" | "Edit" | "MessageSquarePlus" | "Fork" | "Trash2";
   plugin?: { pluginId: string | null; icon: string | null };
   key?: string;
   label: string;
@@ -301,6 +302,7 @@ export function MessageActionBar({
   onAddToChat,
   onCopyLink,
   onEdit,
+  onUnsend,
   onFork,
   disabled,
   pluginActions = [],
@@ -390,6 +392,15 @@ export function MessageActionBar({
             label: "Fork into new thread",
             onSelect: onFork,
             disabled,
+          },
+        ]
+      : []),
+    ...(onUnsend
+      ? [
+          {
+            icon: "Trash2" as const,
+            label: "Unsend message",
+            onSelect: onUnsend,
           },
         ]
       : []),

@@ -21,7 +21,10 @@ import {
 } from "@bb/domain";
 import { threadResponseSchema } from "@bb/server-contract";
 import { describe, expect, it, vi } from "vitest";
-import { editThreadMessage } from "../../src/services/threads/thread-edit-message.js";
+import {
+  editThreadMessage,
+  unsendThreadMessage,
+} from "../../src/services/threads/thread-edit-message.js";
 import { requestThreadStopForCurrentState } from "../../src/services/threads/thread-lifecycle.js";
 import {
   listQueuedThreadCommands,
@@ -1965,4 +1968,118 @@ describe("editThreadMessage", () => {
       });
     },
   );
+});
+
+describe("unsendThreadMessage", () => {
+  it("removes the last message and forks the provider session at the turn before it", async () => {
+    await withTestHarness(async (harness) => {
+      const { environment, thread } = seedEditableThread(harness, {
+        providerId: "claude-code",
+      });
+
+      const unsendPromise = unsendThreadMessage(harness.deps, {
+        environment,
+        thread,
+        payload: { expectedRequestSequence: 7 },
+      });
+      const rewind = await waitForQueuedCommand(
+        harness,
+        (queued) => queued.command.type === "thread.rewind.prepare",
+      );
+      expect(rewind.command).toMatchObject({
+        retainThroughProviderCheckpoint: "checkpoint-first",
+        sourceProviderThreadId: "provider-original",
+      });
+      await reportQueuedCommandSuccess(harness, rewind, {
+        providerThreadId: "provider-staged-rewind",
+      });
+      await expect(unsendPromise).resolves.toEqual({
+        ok: true,
+        removedRequestSequence: 7,
+      });
+
+      expect(
+        listEvents(harness.db, { threadId: thread.id }).map((event) => [
+          event.sequence,
+          event.type,
+        ]),
+      ).toEqual([
+        [1, "thread/identity"],
+        [2, "client/turn/requested"],
+        [3, "turn/started"],
+        [4, "turn/input/accepted"],
+        [5, "item/completed"],
+        [6, "turn/completed"],
+        [12, "system/operation"],
+      ]);
+      expect(getThread(harness.db, thread.id)?.status).toBe("active");
+
+      const start = await waitForQueuedCommand(
+        harness,
+        (queued) =>
+          queued.command.type === "thread.start" &&
+          queued.command.threadId === thread.id,
+      );
+      expect(start.command).toMatchObject({
+        input: [],
+        fork: { sourceProviderThreadId: "provider-staged-rewind" },
+      });
+      await reportQueuedCommandSuccess(harness, start, {
+        providerThreadId: "provider-after-unsend",
+      });
+
+      await vi.waitFor(() => {
+        expect(getThread(harness.db, thread.id)?.status).toBe("idle");
+      });
+      expect(
+        listEvents(harness.db, { threadId: thread.id })
+          .filter((event) => event.type === "thread/identity")
+          .map((event) => event.providerThreadId),
+      ).toEqual(["provider-original", "provider-after-unsend"]);
+    });
+  });
+
+  it("unsends the only message without touching the provider", async () => {
+    await withTestHarness(async (harness) => {
+      const { environment, thread } = seedEditableThread(harness, {
+        includeSecondTurn: false,
+      });
+
+      await expect(
+        unsendThreadMessage(harness.deps, {
+          environment,
+          thread,
+          payload: {},
+        }),
+      ).resolves.toEqual({ ok: true, removedRequestSequence: 2 });
+
+      expect(
+        listEvents(harness.db, { threadId: thread.id }).map(
+          (event) => event.sequence,
+        ),
+      ).toEqual([1, 7]);
+      expect(
+        listQueuedThreadCommands(harness, "thread.rewind.prepare", thread.id),
+      ).toHaveLength(0);
+      expect(
+        listQueuedThreadCommands(harness, "thread.start", thread.id),
+      ).toHaveLength(0);
+      expect(getThread(harness.db, thread.id)?.status).toBe("idle");
+    });
+  });
+
+  it("refuses an expected sequence that is not the latest message", async () => {
+    await withTestHarness(async (harness) => {
+      const { environment, thread } = seedEditableThread(harness);
+
+      await expect(
+        unsendThreadMessage(harness.deps, {
+          environment,
+          thread,
+          payload: { expectedRequestSequence: 2 },
+        }),
+      ).rejects.toThrow("no longer the latest user message");
+      expect(listEvents(harness.db, { threadId: thread.id })).toHaveLength(11);
+    });
+  });
 });

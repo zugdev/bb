@@ -1,6 +1,7 @@
 import type {
   EditMessageRequest,
   SendMessageRequest,
+  UnsendMessageRequest,
 } from "@bb/server-contract";
 
 export interface SendThreadMessageMutationRequest extends SendMessageRequest {
@@ -8,5 +9,9 @@ export interface SendThreadMessageMutationRequest extends SendMessageRequest {
 }
 
 export interface EditMessageMutationRequest extends EditMessageRequest {
+  id: string;
+}
+
+export interface UnsendMessageMutationRequest extends UnsendMessageRequest {
   id: string;
 }

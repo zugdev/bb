@@ -197,6 +197,7 @@ Use `--selected-model <model-id>` to discover its reasoning choices and include 
 - `bb thread regenerate-title`
 - `bb thread delete`
 - `bb thread edit-message`
+- `bb thread unsend-message`
 - `bb thread tell`
 - `bb thread message`
 - `bb thread send`

@@ -14,10 +14,13 @@ import {
   listOpenBackgroundTaskItemRowsForThread,
   listThreadEventSuffixBackgroundSettlementRows,
   type AppendStoredThreadEventArgs,
+  requireThreadLifecycleEventApplied,
   type DbQueryConnection,
+  type DbTransaction,
 } from "@bb/db";
 import {
   threadScope,
+  type JsonValue,
   type PromptInput,
   type Thread,
   type ThreadEvent,
@@ -25,6 +28,8 @@ import {
 import type {
   EditMessageRequest,
   EditMessageResponse,
+  UnsendMessageRequest,
+  UnsendMessageResponse,
 } from "@bb/server-contract";
 import type {
   HostDaemonCommand,
@@ -50,7 +55,9 @@ import { ensureHostSessionReadyForWork } from "../hosts/host-lifecycle.js";
 import {
   LIVE_DAEMON_COMMAND_TIMEOUT_MS,
   runLiveHostCommand,
+  startLiveHostCommand,
 } from "../hosts/live-command.js";
+import { applyLoggedThreadLifecycleEventInTransaction } from "./lifecycle-outcome.js";
 import { resolveMessageSenderThreadId } from "./thread-send.js";
 import { attemptDispatch } from "./dispatch-attempt.js";
 import {
@@ -469,6 +476,253 @@ function rewindPrepareCommandFromStart(
   return { type: "thread.rewind.prepare", ...context, ...args };
 }
 
+type MessageRewindAction = "editing" | "unsending";
+
+interface StagedMessageRewind {
+  discardStagedRewind: (() => Promise<void>) | undefined;
+  editableThread: Thread;
+  execution: Awaited<ReturnType<typeof buildExecutionOptions>>;
+  readyEnvironment: ReturnType<typeof requireReadyThreadEnvironment>;
+  stagedProviderThreadId: string | null;
+  target: EditableTurn;
+}
+
+const MESSAGE_REWIND_NOUN: Record<MessageRewindAction, string> = {
+  editing: "edit",
+  unsending: "unsend",
+};
+
+function assertNoBlockingThreadWork(
+  deps: LoggedPendingInteractionWorkSessionDeps,
+  args: { action: MessageRewindAction; threadId: string },
+): void {
+  if (
+    deps.pendingInteractions.hasTurnBoundPendingThreadInteraction(args.threadId)
+  ) {
+    conflict(
+      `Resolve the pending interaction before ${args.action} the message`,
+    );
+  }
+  if (hasClaimedQueuedThreadMessages(deps.db, args.threadId)) {
+    conflict(
+      `Wait for queued messages being sent before ${args.action} a message`,
+    );
+  }
+}
+
+function assertNoBlockingThreadWorkInTransaction(
+  tx: DbTransaction,
+  args: { action: MessageRewindAction; threadId: string },
+): void {
+  if (getActivePendingInteractionForThread(tx, args.threadId)) {
+    conflict(
+      `Resolve the pending interaction before ${args.action} the message`,
+    );
+  }
+  if (hasClaimedQueuedThreadMessages(tx, args.threadId)) {
+    conflict(
+      `Wait for queued messages being sent before ${args.action} a message`,
+    );
+  }
+}
+
+async function stageMessageRewind(
+  deps: LoggedPendingInteractionWorkSessionDeps,
+  args: {
+    action: MessageRewindAction;
+    environment: Parameters<typeof requireReadyThreadEnvironment>[0];
+    executionRequest: Parameters<typeof buildExecutionOptions>[1];
+    expectedRequestSequence: number | undefined;
+    initiator: ReturnType<typeof resolveDispatchAuthor>["initiator"];
+    thread: Thread;
+  },
+): Promise<StagedMessageRewind> {
+  const initialTarget = resolveEditableTurn(
+    deps.db,
+    deps,
+    args.thread,
+    args.expectedRequestSequence,
+  );
+  let editableThread = await stopThreadBeforeMessageEdit(deps, {
+    environment: args.environment,
+    threadId: args.thread.id,
+  });
+  if (
+    listOpenBackgroundTaskItemRowsForThread(deps.db, {
+      threadId: args.thread.id,
+    }).length > 0
+  ) {
+    await ensureHostSessionReadyForWork(deps, {
+      hostId: args.environment.hostId,
+    });
+    await stopThreadForCurrentState(deps, editableThread, args.environment, {
+      requireStopped: true,
+    });
+    const stoppedThread = getThread(deps.db, args.thread.id);
+    if (!stoppedThread) conflict("Thread not found");
+    editableThread = stoppedThread;
+  }
+  const target = resolveEditableTurn(
+    deps.db,
+    deps,
+    editableThread,
+    initialTarget.requestSequence,
+  );
+  const readyEnvironment = requireReadyThreadEnvironment(args.environment);
+  await ensureHostSessionReadyForWork(deps, {
+    hostId: readyEnvironment.hostId,
+  });
+  const execution = await buildExecutionOptions(deps, args.executionRequest, {
+    threadId: editableThread.id,
+  });
+
+  if (target.precedingProviderCheckpoint === null) {
+    return {
+      discardStagedRewind: undefined,
+      editableThread,
+      execution,
+      readyEnvironment,
+      stagedProviderThreadId: null,
+      target,
+    };
+  }
+  if (target.sourceProviderThreadId === null) {
+    conflict("This earlier turn has no provider session");
+  }
+  const rewindLeaseId = randomUUID();
+  const startCommand = await buildThreadStartCommand(deps, {
+    thread: editableThread,
+    fork: null,
+    input: [],
+    requestId: createClientTurnRequestId(),
+    execution,
+    permissionEscalation: resolvePermissionEscalation({
+      initiator: args.initiator,
+    }),
+    environment: readyEnvironment,
+    projectId: editableThread.projectId,
+    providerId: editableThread.providerId,
+    syncGeneratedTitle: false,
+  });
+  const prepared: HostDaemonCommandResult<"thread.rewind.prepare"> =
+    await runLiveHostCommand(deps, {
+      command: rewindPrepareCommandFromStart(startCommand, {
+        leaseId: rewindLeaseId,
+        retainThroughProviderCheckpoint: target.precedingProviderCheckpoint,
+        sourceProviderThreadId: target.sourceProviderThreadId,
+      }),
+      hostId: readyEnvironment.hostId,
+      timeoutMs: LIVE_DAEMON_COMMAND_TIMEOUT_MS,
+    });
+  return {
+    discardStagedRewind: async () => {
+      try {
+        await runLiveHostCommand(deps, {
+          command: {
+            type: "thread.rewind.discard",
+            environmentId: readyEnvironment.id,
+            threadId: editableThread.id,
+            leaseId: rewindLeaseId,
+          },
+          hostId: readyEnvironment.hostId,
+          timeoutMs: LIVE_DAEMON_COMMAND_TIMEOUT_MS,
+        });
+      } catch (error) {
+        deps.logger.warn(
+          { err: error, threadId: editableThread.id },
+          `Failed to discard staged message-${MESSAGE_REWIND_NOUN[args.action]} rewind`,
+        );
+      }
+    },
+    editableThread,
+    execution,
+    readyEnvironment,
+    stagedProviderThreadId: prepared.providerThreadId,
+    target,
+  };
+}
+
+function rewindThreadHistoryInTransaction(
+  deps: LoggedPendingInteractionWorkSessionDeps,
+  tx: DbTransaction,
+  args: {
+    action: MessageRewindAction;
+    operation: (carriedSettlementCount: number) => {
+      message: string;
+      metadata: Record<string, JsonValue>;
+      operation: string;
+      operationId: string;
+    };
+    staged: StagedMessageRewind;
+  },
+): { cancelledRetryCount: number } {
+  const { editableThread, target } = args.staged;
+  assertNoBlockingThreadWorkInTransaction(tx, {
+    action: args.action,
+    threadId: editableThread.id,
+  });
+  const currentThread = getThread(tx, editableThread.id);
+  if (!currentThread) conflict("Thread not found");
+  if (!isMessageEditThreadQuiescent(currentThread)) {
+    conflict(
+      `The thread changed while the ${MESSAGE_REWIND_NOUN[args.action]} was being prepared`,
+    );
+  }
+  const currentTarget = resolveEditableTurn(
+    tx,
+    deps,
+    currentThread,
+    target.requestSequence,
+  );
+  if (
+    currentTarget.oldMaxSequence !== target.oldMaxSequence ||
+    currentTarget.currentTurnId !== target.currentTurnId
+  ) {
+    conflict(
+      `The thread changed while the ${MESSAGE_REWIND_NOUN[args.action]} was being prepared`,
+    );
+  }
+  const carriedSettlements = listCarriedBackgroundSettlements(tx, {
+    cutoffSequence: target.requestSequence,
+    environmentId: editableThread.environmentId,
+    oldMaxSequence: target.oldMaxSequence,
+    threadId: editableThread.id,
+  });
+  const operation = args.operation(carriedSettlements.length);
+  appendThreadEventInTransaction(tx, {
+    threadId: editableThread.id,
+    environmentId: editableThread.environmentId,
+    type: "system/operation",
+    scope: threadScope(),
+    data: {
+      operation: operation.operation,
+      status: "completed",
+      message: operation.message,
+      operationId: operation.operationId,
+      metadata: {
+        cutoffSequence: target.requestSequence,
+        oldMaxSequence: target.oldMaxSequence,
+        removedTurnId: target.currentTurnId,
+        replacementProviderThreadId: args.staged.stagedProviderThreadId,
+        ...operation.metadata,
+      },
+    },
+  });
+  const cancelledRetryCount =
+    deleteQueuedRetriesForThreadEventSuffixInTransaction(tx, {
+      cutoffSequence: target.requestSequence,
+      oldMaxSequence: target.oldMaxSequence,
+      threadId: editableThread.id,
+    });
+  deleteThreadEventSuffixInTransaction(tx, {
+    cutoffSequence: target.requestSequence,
+    oldMaxSequence: target.oldMaxSequence,
+    threadId: editableThread.id,
+  });
+  appendThreadEventsInTransaction(tx, carriedSettlements);
+  return { cancelledRetryCount };
+}
+
 export async function editThreadMessage(
   deps: LoggedPendingInteractionWorkSessionDeps,
   args: {
@@ -492,16 +746,10 @@ export async function editThreadMessage(
       requestSequence: committed.requestSequence,
     };
   }
-  if (
-    deps.pendingInteractions.hasTurnBoundPendingThreadInteraction(
-      args.thread.id,
-    )
-  ) {
-    conflict("Resolve the pending interaction before editing the message");
-  }
-  if (hasClaimedQueuedThreadMessages(deps.db, args.thread.id)) {
-    conflict("Wait for queued messages being sent before editing a message");
-  }
+  assertNoBlockingThreadWork(deps, {
+    action: "editing",
+    threadId: args.thread.id,
+  });
   const initialThread = getThread(deps.db, args.thread.id);
   if (!initialThread) conflict("Thread not found");
   const senderThreadId = resolveMessageSenderThreadId(deps, {
@@ -514,103 +762,17 @@ export async function editThreadMessage(
     senderThreadId,
     startedOnBehalfOf: null,
   });
-
-  const initialTarget = resolveEditableTurn(
-    deps.db,
-    deps,
-    initialThread,
-    args.payload.expectedRequestSequence,
-  );
-  let editableThread = await stopThreadBeforeMessageEdit(deps, {
+  const staged = await stageMessageRewind(deps, {
+    action: "editing",
     environment: args.environment,
-    threadId: initialThread.id,
+    executionRequest: args.payload,
+    expectedRequestSequence: args.payload.expectedRequestSequence,
+    initiator,
+    thread: initialThread,
   });
-  if (
-    listOpenBackgroundTaskItemRowsForThread(deps.db, {
-      threadId: initialThread.id,
-    }).length > 0
-  ) {
-    await ensureHostSessionReadyForWork(deps, {
-      hostId: args.environment.hostId,
-    });
-    await stopThreadForCurrentState(deps, editableThread, args.environment, {
-      requireStopped: true,
-    });
-    const stoppedThread = getThread(deps.db, initialThread.id);
-    if (!stoppedThread) conflict("Thread not found");
-    editableThread = stoppedThread;
-  }
-  const target = resolveEditableTurn(
-    deps.db,
-    deps,
-    editableThread,
-    initialTarget.requestSequence,
-  );
-  const readyEnvironment = requireReadyThreadEnvironment(args.environment);
-  await ensureHostSessionReadyForWork(deps, {
-    hostId: readyEnvironment.hostId,
-  });
-  const execution = await buildExecutionOptions(deps, args.payload, {
-    threadId: editableThread.id,
-  });
-
-  let stagedProviderThreadId: string | null = null;
-  let rewindLeaseId: string | null = null;
-  if (target.precedingProviderCheckpoint !== null) {
-    if (target.sourceProviderThreadId === null) {
-      conflict("This earlier turn has no provider session");
-    }
-    rewindLeaseId = randomUUID();
-    const startCommand = await buildThreadStartCommand(deps, {
-      thread: editableThread,
-      fork: null,
-      input: [],
-      requestId: createClientTurnRequestId(),
-      execution,
-      permissionEscalation: resolvePermissionEscalation({
-        initiator,
-      }),
-      environment: readyEnvironment,
-      projectId: editableThread.projectId,
-      providerId: editableThread.providerId,
-      syncGeneratedTitle: false,
-    });
-    const prepared: HostDaemonCommandResult<"thread.rewind.prepare"> =
-      await runLiveHostCommand(deps, {
-        command: rewindPrepareCommandFromStart(startCommand, {
-          leaseId: rewindLeaseId,
-          retainThroughProviderCheckpoint: target.precedingProviderCheckpoint,
-          sourceProviderThreadId: target.sourceProviderThreadId,
-        }),
-        hostId: readyEnvironment.hostId,
-        timeoutMs: LIVE_DAEMON_COMMAND_TIMEOUT_MS,
-      });
-    stagedProviderThreadId = prepared.providerThreadId;
-  }
+  const { editableThread, target, discardStagedRewind } = staged;
 
   let requestSequence = target.oldMaxSequence + 2;
-  const discardStagedRewind =
-    stagedProviderThreadId === null || rewindLeaseId === null
-      ? undefined
-      : async () => {
-          try {
-            await runLiveHostCommand(deps, {
-              command: {
-                type: "thread.rewind.discard",
-                environmentId: readyEnvironment.id,
-                threadId: editableThread.id,
-                leaseId: rewindLeaseId,
-              },
-              hostId: readyEnvironment.hostId,
-              timeoutMs: LIVE_DAEMON_COMMAND_TIMEOUT_MS,
-            });
-          } catch (error) {
-            deps.logger.warn(
-              { err: error, threadId: editableThread.id },
-              "Failed to discard staged message-edit rewind",
-            );
-          }
-        };
   const {
     operationId: _operationId,
     expectedRequestSequence: _expectedRequestSequence,
@@ -629,76 +791,27 @@ export async function editThreadMessage(
         kind: "operation",
         environment: args.environment,
         beforeAppendInTransaction: ({ tx }) => {
-          if (getActivePendingInteractionForThread(tx, editableThread.id)) {
-            conflict(
-              "Resolve the pending interaction before editing the message",
-            );
-          }
-          if (hasClaimedQueuedThreadMessages(tx, editableThread.id)) {
-            conflict(
-              "Wait for queued messages being sent before editing a message",
-            );
-          }
-          const currentThread = getThread(tx, editableThread.id);
-          if (!currentThread) conflict("Thread not found");
-          if (!isMessageEditThreadQuiescent(currentThread)) {
-            conflict("The thread changed while the edit was being prepared");
-          }
-          const currentTarget = resolveEditableTurn(
-            tx,
+          ({ cancelledRetryCount } = rewindThreadHistoryInTransaction(
             deps,
-            currentThread,
-            target.requestSequence,
-          );
-          if (
-            currentTarget.oldMaxSequence !== target.oldMaxSequence ||
-            currentTarget.currentTurnId !== target.currentTurnId
-          ) {
-            conflict("The thread changed while the edit was being prepared");
-          }
-          const carriedSettlements = listCarriedBackgroundSettlements(tx, {
-            cutoffSequence: target.requestSequence,
-            environmentId: editableThread.environmentId,
-            oldMaxSequence: target.oldMaxSequence,
-            threadId: editableThread.id,
-          });
-          requestSequence =
-            target.oldMaxSequence + 2 + carriedSettlements.length;
-          appendThreadEventInTransaction(tx, {
-            threadId: editableThread.id,
-            environmentId: editableThread.environmentId,
-            type: "system/operation",
-            scope: threadScope(),
-            data: {
-              operation: "edit_message",
-              status: "completed",
-              message: "Message edited",
-              operationId: args.payload.operationId,
-              metadata: {
-                cutoffSequence: target.requestSequence,
-                oldMaxSequence: target.oldMaxSequence,
-                removedTurnId: target.currentTurnId,
-                replacementProviderThreadId: stagedProviderThreadId,
-                fingerprint,
-                requestSequence,
+            tx,
+            {
+              action: "editing",
+              operation: (carriedSettlementCount) => {
+                requestSequence =
+                  target.oldMaxSequence + 2 + carriedSettlementCount;
+                return {
+                  operation: "edit_message",
+                  message: "Message edited",
+                  operationId: args.payload.operationId,
+                  metadata: { fingerprint, requestSequence },
+                };
               },
+              staged,
             },
-          });
-          cancelledRetryCount =
-            deleteQueuedRetriesForThreadEventSuffixInTransaction(tx, {
-              cutoffSequence: target.requestSequence,
-              oldMaxSequence: target.oldMaxSequence,
-              threadId: editableThread.id,
-            });
-          deleteThreadEventSuffixInTransaction(tx, {
-            cutoffSequence: target.requestSequence,
-            oldMaxSequence: target.oldMaxSequence,
-            threadId: editableThread.id,
-          });
-          appendThreadEventsInTransaction(tx, carriedSettlements);
+          ));
         },
         historyReplacement: {
-          forkSourceProviderThreadId: stagedProviderThreadId,
+          forkSourceProviderThreadId: staged.stagedProviderThreadId,
           ...(discardStagedRewind !== undefined
             ? { onCommandSettled: discardStagedRewind }
             : {}),
@@ -742,4 +855,118 @@ export async function editThreadMessage(
     operationId: args.payload.operationId,
     requestSequence,
   };
+}
+
+export async function unsendThreadMessage(
+  deps: LoggedPendingInteractionWorkSessionDeps,
+  args: {
+    environment: Parameters<typeof requireReadyThreadEnvironment>[0];
+    payload: UnsendMessageRequest;
+    thread: Thread;
+  },
+): Promise<UnsendMessageResponse> {
+  assertNoBlockingThreadWork(deps, {
+    action: "unsending",
+    threadId: args.thread.id,
+  });
+  const initialThread = getThread(deps.db, args.thread.id);
+  if (!initialThread) conflict("Thread not found");
+  const latest = resolveEditableTurn(deps.db, deps, initialThread);
+  if (
+    args.payload.expectedRequestSequence !== undefined &&
+    args.payload.expectedRequestSequence !== latest.requestSequence
+  ) {
+    conflict("The message to unsend is no longer the latest user message");
+  }
+  const staged = await stageMessageRewind(deps, {
+    action: "unsending",
+    environment: args.environment,
+    executionRequest: {},
+    expectedRequestSequence: latest.requestSequence,
+    initiator: "user",
+    thread: initialThread,
+  });
+  const {
+    discardStagedRewind,
+    editableThread,
+    execution,
+    readyEnvironment,
+    stagedProviderThreadId,
+    target,
+  } = staged;
+  const forkStartCommand =
+    stagedProviderThreadId === null
+      ? null
+      : await buildThreadStartCommand(deps, {
+          thread: editableThread,
+          fork: { sourceProviderThreadId: stagedProviderThreadId },
+          input: [],
+          requestId: createClientTurnRequestId(),
+          execution,
+          permissionEscalation: resolvePermissionEscalation({
+            initiator: "user",
+          }),
+          environment: readyEnvironment,
+          projectId: editableThread.projectId,
+          providerId: editableThread.providerId,
+          syncGeneratedTitle: false,
+        });
+  let cancelledRetryCount = 0;
+  let activeThread: Thread | null = null;
+  try {
+    deps.db.transaction(
+      (tx) => {
+        ({ cancelledRetryCount } = rewindThreadHistoryInTransaction(deps, tx, {
+          action: "unsending",
+          operation: () => ({
+            operation: "unsend_message",
+            message: "Message unsent",
+            operationId: randomUUID(),
+            metadata: {},
+          }),
+          staged,
+        }));
+        if (forkStartCommand !== null) {
+          activeThread = requireThreadLifecycleEventApplied(
+            applyLoggedThreadLifecycleEventInTransaction(
+              { db: tx, logger: deps.logger },
+              { event: { type: "run.started" }, threadId: editableThread.id },
+            ),
+          );
+        }
+      },
+      { behavior: "immediate" },
+    );
+  } catch (error) {
+    await discardStagedRewind?.();
+    throw error;
+  }
+  if (forkStartCommand !== null) {
+    startLiveHostCommand(deps, {
+      command: forkStartCommand,
+      hostId: readyEnvironment.hostId,
+      timeoutMs: LIVE_DAEMON_COMMAND_TIMEOUT_MS,
+      ...(discardStagedRewind !== undefined
+        ? { onSettled: discardStagedRewind }
+        : {}),
+      onError: ({ error }) => {
+        deps.logger.warn(
+          { err: error, threadId: editableThread.id },
+          "Live unsend session fork failed",
+        );
+      },
+    });
+  }
+  deps.hub.notifyThread(
+    editableThread.id,
+    [
+      "history-rewritten",
+      ...(cancelledRetryCount > 0 ? ["queue-changed" as const] : []),
+      ...(activeThread !== null ? ["status-changed" as const] : []),
+    ],
+    {
+      projectId: editableThread.projectId,
+    },
+  );
+  return { ok: true, removedRequestSequence: target.requestSequence };
 }

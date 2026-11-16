@@ -226,6 +226,35 @@ describe("bb thread action command output", () => {
     );
   });
 
+  it("bb thread unsend-message forwards the stale guard", async () => {
+    const submitUnsend = vi.fn(async () => ({
+      ok: true,
+      removedRequestSequence: 41,
+    }));
+    stubServerApi({
+      "v1.threads.:id.unsend-message.$post": submitUnsend,
+    });
+
+    await runCommand(
+      [
+        "thread",
+        "unsend-message",
+        "thread-unsend-1",
+        "--expected-request-sequence",
+        "41",
+      ],
+      register,
+    );
+
+    expect(submitUnsend).toHaveBeenCalledWith({
+      param: { id: "thread-unsend-1" },
+      json: { expectedRequestSequence: 41 },
+    });
+    expect(collectLogLines(vi.mocked(console.log))).toContain(
+      "Thread thread-unsend-1 last message unsent; workspace changes were kept",
+    );
+  });
+
   it("bb thread pin sends the thread id from args", async () => {
     const pinnedThread = fixtures.makeThread({
       id: "thread-pin-1",

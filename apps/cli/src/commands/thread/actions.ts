@@ -153,6 +153,25 @@ interface ThreadEditMessageCommandOptions {
   self?: boolean;
 }
 
+interface ThreadUnsendMessageCommandOptions {
+  expectedRequestSequence?: string;
+  json?: boolean;
+  self?: boolean;
+}
+
+function parseExpectedRequestSequence(
+  value: string | undefined,
+): number | undefined {
+  if (value === undefined) return undefined;
+  const sequence = Number(value);
+  if (!Number.isInteger(sequence) || sequence < 0) {
+    throw new Error(
+      "--expected-request-sequence must be a non-negative integer.",
+    );
+  }
+  return sequence;
+}
+
 type ThreadTellDeliveryMode = "auto" | "queue" | "steer";
 
 interface PostThreadMessageArgs {
@@ -577,19 +596,9 @@ export function registerActionsCommands(
             inlineLabel: "--message <text>",
           });
           const sdk = createCliBbSdk(getUrl());
-          const expectedRequestSequence =
-            opts.expectedRequestSequence === undefined
-              ? undefined
-              : Number(opts.expectedRequestSequence);
-          if (
-            expectedRequestSequence !== undefined &&
-            (!Number.isInteger(expectedRequestSequence) ||
-              expectedRequestSequence < 0)
-          ) {
-            throw new Error(
-              "--expected-request-sequence must be a non-negative integer.",
-            );
-          }
+          const expectedRequestSequence = parseExpectedRequestSequence(
+            opts.expectedRequestSequence,
+          );
           const senderThreadId = resolveSenderThreadId(threadId);
           const result = await sdk.threads.editMessage({
             threadId,
@@ -605,6 +614,44 @@ export function registerActionsCommands(
           }
           console.log(
             `Thread ${threadId} message replaced; workspace changes were kept`,
+          );
+        },
+      ),
+    );
+
+  parent
+    .command("unsend-message [id]")
+    .description(
+      "Remove the latest user message and everything after it, and rewind the agent's context to before it",
+    )
+    .option("--self", "Target the current thread (from BB_THREAD_ID)")
+    .option(
+      "--expected-request-sequence <sequence>",
+      "Unsend only if the latest unsendable message is at this event sequence",
+    )
+    .option("--json", "Print machine-readable JSON output")
+    .action(
+      action(
+        async (
+          id: string | undefined,
+          opts: ThreadUnsendMessageCommandOptions,
+        ) => {
+          const threadId = requireThreadIdOrSelf(id, opts);
+          const expectedRequestSequence = parseExpectedRequestSequence(
+            opts.expectedRequestSequence,
+          );
+          const sdk = createCliBbSdk(getUrl());
+          const result = await sdk.threads.unsendMessage({
+            threadId,
+            ...(expectedRequestSequence !== undefined
+              ? { expectedRequestSequence }
+              : {}),
+          });
+          if (outputJson(opts, { threadId, ...result })) {
+            return;
+          }
+          console.log(
+            `Thread ${threadId} last message unsent; workspace changes were kept`,
           );
         },
       ),

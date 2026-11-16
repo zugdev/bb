@@ -22,6 +22,7 @@ export type LifecycleErrorOperation =
   | "send_queued_message"
   | "set_queued_message_group_boundary"
   | "stop_thread"
+  | "unsend_message"
   | "update_queued_message"
   | "update_merge_base";
 
@@ -97,6 +98,8 @@ function operationTitle(operation: LifecycleErrorOperation): string {
       return "Failed to create thread";
     case "edit_message":
       return "Failed to edit message";
+    case "unsend_message":
+      return "Failed to unsend message";
     case "load_diff":
       return "Failed to load diff";
     case "load_git_status":

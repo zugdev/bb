@@ -63,6 +63,7 @@ function toLifecycleErrorOperation(
     case "archive_thread":
     case "create_thread":
     case "edit_message":
+    case "unsend_message":
     case "load_diff":
     case "load_git_status":
     case "load_thread_storage":

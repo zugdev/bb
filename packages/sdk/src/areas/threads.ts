@@ -23,6 +23,8 @@ import type {
   QueuedMessageListQuery,
   EditMessageRequest,
   EditMessageResponse,
+  UnsendMessageRequest,
+  UnsendMessageResponse,
   ForkThreadRequest,
   DeleteThreadRequest,
   PromptHistoryResponse,
@@ -208,6 +210,7 @@ export type ThreadDeleteResult = { ok: true };
 export type ThreadSendResult = SendMessageResponse;
 export type ThreadRetryResult = RetryTurnResponse;
 export type ThreadEditMessageResult = EditMessageResponse;
+export type ThreadUnsendMessageResult = UnsendMessageResponse;
 export type ThreadStopResult = { ok: true };
 export type ThreadCompactResult = { ok: true };
 export type ThreadBannerActionResult = { ok: true };
@@ -319,6 +322,10 @@ export interface ThreadSendArgs extends SendMessageRequest {
 }
 
 export interface ThreadEditMessageArgs extends EditMessageRequest {
+  threadId: string;
+}
+
+export interface ThreadUnsendMessageArgs extends UnsendMessageRequest {
   threadId: string;
 }
 
@@ -763,6 +770,9 @@ export interface ThreadsArea {
   storagePaths(args: ThreadStoragePathsArgs): Promise<ThreadStoragePathsResult>;
   unarchive(args: ThreadActionArgs): Promise<ThreadUnarchiveResult>;
   unpin(args: ThreadActionArgs): Promise<ThreadMutationResult>;
+  unsendMessage(
+    args: ThreadUnsendMessageArgs,
+  ): Promise<ThreadUnsendMessageResult>;
   experimental_snooze(args: ThreadSnoozeArgs): Promise<ThreadMutationResult>;
   update(args: ThreadUpdateArgs): Promise<ThreadMutationResult>;
   wait(args: ThreadWaitArgs): Promise<ThreadWaitResult>;
@@ -1748,6 +1758,15 @@ export function createThreadsArea(args: CreateSdkAreaArgs): ThreadsArea {
       return transport.readJson(
         transport.api.v1.threads[":id"].unpin.$post({
           param: { id: input.threadId },
+        }),
+      );
+    },
+    async unsendMessage(input) {
+      const { threadId, ...json } = input;
+      return transport.readJson(
+        transport.api.v1.threads[":id"]["unsend-message"].$post({
+          param: { id: threadId },
+          json,
         }),
       );
     },

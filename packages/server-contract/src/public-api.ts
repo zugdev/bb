@@ -109,7 +109,9 @@ import {
   type CreateThreadSectionRequest,
   type CreateThreadRequest,
   type EditMessageRequest,
+  type UnsendMessageRequest,
   type EditMessageResponse,
+  type UnsendMessageResponse,
   type ForkThreadRequest,
   type ImportThreadRequest,
   type RestartTerminalRequest,
@@ -367,6 +369,7 @@ import {
   retryTurnRequestSchema,
   sendMessageRequestSchema,
   editMessageRequestSchema,
+  unsendMessageRequestSchema,
   setQueuedMessageGroupBoundaryRequestSchema,
   sendQueuedMessageRequestSchema,
   systemExecutionOptionsQuerySchema,
@@ -1499,6 +1502,14 @@ export const publicApiRoutes = {
         editMessageRequestSchema,
       ),
       response: jsonResponse<EditMessageResponse>(),
+    }),
+    unsendMessage: defineRoute({
+      path: "/threads/:id/unsend-message",
+      method: "post",
+      request: jsonRequest<PathId, UnsendMessageRequest>(
+        unsendMessageRequestSchema,
+      ),
+      response: jsonResponse<UnsendMessageResponse>(),
     }),
     /**
      * Retry a failed turn: re-submit it by reference, as an ordinary dispatch

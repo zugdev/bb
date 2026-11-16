@@ -374,6 +374,50 @@ describe("ThreadTimelineRows actions", () => {
     );
   });
 
+  it("offers unsend only on the latest user message", () => {
+    const onUnsendMessage = vi.fn();
+    renderWithRouter(
+      <ThreadTimelineRows
+        timelineRows={[
+          conversationRow({
+            id: "earlier_user_message",
+            role: "user",
+            text: "An earlier request.",
+            sourceSeqStart: 3,
+          }),
+          conversationRow({
+            id: "latest_user_message",
+            role: "user",
+            text: "The latest request.",
+            sourceSeqStart: 7,
+          }),
+        ]}
+        onUnsendMessage={onUnsendMessage}
+        threadRuntimeDisplayStatus="idle"
+      />,
+    );
+    const [earlierMenu, latestMenu] = screen.getAllByRole("button", {
+      name: "Message actions",
+    });
+
+    fireEvent.pointerDown(earlierMenu!);
+    expect(
+      screen.queryByRole("menuitem", { name: "Unsend message" }),
+    ).toBeNull();
+    fireEvent.keyDown(document.activeElement ?? document.body, {
+      key: "Escape",
+    });
+
+    fireEvent.pointerDown(latestMenu!);
+    fireEvent.click(screen.getByRole("menuitem", { name: "Unsend message" }));
+    expect(onUnsendMessage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        messageId: "latest_user_message",
+        expectedRequestSequence: 7,
+      }),
+    );
+  });
+
   it("does not offer edit for a steer request", () => {
     const markup = toMarkup(
       <ThreadTimelineRows

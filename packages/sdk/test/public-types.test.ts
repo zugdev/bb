@@ -446,6 +446,7 @@ type ExpectedThreadsKey =
   | "unarchive"
   | "experimental_snooze"
   | "unpin"
+  | "unsendMessage"
   | "update"
   | "wait";
 
