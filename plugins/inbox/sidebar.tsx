@@ -4,6 +4,7 @@ import {
   experimental_useOwnTab,
   experimental_useSidebarThreads,
   experimental_useThreadActions,
+  experimental_useThreadSearch,
   useBbNavigate,
   type PluginSidebarProject,
   type PluginSidebarThread,
@@ -278,20 +279,36 @@ function ArchivedInboxSection(props: {
   onOpen: (thread: PluginSidebarThread, event: MouseEvent) => void;
 }) {
   const [isExpanded, setIsExpanded] = useState(false);
+  const threadSearch = experimental_useThreadSearch();
   return (
     <section aria-label="Archived">
-      <button
-        type="button"
-        aria-expanded={isExpanded}
-        className={SECTION_BUTTON_CLASS}
-        onClick={() => setIsExpanded((current) => !current)}
-      >
-        <span className="truncate">Archived</span>
-        <Icon
-          name={isExpanded ? "ChevronDown" : "ChevronRight"}
-          className="ml-auto size-3.5"
-        />
-      </button>
+      <div className="flex items-center gap-0.5">
+        <button
+          type="button"
+          aria-expanded={isExpanded}
+          className={SECTION_BUTTON_CLASS}
+          onClick={() => setIsExpanded((current) => !current)}
+        >
+          <span className="truncate">Archived</span>
+          <Icon
+            name={isExpanded ? "ChevronDown" : "ChevronRight"}
+            className="ml-auto size-3.5"
+          />
+        </button>
+        <button
+          type="button"
+          aria-label="Search threads"
+          title={
+            threadSearch.shortcut === null
+              ? "Search threads"
+              : `Search threads (${threadSearch.shortcut.label})`
+          }
+          className={ROW_ACTION_BUTTON_CLASS}
+          onClick={(event) => threadSearch.open(event.currentTarget)}
+        >
+          <Icon name="Search" className="size-3.5" />
+        </button>
+      </div>
       {isExpanded ? <ArchivedThreads {...props} /> : null}
     </section>
   );
