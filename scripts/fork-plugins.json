@@ -9,6 +9,7 @@
     "plugins/parent-link",
     "plugins/muon-copy",
     "plugins/perf",
-    "plugins/keep-awake-toggle"
+    "plugins/keep-awake-toggle",
+    "plugins/thread-finder"
   ]
 }
