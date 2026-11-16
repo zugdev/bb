@@ -70,6 +70,23 @@ describe("plugin command keybindings", () => {
     }
   });
 
+  it("keeps a plugin default whose context cannot overlap the core binding", () => {
+    const arrowLeft: AppShortcut = { ...shortcut, key: "ArrowLeft", mod: false, shift: false };
+    const questionPrevious: AppDefaultKeybinding = {
+      ...binding("question.previous", arrowLeft),
+      when: { all: ["mainSurface", "questionFocus"], none: ["modalOpen"] },
+    };
+    const outsideQuestions: AppDefaultKeybinding = {
+      ...binding("plugin:inbox/previous", arrowLeft),
+      when: { all: ["mainSurface"], none: ["modalOpen", "questionFocus"] },
+    };
+    const anywhere = binding("plugin:inbox/previous", arrowLeft);
+    const kept = resolvePluginCommandDefaults([questionPrevious, outsideQuestions], [], false, "Linux", NO_BUNDLED);
+    expect(kept.defaults[1]?.shortcut).toEqual(arrowLeft);
+    const dropped = resolvePluginCommandDefaults([questionPrevious, anywhere], [], false, "Linux", NO_BUNDLED);
+    expect(dropped.defaults[1]?.shortcut).toBeNull();
+  });
+
   it("protects core bindings, comparing Mod to platform modifiers", () => {
     const defaults = [
       binding("thread.new", { ...shortcut, mod: false, meta: true }),

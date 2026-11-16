@@ -269,8 +269,8 @@ on desktop and `Control+Shift+[` / `Control+Shift+]` on the web.
 
 `thread.rename`, `thread.markRead`, and `thread.pin` start unbound and act on
 the focused pane's open thread; Mark read and Pin toggle like the matching
-thread menu item. `thread.archive` (`Mod+A`) archives it and `thread.snooze`
-(`Mod+S`) snoozes it for 1 hour; `Mod+A` keeps select all in text fields.
+thread menu item. `thread.archive` (`Mod+Shift+A`) archives it and `thread.snooze`
+(`Mod+S`) snoozes it for 1 hour.
 Archive and snooze show a toast with Undo for 5 seconds, and `thread.undo`
 (`Mod+Z`) presses it while the toast is visible, unless the focused text field
 has text.

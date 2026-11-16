@@ -4,6 +4,7 @@ import {
   isMacKeyboardPlatform,
   keyboardPlatform,
   matchesAppShortcut,
+  type AppDefaultKeybinding,
   type AppDefaultKeybindings,
   type AppKeybindingOverrides,
   type AppShortcut,
@@ -27,6 +28,16 @@ export function shortcutsConflict(
     },
     right,
     isMac,
+  );
+}
+
+function whenContextsOverlap(
+  left: AppDefaultKeybinding["when"],
+  right: AppDefaultKeybinding["when"],
+): boolean {
+  return (
+    !left.all.some((key) => right.none.includes(key)) &&
+    !right.all.some((key) => left.none.includes(key))
   );
 }
 
@@ -69,6 +80,7 @@ export function resolvePluginCommandDefaults(
         (!bundled ||
           !candidate.command.startsWith("plugin:") ||
           bundledCommands.has(candidate.command)) &&
+        whenContextsOverlap(binding.when, candidate.when) &&
         shortcutsConflict(shortcut, candidate.shortcut, platform),
     );
     if (collisions.length === 0) return binding;

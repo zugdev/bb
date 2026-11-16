@@ -3,6 +3,7 @@ import {
   useEffect,
   useId,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -33,6 +34,9 @@ import {
   type UseThreadTimelineControllerResult,
 } from "@/components/thread/timeline";
 import type { HostConnectionNotice } from "@/components/thread/timeline/ThreadTimelineSurface";
+import { lastUserMessageEditTarget } from "@/components/thread/timeline/message-edit-target";
+import { useAppCommandHandler } from "@/components/commands/AppCommandProvider";
+import { RunningMessageEditDialog } from "@/components/dialogs/RunningMessageEditDialog";
 import { ThreadTimelinePanelLoadingSkeleton } from "@/components/thread/timeline/ThreadChatLoading";
 import { ThreadTableOfContents } from "@/components/thread/toc/ThreadTableOfContents";
 import {
@@ -148,6 +152,19 @@ function hasTimelineRowId(
   );
 }
 
+function isEmptyFollowUpComposer(
+  promptArea: HTMLElement | null,
+  target: EventTarget | null,
+): boolean {
+  return (
+    target instanceof HTMLElement &&
+    target.isContentEditable &&
+    target.closest("[data-follow-up-composer-anchor]") !== null &&
+    promptArea?.contains(target) === true &&
+    target.textContent?.trim() === ""
+  );
+}
+
 function buildHostConnectionNotice(
   thread: ThreadResponse,
   hostName: string | null,
@@ -258,6 +275,7 @@ function useChildThreadsSection(
 
 interface UseSentMessageEditingArgs {
   canStartEdit: boolean;
+  isThreadRunning: boolean;
   threadId: string;
   timelineLoading: boolean;
   timelineRows: readonly TimelineRow[];
@@ -265,6 +283,7 @@ interface UseSentMessageEditingArgs {
 
 function useSentMessageEditing({
   canStartEdit,
+  isThreadRunning,
   threadId,
   timelineLoading,
   timelineRows,
@@ -274,6 +293,9 @@ function useSentMessageEditing({
     useState<SentMessageEditSession | null>(null);
   const [sentMessageEditHostElement, setSentMessageEditHostElement] =
     useState<HTMLDivElement | null>(null);
+  const [runningEditSubmit, setRunningEditSubmit] = useState<
+    Parameters<ThreadDetailSentMessageEdit["onSubmit"]>[0] | null
+  >(null);
   const activeSentMessageEditSession =
     sentMessageEditSession?.threadId === threadId
       ? sentMessageEditSession
@@ -339,7 +361,7 @@ function useSentMessageEditing({
     }
     closeSentMessageEdit(activeSentMessageEditSession.operationId);
   }, [activeSentMessageEditSession, closeSentMessageEdit]);
-  const submitSentMessageEdit = useCallback<
+  const runSentMessageEdit = useCallback<
     ThreadDetailSentMessageEdit["onSubmit"]
   >(
     (target) => {
@@ -378,6 +400,23 @@ function useSentMessageEditing({
         });
     },
     [activeSentMessageEditSession, closeSentMessageEdit, editMessage],
+  );
+  const submitSentMessageEdit = useCallback<
+    ThreadDetailSentMessageEdit["onSubmit"]
+  >(
+    (target) => {
+      if (isThreadRunning) setRunningEditSubmit(target);
+      else runSentMessageEdit(target);
+    },
+    [isThreadRunning, runSentMessageEdit],
+  );
+  const confirmRunningEditSubmit = useCallback(() => {
+    if (runningEditSubmit !== null) runSentMessageEdit(runningEditSubmit);
+    setRunningEditSubmit(null);
+  }, [runSentMessageEdit, runningEditSubmit]);
+  const cancelRunningEditSubmit = useCallback(
+    () => setRunningEditSubmit(null),
+    [],
   );
   const activeSentMessageEditTargetMessageId =
     activeSentMessageEditSession?.target.messageId ?? null;
@@ -420,6 +459,11 @@ function useSentMessageEditing({
       ? handleEditSentMessage
       : undefined,
     inlineMessageEditor,
+    runningEditConfirm: {
+      open: runningEditSubmit !== null,
+      onConfirm: confirmRunningEditSubmit,
+      onCancel: cancelRunningEditSubmit,
+    },
     sentMessageEdit,
   };
 }
@@ -480,18 +524,45 @@ export function ThreadScreen({
   const { timelineLoading, timelineRows } = timeline;
   const isThreadTimelinePending = timelineLoading && timelineRows.length === 0;
 
-  const { handleEditSentMessage, inlineMessageEditor, sentMessageEdit } =
-    useSentMessageEditing({
+  const isThreadRunning = isRunningThreadRuntimeDisplayStatus(
+    thread.runtime.displayStatus,
+  );
+  const {
+    handleEditSentMessage,
+    inlineMessageEditor,
+    runningEditConfirm,
+    sentMessageEdit,
+  } = useSentMessageEditing({
       canStartEdit:
         composer !== null &&
         thread.canEditMessages &&
         !hasPendingInteraction &&
         !sendMessage.isPending &&
         !isThreadTimelinePending,
+      isThreadRunning,
       threadId: thread.id,
       timelineLoading,
       timelineRows,
     });
+
+  const promptAreaRef = useRef<HTMLDivElement>(null);
+  const lastEditTarget = useMemo(
+    () => lastUserMessageEditTarget(timelineRows),
+    [timelineRows],
+  );
+  useAppCommandHandler(
+    "thread.editLastMessage",
+    () => {
+      if (handleEditSentMessage === undefined || lastEditTarget === null) {
+        return false;
+      }
+      handleEditSentMessage(lastEditTarget);
+      return true;
+    },
+    0,
+    handleEditSentMessage !== undefined && lastEditTarget !== null,
+    ({ target }) => isEmptyFollowUpComposer(promptAreaRef.current, target),
+  );
 
   const isPanelPresentation = presentation.kind !== "page";
   const selectionAddToChat = composer ? handleAddToChat : undefined;
@@ -533,7 +604,7 @@ export function ThreadScreen({
         showOngoingIndicator={
           thread.status !== "stopping" &&
           !hasPendingInteraction &&
-          isRunningThreadRuntimeDisplayStatus(thread.runtime.displayStatus) &&
+          isThreadRunning &&
           !isThreadTimelinePending
         }
         timelineRows={timelineRows}
@@ -550,7 +621,9 @@ export function ThreadScreen({
 
   const chrome = composer?.environmentChrome;
   const promptArea = composer ? (
-    <ThreadDetailPromptArea
+    <div ref={promptAreaRef} className="contents">
+      <RunningMessageEditDialog {...runningEditConfirm} />
+      <ThreadDetailPromptArea
       composerId={
         presentation.kind === "page"
           ? THREAD_DETAIL_COMPOSER_ID
@@ -596,6 +669,7 @@ export function ThreadScreen({
       contextEnvironmentId={composer.contextEnvironmentId}
       thread={thread}
     />
+    </div>
   ) : null;
 
   switch (presentation.kind) {

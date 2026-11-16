@@ -481,7 +481,7 @@ there, or onto its middle to swap the two.
 
 Pane tab shortcuts use `Alt` on the web, because the browser keeps `Mod+W` and `Mod+T` for itself, and `Mod` in the desktop app. `splitTab.new` (`Alt+T` / `Mod+T`) opens a tab with its own chat panes, starting on a new thread, or switches to a tab that already holds an empty new thread composer. `Alt+2` to `Alt+9` (`Mod+2` to `Mod+9` on desktop) switch tabs, and there is no limit on how many tabs are open. `Alt+1` / `Mod+1` opens Home at `/home`, which lists each project's threads. Opening a thread from Home switches to the tab that shows it, reuses an empty new thread tab, or opens a tab for it. `pane.close` (`Alt+W` / `Mod+W`) closes the focused pane, or the tab when that pane is its last one, and `splitTab.reopenClosed` (`Alt+Shift+T` / `Mod+Shift+T`) reopens the pane or tab closed most recently. `splitTab.newForProject` (`Mod+O`) opens a project picker and switches to the tab for the chosen project, opening one if none exists. While that tab is active the sidebar thread list shows only that project's threads. The Inbox plugin (`plugins/inbox` in the zugdev/bb fork) keeps an Inbox tab open as the first tab after Home and adds its Open Inbox command on `Mod+I`, which switches to that tab and shows the first thread in the Inbox order. A thread clicked in the Inbox sidebar list opens in the Inbox tab, and `Mod`+click opens it in a new tab without the Inbox controls. `workspace.openPreferred`, which opens the workspace or the previewed file in your preferred editor, is on `Mod+Alt+O`. Double click a tab's title to rename it, and clear the name to go back to the title of its focused thread. In the desktop app the right panel's tab shortcuts move to `Mod+Alt+T`, `Mod+Alt+Shift+T` and `Mod+Alt+W` to make room.
 
-`thread.rename`, `thread.markRead`, and `thread.pin` start unassigned and act on the focused pane's open thread; Mark read and Pin toggle like the matching thread menu item. `thread.archive` (`Mod+A`) archives the focused pane's thread and `thread.snooze` (`Mod+S`) snoozes it for 1 hour. `Mod+A` keeps select all while a text field, the composer, a terminal or the in-app browser has focus. Archive and snooze from any menu show a toast with Undo for 5 seconds, and `thread.undo` (`Mod+Z`) presses that Undo while the toast is visible. `Mod+Z` keeps its normal undo when no toast is visible or the focused text field has text, so it still undoes from the empty composer bb focuses after an archive.
+`thread.rename`, `thread.markRead`, and `thread.pin` start unassigned and act on the focused pane's open thread; Mark read and Pin toggle like the matching thread menu item. `thread.archive` (`Mod+Shift+A`) archives the focused pane's thread and `thread.snooze` (`Mod+S`) snoozes it for 1 hour. Archive and snooze from any menu show a toast with Undo for 5 seconds, and `thread.undo` (`Mod+Z`) presses that Undo while the toast is visible. `Mod+Z` keeps its normal undo when no toast is visible or the focused text field has text, so it still undoes from the empty composer bb focuses after an archive.
 
 | Area      | Command                                      | Default                     | Availability             |
 | --------- | -------------------------------------------- | --------------------------- | ------------------------ |
@@ -490,7 +490,7 @@ Pane tab shortcuts use `Alt` on the web, because the browser keeps `Mod+W` and `
 | Threads   | New thread                                   | `Mod+N` / `Mod+Shift+O`     | Desktop / web            |
 | Threads   | Search threads                               | `Mod+K`                     | All clients              |
 | Threads   | Rename focused thread                        | Unassigned                  | Thread view              |
-| Threads   | Archive focused thread                       | `Mod+A`                     | Thread view              |
+| Threads   | Archive focused thread                       | `Mod+Shift+A`               | Thread view              |
 | Threads   | Snooze focused thread for 1 hour             | `Mod+S`                     | Thread view              |
 | Threads   | Undo archive or snooze                       | `Mod+Z`                     | While its toast shows    |
 | Threads   | Mark focused thread read or unread           | Unassigned                  | Thread view              |
@@ -519,6 +519,7 @@ Pane tab shortcuts use `Alt` on the web, because the browser keeps `Mod+W` and `
 | Terminal  | Find in scrollback                           | `Cmd+F` / `Ctrl+Shift+F`    | Terminal focus           |
 | Workspace | Open in preferred app                        | `Mod+O`                     | All clients              |
 | Composer  | Focus composer                               | `Mod+Shift+C`               | All clients              |
+| Composer  | Edit last message                            | `ArrowUp`                   | Empty thread composer    |
 | Composer  | Toggle model picker                          | `Mod+Shift+M`               | All clients              |
 | Composer  | Cycle model forward / backward               | `Alt+M` / `Alt+Shift+M`     | All clients              |
 | Composer  | Cycle provider forward / backward            | `Alt+P` / `Alt+Shift+P`     | All clients              |
@@ -534,6 +535,8 @@ skip text fields outside the card, so the composer keeps its own keys;
 `Mod+Enter` and `Mod+.` also work from the card's own answer field, where
 `Enter` goes to the next question or submits and `Shift+Enter` adds a line.
 Previous / next need focus in the card, outside its answer field.
+
+`ArrowUp` in an empty thread composer opens your last message for editing when the provider supports edits, and otherwise recalls earlier prompts. Sending an edit while the thread is running asks before it stops the work.
 
 Cycle shortcuts act only from the active composer or an open picker; other
 editable controls keep their Option-composed input. Reasoning cycles through

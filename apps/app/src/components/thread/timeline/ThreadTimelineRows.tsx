@@ -13,7 +13,8 @@ import {
 import type { ComponentProps, CSSProperties, ReactNode } from "react";
 import { useComposedRefs } from "@radix-ui/react-compose-refs";
 import { TimelineImageGallery } from "./TimelineImageGallery";
-import type { PromptInput, ThreadRuntimeDisplayStatus } from "@bb/domain";
+import { userMessageEditTarget } from "./message-edit-target.js";
+import type { ThreadRuntimeDisplayStatus } from "@bb/domain";
 import type {
   TimelineParentChange,
   TimelineRow,
@@ -943,46 +944,12 @@ const ConversationRowContent = memo(function ConversationRowContent({
       row.senderThreadId === null
         ? null
         : (senderThreadMetadataById.get(row.senderThreadId) ?? null);
-    const canEditMessage =
-      onEditMessage !== undefined &&
-      row.initiator === "user" &&
-      !row.turnRequest.isGrouped &&
-      row.turnRequest.kind === "message" &&
-      row.turnRequest.status === "accepted" &&
-      (row.attachments?.imageUrls.length ?? 0) === 0;
-    const onEdit = canEditMessage
-      ? () => {
-          const input: PromptInput[] = [];
-          if (row.text.trim().length > 0) {
-            input.push({
-              type: "text",
-              text: row.text,
-              mentions: [...row.mentions],
-            });
-          }
-          for (const path of row.attachments?.localImagePaths ?? []) {
-            input.push({ type: "localImage", path });
-          }
-          for (const path of row.attachments?.localFilePaths ?? []) {
-            const detail = row.attachments?.localFileDetails.find(
-              (file) => file.path === path,
-            );
-            input.push({
-              type: "localFile",
-              path,
-              ...(detail ? { name: detail.name } : {}),
-              ...(detail?.sizeBytes == null
-                ? {}
-                : { sizeBytes: detail.sizeBytes }),
-            });
-          }
-          onEditMessage({
-            messageId: row.id,
-            expectedRequestSequence: row.sourceSeqStart,
-            input,
-          });
-        }
-      : undefined;
+    const editTarget =
+      onEditMessage === undefined ? null : userMessageEditTarget(row);
+    const onEdit =
+      onEditMessage === undefined || editTarget === null
+        ? undefined
+        : () => onEditMessage(editTarget);
     return (
       <>
         <MessageMetadata placement="above" {...metadata} />

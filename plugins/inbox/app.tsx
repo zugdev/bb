@@ -1,5 +1,7 @@
 import { definePluginApp } from "@get-bb/plugin-sdk/app";
 import {
+  archiveShownInboxThread,
+  canArchiveFromInbox,
   canStepInbox,
   INBOX_PANEL_PATH,
   InboxController,
@@ -56,15 +58,22 @@ export default definePluginApp((app) => {
   app.commands.register({
     id: "previous",
     title: "Previous thread in Inbox",
-    defaultShortcut: { key: "ArrowLeft", mod: true },
+    defaultShortcut: { key: "ArrowLeft" },
     isAvailable: canStepInbox,
     run: () => stepInbox(-1),
   });
   app.commands.register({
     id: "next",
     title: "Next thread in Inbox",
-    defaultShortcut: { key: "ArrowRight", mod: true },
+    defaultShortcut: { key: "ArrowRight" },
     isAvailable: canStepInbox,
     run: () => stepInbox(1),
+  });
+  app.commands.register({
+    id: "archive-next",
+    title: "Archive and go to next thread in Inbox",
+    defaultShortcut: { key: "ArrowDown" },
+    isAvailable: canArchiveFromInbox,
+    run: archiveShownInboxThread,
   });
 });
