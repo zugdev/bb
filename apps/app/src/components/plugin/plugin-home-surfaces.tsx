@@ -15,6 +15,8 @@ import {
   HOME_SECTION_PROJECT,
   PluginHomepageSection,
 } from "./PluginHomepageSections";
+import { usePluginId } from "@/components/plugin/plugin-context";
+import { requestThreadSearchMode } from "@/lib/command-palette/thread-search-mode-request";
 
 export function useHomepageSectionInfos(): readonly ExperimentalHomepageSectionInfo[] {
   const { homepageSections } = usePluginSlots();
@@ -52,13 +54,20 @@ export function usePluginAddProject(): ExperimentalAddProject {
 }
 
 export function usePluginThreadSearch(): ExperimentalThreadSearch {
+  const pluginId = usePluginId();
   const commandRunner = useAppCommandRunner();
   const shortcut = useAppCommandShortcut("thread.search");
   return useMemo(
     () => ({
       shortcut,
-      open: (anchor) => commandRunner.dispatch("thread.search", anchor),
+      open: (anchor, options) => {
+        const mode = options?.experimental_mode;
+        requestThreadSearchMode(
+          mode === undefined ? null : `${pluginId}/${mode}`,
+        );
+        commandRunner.dispatch("thread.search", anchor);
+      },
     }),
-    [commandRunner, shortcut],
+    [commandRunner, pluginId, shortcut],
   );
 }

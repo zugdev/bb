@@ -41,6 +41,7 @@ import {
   setPluginThreadRowStatus,
 } from "@/lib/plugin-thread-row-status";
 import { makePluginRegistrationSet } from "@/test/fixtures/plugins";
+import { requestThreadSearchMode } from "@/lib/command-palette/thread-search-mode-request";
 import { collectPluginAppRegistrations } from "@get-bb/plugin-sdk/internal/plugin-app-collector";
 import { LocationProbe } from "@/test/location-probe";
 
@@ -590,6 +591,48 @@ describe("CommandPalette", () => {
       ),
     );
     expect(search).toHaveBeenCalledOnce();
+  });
+
+  it("opens thread search in a requested plugin search mode, once", async () => {
+    setPluginSlotRegistrations(
+      "finder",
+      makePluginRegistrationSet({
+        threadSearchModes: [
+          {
+            id: "description",
+            label: "Description",
+            placeholder: "Describe it",
+            useSearch: () => async () => [],
+          },
+        ],
+      }),
+    );
+    renderPalette();
+    requestThreadSearchMode("finder/description");
+    openThreadSearch();
+    const field = await screen.findByRole("combobox", {
+      name: "Search threads",
+    });
+    await waitFor(() => expect(field.getAttribute("placeholder")).toBe("Describe it"));
+    expect(
+      screen
+        .getByRole("radio", { name: "Description" })
+        .getAttribute("aria-checked"),
+    ).toBe("true");
+    fireEvent.keyDown(field, { key: "Escape" });
+    const commandsField = screen.queryByRole("combobox");
+    if (commandsField !== null) {
+      fireEvent.keyDown(commandsField, { key: "Escape" });
+    }
+    await waitFor(() => expect(screen.queryByRole("combobox")).toBeNull());
+    openThreadSearch();
+    await waitFor(() =>
+      expect(
+        screen
+          .getByRole("radio", { name: "Keyword" })
+          .getAttribute("aria-checked"),
+      ).toBe("true"),
+    );
   });
 
   it("keeps the split column on every row when the highlighted thread is already open", async () => {
