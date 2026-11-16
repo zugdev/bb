@@ -91,6 +91,8 @@ import {
   decidePaneDrop,
   SPLIT_PANE_DATA_ATTR,
 } from "@/lib/split-drag";
+import { isEditableKeyboardTarget } from "@/lib/app-keybindings";
+import { isComposerTabTarget } from "@/lib/composer-command-ownership";
 import {
   useAppCommandContext,
   useAppCommandHandler,
@@ -1080,18 +1082,35 @@ function SplitPaneCommandHandlers({
     focusPane(paneId);
     return true;
   });
-  useAppCommandHandler("pane.focus.previous", () => {
-    if (!isSplitActive) return false;
-    const paneId = getAdjacentPaneId(panes, layout.focusedPaneId, -1);
-    if (paneId !== null) focusPane(paneId);
-    return true;
-  });
-  useAppCommandHandler("pane.focus.next", () => {
-    if (!isSplitActive) return false;
-    const paneId = getAdjacentPaneId(panes, layout.focusedPaneId, 1);
-    if (paneId !== null) focusPane(paneId);
-    return true;
-  });
+  const isAdjacentPaneAvailable = ({
+    target,
+  }: {
+    target: EventTarget | null;
+  }) => !isEditableKeyboardTarget(target) || isComposerTabTarget(target);
+  useAppCommandHandler(
+    "pane.focus.previous",
+    () => {
+      if (!isSplitActive) return false;
+      const paneId = getAdjacentPaneId(panes, layout.focusedPaneId, -1);
+      if (paneId !== null) focusPane(paneId);
+      return true;
+    },
+    0,
+    true,
+    isAdjacentPaneAvailable,
+  );
+  useAppCommandHandler(
+    "pane.focus.next",
+    () => {
+      if (!isSplitActive) return false;
+      const paneId = getAdjacentPaneId(panes, layout.focusedPaneId, 1);
+      if (paneId !== null) focusPane(paneId);
+      return true;
+    },
+    0,
+    true,
+    isAdjacentPaneAvailable,
+  );
   useIndexedAppCommandHandlers(PANE_FOCUS_APP_COMMAND_IDS, (index) => {
     if (!isSplitActive) return false;
     const paneId = panes[index]?.paneId ?? null;
