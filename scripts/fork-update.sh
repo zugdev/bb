@@ -99,12 +99,14 @@ signing_keychain="$HOME/.bb/codesign.keychain-db"
 signing_password=bbfork
 [ -f "$signing_keychain" ] || create_signing_keychain
 security unlock-keychain -p "$signing_password" "$signing_keychain"
-security list-keychains -d user | grep -qF "$signing_keychain" \
-  || eval "security list-keychains -d user -s $(security list-keychains -d user | tr '\n' ' ') \"\$signing_keychain\""
+user_keychains="$(security list-keychains -d user | grep -vF "$signing_keychain" | tr '\n' ' ')"
 
 rm -rf "$staged"
 ditto "$app" "$staged"
-codesign --force --deep --sign "$signing_identity" --keychain "$signing_keychain" "$staged"
+eval "security list-keychains -d user -s $user_keychains \"\$signing_keychain\""
+codesign --force --deep --sign "$signing_identity" --keychain "$signing_keychain" "$staged" || signed=false
+eval "security list-keychains -d user -s $user_keychains"
+[ "${signed:-true}" = true ] || fail "codesign failed for $staged"
 test -x "$staged/Contents/MacOS/bb"
 
 app_running() {
