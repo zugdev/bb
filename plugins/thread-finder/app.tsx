@@ -95,7 +95,6 @@ function FinderBody() {
         <Input
           autoFocus
           aria-label="Describe the thread"
-          placeholder="the one where I fixed archiving in the inbox…"
           value={description}
           onChange={(event) => setDescription(event.target.value)}
         />
@@ -137,6 +136,7 @@ export default definePluginApp((app) => {
   app.commands.register({
     id: "find",
     title: "Find thread by description",
+    defaultShortcut: { key: "k", mod: true, shift: true },
     run: () => setOpen(true),
   });
 });

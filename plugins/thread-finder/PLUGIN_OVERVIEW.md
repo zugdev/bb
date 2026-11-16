@@ -2,7 +2,7 @@ Find a thread by describing it in plain words when you don't remember the keywor
 
 ## What you get
 
-- A **Find thread by description** command in the command palette. It opens a dialog where you describe the thread; the best matches show best first, and Enter or a click opens one (Cmd+Enter or Cmd+click opens it in a split).
+- A **Find thread by description** command in the command palette, bound to Cmd+Shift+K by default. It opens a dialog where you describe the thread; the best matches show best first, and Enter or a click opens one (Cmd+Enter or Cmd+click opens it in a split).
 - `bb thread-finder find "<description>"` does the same from the CLI, with `--json` for scripts.
 
 ## How it works
