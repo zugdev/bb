@@ -95,11 +95,13 @@ function optionKey(option: ThreadSearchOption): string {
 }
 
 export function ThreadSearchPaletteMode({
+  initialSearchModeKey,
   query,
   onQueryChange: setQuery,
   onExit,
   runAfterClose,
 }: {
+  initialSearchModeKey: string | null;
   query: string;
   onQueryChange: (query: string) => void;
   onExit: () => void;
@@ -143,7 +145,7 @@ export function ThreadSearchPaletteMode({
   const [now] = useState(() => Date.now());
   const navigation = useSidebarNavigation();
   const { threadSearchModes } = usePluginSlots();
-  const [searchModeKey, setSearchModeKey] = useState<string | null>(null);
+  const [searchModeKey, setSearchModeKey] = useState(initialSearchModeKey);
   const searchMode =
     threadSearchModes.find(
       (mode) => threadSearchModeKey(mode) === searchModeKey,

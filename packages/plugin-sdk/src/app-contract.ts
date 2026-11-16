@@ -3515,7 +3515,15 @@ export interface ExperimentalHomepageSectionProps {
 /** bb's thread search, from `experimental_useThreadSearch()`. */
 export interface ExperimentalThreadSearch {
   shortcut: ExperimentalShortcutPresentation | null;
-  open(anchor: HTMLElement | null): void;
+  /**
+   * Opens the search palette. `experimental_mode` selects one of this
+   * plugin's `experimental_threadSearchMode` registrations by id; an unknown
+   * id opens keyword search.
+   */
+  open(
+    anchor: HTMLElement | null,
+    options?: { experimental_mode?: string },
+  ): void;
 }
 
 /** bb's Add project flow, from `experimental_useAddProject()`. */

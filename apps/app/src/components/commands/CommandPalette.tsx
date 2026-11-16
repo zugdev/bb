@@ -34,6 +34,7 @@ import type { PluginSettingsCandidate } from "@/components/settings/plugin-setti
 import { appQueryClient } from "@/lib/app-query-client";
 import { LazyCommandPaletteBody } from "./LazyCommandPaletteBody";
 import { ThreadSearchPalettePlaceholder } from "./ThreadSearchPalettePlaceholder";
+import { takeRequestedThreadSearchMode } from "@/lib/command-palette/thread-search-mode-request";
 
 const ThreadSearchPaletteMode = defineSplit({
   id: "thread-search-palette-mode",
@@ -71,6 +72,9 @@ export function CommandPalette({ threadId, projectId }: CommandPaletteProps) {
   const [query, setQuery] = useState("");
   const [actions, setActions] = useState<readonly PaletteAction[]>([]);
   const [searchingThreads, setSearchingThreads] = useState(false);
+  const [initialSearchModeKey, setInitialSearchModeKey] = useState<
+    string | null
+  >(null);
   const [installedPlugins, setInstalledPlugins] = useState<
     readonly PluginSettingsCandidate[]
   >([]);
@@ -188,6 +192,7 @@ export function CommandPalette({ threadId, projectId }: CommandPaletteProps) {
     (invocation) => {
       const target = invocationTarget(invocation);
       prepareOpen(target);
+      setInitialSearchModeKey(takeRequestedThreadSearchMode());
       setSearchingThreads(true);
       setOpen(true);
       return true;
@@ -299,6 +304,8 @@ export function CommandPalette({ threadId, projectId }: CommandPaletteProps) {
           />
         ) : (
           <ThreadSearchPaletteMode
+            key={openCount}
+            initialSearchModeKey={initialSearchModeKey}
             query={query}
             onQueryChange={setQuery}
             onExit={exitMode}

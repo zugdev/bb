@@ -128,7 +128,7 @@ Slot props contracts (versioned, additive-only):
   pinned registration wins. A pinned page usually lists other plugins'
   homepage sections with `experimental_useHomepageSections()` and draws each
   with `experimental_HomepageSection` (`{ pluginId, sectionId }`), and can use
-  `experimental_useThreadSearch()` (`{ shortcut, open(anchor) }`) and
+  `experimental_useThreadSearch()` (`{ shortcut, open(anchor, { experimental_mode? }) }`, where `experimental_mode` picks one of your `experimental_threadSearchMode` ids) and
   `experimental_useAddProject()` (`{ isAvailable, isCreating, open() }`).
   The host renders your compact plugin icon + `title` into the shared app
   header (the same title bar as Settings pages) with your optional

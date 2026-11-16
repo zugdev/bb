@@ -354,7 +354,7 @@ Docs: `frontend-core-slots.md`.
 
 ## `experimental_useThreadSearch` and `experimental_useAddProject` (`@get-bb/plugin-sdk/app`)
 
-`experimental_useThreadSearch()` returns `{ shortcut, open(anchor) }` for the `thread.search` app command. `experimental_useAddProject()` returns `{ isAvailable, isCreating, open() }` for bb's quick create project dialog; on the pinned tab the page stays put after the project is created.
+`experimental_useThreadSearch()` returns `{ shortcut, open(anchor, options?) }` for the `thread.search` app command. `options.experimental_mode` opens the palette in one of the calling plugin's `experimental_threadSearchMode` registrations, by id; an unknown id opens keyword search. Core passes it through `requestThreadSearchMode` to `CommandPalette`. `experimental_useAddProject()` returns `{ isAvailable, isCreating, open() }` for bb's quick create project dialog; on the pinned tab the page stays put after the project is created.
 
 **Core callers.** The sidebar's Search item dispatches the same `thread.search` command through `useAppCommandRunner`. `useQuickCreateProjectController` (`apps/app/src/hooks/useQuickCreateProject.tsx`) is behind the composer's and the project picker's Add project. No plugin calls them since the home plugin dropped its Home page on 2026-11-06.
 
