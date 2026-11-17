@@ -12,7 +12,7 @@
     "name": "Focus mode",
     "description": "Blocks distracting sites through /etc/hosts from a sidebar footer toggle.",
     "branding": {
-      "icon": "EyeOff"
+      "icon": "Target"
     },
     "server": "./server.ts",
     "app": "./app.tsx",
