@@ -6,7 +6,8 @@ A personal assistant that lives at the top of your sidebar. It reads your Slack 
 - Every 10 minutes bb sends new Slack mentions, DMs and unread email into that thread for triage.
 - The agent notifies your phone, desktop and browser through Push notifications when an item needs you soon.
 - Draft replies in the thread. The assistant never sends Slack messages or email.
-- An **Assistant** card at the top of the New thread screen, above the project picker. It lists open to-dos and the assistant's reminders (automations that target its thread) due by the end of tomorrow, soonest first. To-dos and one off reminders have a checkbox: ticking a to-do checks it off and ticking a reminder pauses its automation. Repeating reminders show a repeat icon.
+- An **Assistant** card at the top of the New thread screen, above the project picker. It lists open to-dos and the assistant's reminders (automations that target its thread) due by the end of tomorrow, soonest first. To-dos and one off reminders have a checkbox: ticking a to-do checks it off and ticking a reminder pauses its automation. Repeating reminders show a repeat icon. The card header shows the dollar in reais with today's change, and below the agenda up to 3 lines of yesterday's major news.
+- Every day at 7:00 the assistant searches yesterday's news and keeps only what is worth your attention. On a quiet day the card shows no news.
 
 ## Setup
 
@@ -18,9 +19,10 @@ The first check after setup records where your Slack and inbox are, so you only 
 
 ## Agent tools
 
-Only the assistant thread gets these tools: `assistant_notify`, `slack_search`, `slack_thread`, `email_search` and `email_read`. Email is opened read only, so reading an email does not mark it read.
+Only the assistant thread gets these tools: `assistant_notify`, `news_brief_set`, `slack_search`, `slack_thread`, `email_search` and `email_read`. Email is opened read only, so reading an email does not mark it read.
 
 ## CLI
 
 - `bb assistant thread`: print the assistant's thread id, starting the thread if needed.
+- `bb assistant news`: ask the assistant for today's news brief now.
 - `bb assistant check`: check Slack and email now instead of waiting for the next 10 minute run.

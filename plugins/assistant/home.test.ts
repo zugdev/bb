@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { completeTodo, formatUpcoming, openTodos, upcomingReminders } from "./home.js";
+import { completeTodo, formatUpcoming, openTodos, parseDollarQuote, upcomingReminders } from "./home.js";
 
 describe("upcomingReminders", () => {
   it("keeps enabled reminders due by the end of tomorrow, soonest first, and marks which repeat", () => {
@@ -61,5 +61,15 @@ describe("to-dos", () => {
       ["rent", 10 * day],
     ]);
     expect(() => completeTodo(todos, "missing", 0)).toThrow("missing");
+  });
+});
+
+describe("parseDollarQuote", () => {
+  it("reads the AwesomeAPI USD-BRL bid and daily change, which arrive as strings", () => {
+    expect(parseDollarQuote({ USDBRL: { bid: "5.784", pctChange: "-0.42", code: "USD" } })).toEqual({
+      brl: 5.784,
+      pctChange: -0.42,
+    });
+    expect(() => parseDollarQuote({ status: 429 })).toThrow();
   });
 });

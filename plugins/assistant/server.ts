@@ -4,9 +4,13 @@ import { z } from "zod";
 import { assistantRpcContract } from "./contract.js";
 import {
   completeTodo,
+  localDay,
+  newsBriefSchema,
   openTodos,
+  parseDollarQuote,
   todoSchema,
   upcomingReminders,
+  type Dollar,
   type Todo,
 } from "./home.js";
 import {
@@ -31,6 +35,11 @@ const PERSONAL_PROJECT_ID = "proj_personal";
 const THREAD_KEY = "threadId";
 const UNSEEN_KEY = "unseen";
 const TODOS_KEY = "todos";
+const NEWS_KEY = "news";
+const DOLLAR_URL = "https://economia.awesomeapi.com.br/json/last/USD-BRL";
+const DOLLAR_TTL_MS = 10 * 60_000;
+const NEWS_BRIEF_PROMPT =
+  "Daily news brief: search the web for yesterday's major news in Brazil and the world, plus anything big in tech and AI. Pick at most 3 items that are genuinely worth the user's attention and call news_brief_set with one short line each, in Portuguese. If nothing stands out, call it with an empty list. Reply with one line only.";
 const PANEL_KEY = "assistant/assistant";
 const BUILT_IN_NAVIGATION_KEYS = [
   "__bb__/new-thread",
@@ -58,7 +67,8 @@ function assistantInstructions(threadId: string): string {
 5. Schedule. For anything recurring or later ("check my email every day at 9am", "remind me Friday"), run \`bb automation create --project proj_personal --target-thread ${threadId} --name <name> --cron "<cron>" --timezone <IANA zone> --prompt "<task>" --provider <your provider id> --model <your model>\`, or \`--at <ISO time>\` or \`--in <duration>\` for one off reminders. The name shows on the bb home page, so write it as a short title in the language the user wrote in, such as "Pay rent", never a slug. One request gets one automation at the time the user asked for: never add a heads-up the day before or any extra reminder they did not ask for, even when the task is urgent. Run \`bb automation list --project proj_personal\` before creating one so you never schedule the same reminder twice.
 6. Orchestrate. You may start work in any project when the user asks: \`bb project list --json\` for ids, then \`bb thread spawn --project <id> --new-environment worktree --prompt-file -\` for code work, \`bb thread wait <id>\` and \`bb thread output <id>\` to follow it, \`bb thread tell <id>\` to steer it. Keep a short ledger in your replies of threads you started and their state, and notify when one needs the user.
 7. Memory. You own the user's long term memory. Search it with \`bb memory search <words> --scope all\` before answering questions about people, projects or preferences, and save durable facts with \`bb memory add --scope global\`: people and how the user works with them, their timezone, routines and preferences.
-8. You never send Slack messages or email. When a reply is due, write a draft for the user to copy.`;
+8. News. Once a day bb asks you for a news brief. Keep it to what matters and call news_brief_set, which replaces the brief on the home page.
+9. You never send Slack messages or email. When a reply is due, write a draft for the user to copy.`;
 }
 
 export default async function plugin(bb: BbPluginApi) {
@@ -166,6 +176,34 @@ export default async function plugin(bb: BbPluginApi) {
 
   async function finishTodo(id: string): Promise<void> {
     await writeTodos(completeTodo(await readTodos(), id, Date.now()));
+  }
+
+  let dollarCache: { at: number; dollar: Dollar } | null = null;
+
+  async function dollarQuote(): Promise<Dollar | null> {
+    if (dollarCache !== null && Date.now() - dollarCache.at < DOLLAR_TTL_MS) return dollarCache.dollar;
+    try {
+      const response = await fetch(DOLLAR_URL, { signal: AbortSignal.timeout(5000) });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      dollarCache = { at: Date.now(), dollar: parseDollarQuote(await response.json()) };
+      return dollarCache.dollar;
+    } catch (error) {
+      bb.log.warn(`could not fetch the dollar quote: ${String(error)}`);
+      return dollarCache?.dollar ?? null;
+    }
+  }
+
+  async function todaysNews(): Promise<string[]> {
+    const parsed = newsBriefSchema.safeParse(await bb.storage.kv.get<unknown>(NEWS_KEY));
+    return parsed.success && parsed.data.day === localDay(Date.now()) ? parsed.data.items : [];
+  }
+
+  async function requestNewsBrief(): Promise<void> {
+    await bb.sdk.threads.send({
+      threadId: await ensureThread(),
+      mode: "auto",
+      input: [{ type: "text", text: NEWS_BRIEF_PROMPT, mentions: [] }],
+    });
   }
 
   async function assistantReminders() {
@@ -348,6 +386,18 @@ export default async function plugin(bb: BbPluginApi) {
   });
 
   bb.agents.registerTool({
+    name: "news_brief_set",
+    description:
+      "Replace today's news brief on the bb home page. At most 3 short lines; an empty list hides it.",
+    parameters: z.object({ items: z.array(z.string().min(1).max(140)).max(3) }),
+    async execute({ items }) {
+      await bb.storage.kv.set(NEWS_KEY, { day: localDay(Date.now()), items });
+      bb.rpc.experimental_invalidate(["home"]);
+      return `Saved ${items.length} news items.`;
+    },
+  });
+
+  bb.agents.registerTool({
     name: "slack_search",
     description:
       "Search Slack messages across every connected workspace using Slack search syntax, for example `from:@ana in:#launch deadline`.",
@@ -402,7 +452,7 @@ export default async function plugin(bb: BbPluginApi) {
   bb.agents.configure((context) =>
     context.thread.id === threadId
       ? {
-          tools: ["assistant_notify", "todo_add", "todo_done", "todo_list", "slack_search", "slack_thread", "email_search", "email_read"],
+          tools: ["assistant_notify", "todo_add", "todo_done", "todo_list", "news_brief_set", "slack_search", "slack_thread", "email_search", "email_read"],
           skills: [],
           instructions: assistantInstructions(context.thread.id),
         }
@@ -418,10 +468,13 @@ export default async function plugin(bb: BbPluginApi) {
       return { threadId: await ensureThread() };
     },
     async "assistant.home"() {
-      return {
-        todos: openTodos(await readTodos()),
-        reminders: await assistantReminders(),
-      };
+      const [todos, reminders, dollar, news] = await Promise.all([
+        readTodos(),
+        assistantReminders(),
+        dollarQuote(),
+        todaysNews(),
+      ]);
+      return { todos: openTodos(todos), reminders, dollar, news };
     },
     async "assistant.todoDone"({ id }) {
       await finishTodo(id);
@@ -451,6 +504,8 @@ export default async function plugin(bb: BbPluginApi) {
   bb.background.schedule("check-sources", "*/10 * * * *", async () => {
     await checkSources();
   });
+
+  bb.background.schedule("news-brief", "0 7 * * *", requestNewsBrief);
 
   bb.cli.register(
     defineCli({
@@ -490,6 +545,13 @@ export default async function plugin(bb: BbPluginApi) {
           async run(input) {
             await finishTodo(input.positionals.id);
             return { exitCode: 0, stdout: `Checked off ${input.positionals.id}.` };
+          },
+        }),
+        news: cliCommand({
+          summary: "Ask the assistant for today's news brief now",
+          async run() {
+            await requestNewsBrief();
+            return { exitCode: 0, stdout: "Asked the assistant for the news brief." };
           },
         }),
         check: cliCommand({

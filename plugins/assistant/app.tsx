@@ -8,7 +8,7 @@ import {
   type ExperimentalBadge,
 } from "@get-bb/plugin-sdk/app";
 import { assistantRpcContract } from "./contract.js";
-import { formatUpcoming } from "./home.js";
+import { formatUpcoming, type Dollar } from "./home.js";
 
 function useAssistantBadge(): ExperimentalBadge | null {
   const { data } = experimental_useRpcQuery({
@@ -66,6 +66,20 @@ function When({ at, done }: { at: number | null; done: boolean }) {
   return (
     <span className={`shrink-0 text-xs tabular-nums ${overdue ? "text-destructive-text" : "text-muted-foreground"}`}>
       {formatUpcoming(at)}
+    </span>
+  );
+}
+
+const brlFormat = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
+const pctFormat = new Intl.NumberFormat("pt-BR", { signDisplay: "exceptZero", maximumFractionDigits: 2 });
+
+function DollarQuote({ dollar }: { dollar: Dollar }) {
+  const change = pctFormat.format(dollar.pctChange);
+  const tone = change.startsWith("+") ? "text-destructive-text" : "text-success";
+  return (
+    <span className="shrink-0 text-xs tabular-nums text-muted-foreground" title="US$ 1 em reais e a variação de hoje">
+      Dólar {brlFormat.format(dollar.brl)}
+      {change === "0" ? null : <span className={`ml-1.5 ${tone}`}>{change}%</span>}
     </span>
   );
 }
@@ -149,6 +163,7 @@ function AssistantHomeSection() {
       <div className="-mr-2 flex h-8 items-center gap-2">
         <Icon name="Bot" className="size-4 text-muted-foreground" aria-hidden />
         <h2 className="min-w-0 flex-1 text-sm font-semibold">Assistant</h2>
+        {data?.dollar ? <DollarQuote dollar={data.dollar} /> : null}
         <button type="button" className={ACTION_CLASS} onClick={openAssistant}>
           Open
         </button>
@@ -158,6 +173,16 @@ function AssistantHomeSection() {
       ) : (
         items.map((item) => <AgendaRow key={item.key} item={item} onOpen={openAssistant} />)
       )}
+      {data?.news.length ? (
+        <ul className="mt-1 flex flex-col gap-1 border-t border-border-hairline pt-2 pb-1 text-xs text-muted-foreground">
+          {data.news.map((line) => (
+            <li key={line} className="flex gap-2">
+              <Icon name="Newspaper" aria-hidden className="mt-px size-3.5 shrink-0" />
+              <span className="min-w-0">{line}</span>
+            </li>
+          ))}
+        </ul>
+      ) : null}
     </section>
   );
 }
