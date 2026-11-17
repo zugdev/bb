@@ -15,6 +15,7 @@ describe("getCompactHomeLeadingSpace", () => {
         getCompactHomeLeadingSpace({
           regionHeight: 852,
           composerHeight: 188,
+          hasRecents: true,
         }),
     ).toBe(852 - 188 - restingBandPx);
   });
@@ -24,7 +25,18 @@ describe("getCompactHomeLeadingSpace", () => {
       getCompactHomeLeadingSpace({
         regionHeight: 420,
         composerHeight: 188,
+        hasRecents: true,
       }),
     ).toBe(MOBILE_RECENT_ROW_HEIGHT_PX);
+  });
+
+  it("reserves no band when there are no recents", () => {
+    expect(
+      getCompactHomeLeadingSpace({
+        regionHeight: 852,
+        composerHeight: 188,
+        hasRecents: false,
+      }),
+    ).toBe(0);
   });
 });
