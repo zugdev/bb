@@ -1081,7 +1081,7 @@ describe("slow query index plans", () => {
     if (!query) {
       throw new Error("Expected the active background-task count SQL");
     }
-    expect(query.params).toHaveLength(15);
+    expect(query.params).toHaveLength(21);
     const details = queryPlanDetails({
       db,
       params: query.params,
