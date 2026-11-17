@@ -89,6 +89,9 @@ bb thread unsnooze [id] Return it to the Inbox now
 The Inbox plugin lists threads that need an answer, threads waiting on your
 reply, agents still working, and snoozed threads. A snoozed thread returns
 when its time comes, or earlier when it finishes a turn or asks a question.
+A turn an automation sends to an existing thread finishes quietly: it keeps the
+thread's snooze and doesn't move it up the Inbox unless it fails or asks a
+question.
 
 bb thread restore-environment [id] Restore a destroyed workspace
 --self Restore current thread
