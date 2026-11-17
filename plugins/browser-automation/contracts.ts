@@ -8,7 +8,7 @@ export const sessionSchema = z
     id: sessionIdSchema,
     threadId: idSchema,
     hostId: idSchema,
-    backend: z.enum(["desktop", "local"]),
+    backend: z.enum(["desktop", "local", "cdp"]),
     state: z.enum(["ready", "stopped", "closed"]),
     createdAt: z.number().int(),
     expiresAt: z.number().int(),
@@ -17,6 +17,13 @@ export const sessionSchema = z
 export type Session = z.infer<typeof sessionSchema>;
 export const selectionSchema = z.discriminatedUnion("backend", [
   z.object({ backend: z.literal("local"), hostId: idSchema }).strict(),
+  z
+    .object({
+      backend: z.literal("cdp"),
+      hostId: idSchema,
+      url: z.string().url().max(2_000),
+    })
+    .strict(),
   z
     .object({
       backend: z.literal("desktop"),
@@ -108,6 +115,7 @@ export const hostContract = defineRpcContract({
       .object({
         sessionId: sessionIdSchema,
         connectionUrl: z.string().url().optional(),
+        livePreview: z.boolean(),
         expiresAt: z.number().int(),
         idleTimeoutMs: z.number().int().positive(),
       })

@@ -107,6 +107,7 @@ CLI/SDK discovery. The selected instance's generation is resolved on opening.
 ```sh
 bb browser-automation open --backend local --headless --machine <host-id> --json
 bb browser-automation open --backend desktop --machine <desktop-host-id> --desktop <instance-id> --json
+bb browser-automation open --backend cdp --machine <host-id> --cdp-url ws://127.0.0.1:<port>/devtools/browser/<id> --json
 bb browser-automation list --json
 bb browser-automation run <session-id> --script 'const p = await browser.getPage("main"); await p.goto("https://example.com"); await p.snapshot()' --json
 bb browser-automation run <session-id> --script-file ./check.js --script-host <invoking-host-id> --timeout-ms 30000 --json
@@ -170,8 +171,9 @@ The CLI uses the same validated operation handlers as RPC. The
 RPC contract in `contracts.ts` exposes `open`, `list`, `run`, `pages`,
 `screenshot`, `preview`, `stop`, and `close`.
 RPC inputs include `threadId`; session operations also include `sessionId`.
-`open.selection` is `{backend:"local",hostId}` or
-`{backend:"desktop",hostId,instanceId,tabId?}`. A tab ID takes over that existing tab.
+`open.selection` is `{backend:"local",hostId}`,
+`{backend:"desktop",hostId,instanceId,tabId?}`, or `{backend:"cdp",hostId,url}`. A tab ID takes over that existing tab.
+A cdp session attaches to a Chrome already running on the host at a loopback DevTools URL, streams the same live preview as a local session, and leaves that Chrome running when it closes.
 Agents discover the commands through the skill and CLI help.
 
 The host supervises Chrome and the DevBrowser daemon as separate children. Each

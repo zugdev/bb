@@ -320,6 +320,8 @@ export default async function browserAutomationPlugin(bb: BbPluginApi) {
           lease.expiresAt,
           connection.expiresAt,
         );
+      } else if (input.selection.backend === "cdp") {
+        connectionUrl = input.selection.url;
       }
       await save(record);
       active.set(session.id, record);
@@ -339,6 +341,7 @@ export default async function browserAutomationPlugin(bb: BbPluginApi) {
         {
           sessionId: session.id,
           ...(connectionUrl === undefined ? {} : { connectionUrl }),
+          livePreview: session.backend !== "desktop",
           expiresAt: hardDeadline(session),
           idleTimeoutMs,
         },
@@ -431,7 +434,7 @@ export default async function browserAutomationPlugin(bb: BbPluginApi) {
   ): Promise<PreviewOutput> {
     const { session } = await owned(input.threadId, input.sessionId);
     if (
-      session.backend !== "local" ||
+      session.backend === "desktop" ||
       session.state !== "ready" ||
       Date.now() >= session.expiresAt
     )
@@ -520,7 +523,7 @@ export default async function browserAutomationPlugin(bb: BbPluginApi) {
     tools: [],
     skills: ["browser-automation"],
     instructions:
-      "When `bb browser-automation open` returns a previewDirective, copy it into your next response exactly once as a standalone line before you continue working. Do not wrap it in backticks or a code fence, and do not invent or edit the session ID. The directive shows the user a live view of that headless browser in BB chat. Desktop sessions return no directive.",
+      "When `bb browser-automation open` returns a previewDirective, copy it into your next response exactly once as a standalone line before you continue working. Do not wrap it in backticks or a code fence, and do not invent or edit the session ID. The directive shows the user a live view of that browser in BB chat. Desktop sessions return no directive.",
   }));
   async function executeCli(
     request: BrowserCliRequest,
@@ -580,7 +583,7 @@ export default async function browserAutomationPlugin(bb: BbPluginApi) {
       const printable = opened?.success
         ? {
             ...opened.data,
-            ...(opened.data.backend === "local"
+            ...(opened.data.backend !== "desktop"
               ? { previewDirective: previewDirective(opened.data.id) }
               : {}),
           }

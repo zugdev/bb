@@ -207,6 +207,41 @@ describe("server session ownership", () => {
     },
   );
 
+  it("attaches a cdp session with live preview and returns a preview directive", async () => {
+    const h = await setup();
+    const url = "ws://127.0.0.1:9222/devtools/browser/abc";
+    try {
+      const result = await h.harness.behavior.runCli(
+        [
+          "open",
+          "--backend",
+          "cdp",
+          "--machine",
+          "local-host",
+          "--cdp-url",
+          url,
+          "--json",
+        ],
+        { threadId: "thread-test" },
+      );
+      expect(result.exitCode, result.stderr).toBe(0);
+      const opened = JSON.parse(result.stdout);
+      expect(opened).toMatchObject({ backend: "cdp", hostId: "local-host" });
+      expect(opened.previewDirective).toContain(opened.id);
+      expect(h.worker).toHaveBeenCalledWith(
+        expect.objectContaining({
+          method: "open",
+          input: expect.objectContaining({
+            connectionUrl: url,
+            livePreview: true,
+          }),
+        }),
+      );
+    } finally {
+      await h.harness.lifecycle.dispose();
+    }
+  });
+
   it("prefers an exact machine ID over a matching name", async () => {
     const h = await setup();
     h.harness.sdk.stub("hosts.list", async () => [

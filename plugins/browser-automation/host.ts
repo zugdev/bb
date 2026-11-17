@@ -157,6 +157,7 @@ export function createHostEntry(
     context: ExperimentalHostRpcContext,
     signal: AbortSignal,
     connectionUrl: string | undefined,
+    livePreview: boolean,
   ) {
     const attached = await attachRuntime(context);
     let runtime: ResolvedRuntime;
@@ -170,6 +171,7 @@ export function createHostEntry(
       ...context.experimental_paths,
       runtime,
       connectionUrl,
+      livePreview,
       signal,
     });
   }
@@ -230,7 +232,12 @@ export function createHostEntry(
           abort.signal,
         ]);
         const session: Session = {
-          runtime: start(context, signal, input.connectionUrl),
+          runtime: start(
+            context,
+            signal,
+            input.connectionUrl,
+            input.livePreview,
+          ),
           abort,
           lease: context.experimental_retainWorker(),
           expiresAt: input.expiresAt,
@@ -279,9 +286,7 @@ export function createHostEntry(
         const session = await available(input.sessionId);
         const runtime = await session.runtime;
         if (!runtime.preview)
-          throw new Error(
-            "Live preview is available only for local headless sessions",
-          );
+          throw new Error("Live preview is unavailable for desktop sessions");
         return {
           frame: await runtime.preview.next(
             input.afterSequence,

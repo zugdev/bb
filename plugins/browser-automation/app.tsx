@@ -140,10 +140,10 @@ function useLivePreview(args: {
         if (cancelled) return;
         if (
           result.session.state !== "ready" ||
-          result.session.backend !== "local"
+          result.session.backend === "desktop"
         ) {
           setStatus(
-            result.session.backend === "local" ? "ended" : "unavailable",
+            result.session.backend === "desktop" ? "unavailable" : "ended",
           );
           return;
         }
