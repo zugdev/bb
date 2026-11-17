@@ -456,6 +456,17 @@ describe("ThreadRow", () => {
     ).toBeNull();
   });
 
+  it("marks only incognito threads with the incognito icon", () => {
+    const slot = renderThreadRow({
+      thread: createThread({ experimental_incognito: true }),
+    });
+    expect(screen.getByRole("img", { name: "Incognito" })).toBeTruthy();
+    slot.unmount();
+
+    renderThreadRow();
+    expect(screen.queryByRole("img", { name: "Incognito" })).toBeNull();
+  });
+
   it("links the row to the thread href and leaves a plain click to the host", () => {
     const slot = renderThreadRow({
       thread: createThread({ href: "/projects/proj_test/threads/thr_test" }),

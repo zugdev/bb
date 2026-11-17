@@ -1619,6 +1619,12 @@ export interface PluginSidebarThread {
    * Experimental: see docs/api_to_audit.md.
    */
   experimental_snoozedUntil: number | null;
+  /**
+   * The thread was created incognito: it skips AI titles and telemetry,
+   * writes no provider session files, and is deleted when archived.
+   * Experimental: see docs/api_to_audit.md.
+   */
+  experimental_incognito: boolean;
 }
 
 /** One project in the sidebar's live view. */

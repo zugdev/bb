@@ -44,10 +44,7 @@ export function IncognitoToggle({
         className={OPTION_TRIGGER_CONTENT_CLASS_NAME}
         title={`Incognito: ${value ? "on" : "off"}. ${INCOGNITO_DESCRIPTION}`}
       >
-        <Icon name="EyeOff" className="size-3.5 shrink-0" />
-        <span className="min-w-0 truncate" data-promptbox-full-label="">
-          Incognito
-        </span>
+        <Icon name="Incognito" className="size-3.5 shrink-0" />
       </span>
     </Button>
   );

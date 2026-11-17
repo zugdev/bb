@@ -113,6 +113,7 @@ import UserIcon from "@hugeicons/core-free-icons/UserIcon";
 import UserMultiple02Icon from "@hugeicons/core-free-icons/UserMultiple02Icon";
 import ViewIcon from "@hugeicons/core-free-icons/ViewIcon";
 import ViewOffIcon from "@hugeicons/core-free-icons/ViewOffIcon";
+import IncognitoIcon from "@hugeicons/core-free-icons/IncognitoIcon";
 import ZoomInAreaIcon from "@hugeicons/core-free-icons/ZoomInAreaIcon";
 import ZoomOutAreaIcon from "@hugeicons/core-free-icons/ZoomOutAreaIcon";
 import AddSquareIcon from "@hugeicons/core-free-icons/AddSquareIcon";
@@ -281,6 +282,7 @@ export const EXTENDED_ICON_MAP: ExtendedIconMap = {
   ElectricPlugs: ElectricPlugsIcon,
   Eye: ViewIcon,
   EyeOff: ViewOffIcon,
+  Incognito: IncognitoIcon,
   Explore: Book02Icon,
   ExternalLink: LinkSquare02Icon,
   FileDiff: PlusMinusSquare01Icon,

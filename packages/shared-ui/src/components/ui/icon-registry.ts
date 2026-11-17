@@ -56,6 +56,7 @@ export const EXTENDED_ICON_NAMES = [
   "ElectricPlugs",
   "Eye",
   "EyeOff",
+  "Incognito",
   "Explore",
   "ExternalLink",
   "FileDiff",
