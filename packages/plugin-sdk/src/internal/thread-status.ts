@@ -145,7 +145,6 @@ export function experimental_resolveThreadStatus({
     flags.runtime ||
     flags.workflow ||
     flags.backgroundAgent ||
-    flags.backgroundCommand ||
     flags.planMode ||
     flags.goal;
   const indicator = resolveIndicator(

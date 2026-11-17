@@ -87,7 +87,7 @@ const CASES: StatusCase[] = [
     name: `idle ${activity} activity`,
     thread: { [activity]: 1 },
     indicator,
-    isWorking: true,
+    isWorking: activity !== "backgroundCommands",
   })),
   {
     name: "an unread idle root",
@@ -166,7 +166,7 @@ const CASES: StatusCase[] = [
     name: `a working draft with ${activity}`,
     thread: { [activity]: 1 },
     draft: true,
-    indicator: "working-draft",
+    indicator: activity === "backgroundCommands" ? "background-command" : "working-draft",
   })),
   {
     name: "a queued send over a draft",
@@ -361,7 +361,7 @@ const CASES: StatusCase[] = [
     thread: {},
     hidden: [{ parented: true, [activity]: 1 }],
     indicator,
-    isWorking: true,
+    isWorking: activity !== "backgroundCommands",
   })),
   {
     name: "a collapsed parent with unread descendants",
