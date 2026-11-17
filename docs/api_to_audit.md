@@ -1365,7 +1365,7 @@ Docs: `backend-sdk.md`, `bb guide thread-messaging`.
 
 ## `bb.sdk.threads.experimental_snooze`
 
-`POST /threads/:id/snooze` with `{ until }` sets `threads.snoozed_until` to a millisecond timestamp, or clears it with `null`. The Inbox hides a snoozed thread until that time and lists it again as a new arrival. The server clears the snooze when a status change gives the thread new attention, and a pending question or approval always shows in the Inbox even while snoozed. Core callers: the Snooze thread action (thread menu and row actions) and `bb thread snooze` / `bb thread unsnooze`. The inbox plugin runs the same action from its header bar and sidebar rows.
+`POST /threads/:id/snooze` with `{ until }` sets `threads.snoozed_until` to a millisecond timestamp, or clears it with `null`. The Inbox hides a snoozed thread until that time and lists it again as a new arrival. The server clears the snooze when a status change gives the thread new attention, except when the finished turn was sent by the automations plugin to a thread it didn't spawn, and a pending question or approval always shows in the Inbox even while snoozed. Core callers: the Snooze thread action (thread menu and row actions) and `bb thread snooze` / `bb thread unsnooze`. The inbox plugin runs the same action from its header bar and sidebar rows.
 
 **Audit before stabilizing.**
 

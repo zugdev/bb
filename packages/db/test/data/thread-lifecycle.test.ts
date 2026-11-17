@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { eq } from "drizzle-orm";
 import type { DbTransaction } from "../../src/connection.js";
 import { noopNotifier } from "../../src/notifier.js";
-import { threads } from "../../src/schema.js";
+import { events, threads } from "../../src/schema.js";
 import {
   applyThreadLifecycleEvent,
   applyThreadLifecycleEventInTransaction,
@@ -234,6 +234,73 @@ describe("applyThreadLifecycleEvent", () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+});
+
+describe("automation turns", () => {
+  function finishTurnSentBy(args: {
+    requestOriginPluginId: string | null;
+    threadOriginPluginId: string | null;
+  }) {
+    const { db, project } = setup();
+    const thread = createThread(db, noopNotifier, {
+      originPluginId: args.threadOriginPluginId,
+      projectId: project.id,
+      providerId: "codex",
+      status: "active",
+    });
+    db.update(threads)
+      .set({ latestAttentionAt: 1, snoozedUntil: Date.now() + 60_000 })
+      .where(eq(threads.id, thread.id))
+      .run();
+    db.insert(events)
+      .values({
+        id: "evt_request",
+        threadId: thread.id,
+        scopeKind: "thread",
+        sequence: 1,
+        type: "client/turn/requested",
+        data: JSON.stringify(
+          args.requestOriginPluginId === null
+            ? {}
+            : { originPluginId: args.requestOriginPluginId },
+        ),
+        createdAt: Date.now(),
+      })
+      .run();
+    return requireThreadLifecycleEventApplied(
+      applyThreadLifecycleEvent(db, {
+        event: { type: "run.succeeded" },
+        threadId: thread.id,
+      }),
+    );
+  }
+
+  it("keeps attention and snooze when an automation prompts an existing thread", () => {
+    const thread = finishTurnSentBy({
+      requestOriginPluginId: "automations",
+      threadOriginPluginId: null,
+    });
+    expect(thread.latestAttentionAt).toBe(1);
+    expect(thread.snoozedUntil).not.toBeNull();
+  });
+
+  it("raises attention for threads the automation spawned", () => {
+    const thread = finishTurnSentBy({
+      requestOriginPluginId: "automations",
+      threadOriginPluginId: "automations",
+    });
+    expect(thread.latestAttentionAt).toBeGreaterThan(1);
+    expect(thread.snoozedUntil).toBeNull();
+  });
+
+  it("raises attention for turns the user sent", () => {
+    const thread = finishTurnSentBy({
+      requestOriginPluginId: null,
+      threadOriginPluginId: null,
+    });
+    expect(thread.latestAttentionAt).toBeGreaterThan(1);
+    expect(thread.snoozedUntil).toBeNull();
   });
 });
 

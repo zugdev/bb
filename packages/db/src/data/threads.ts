@@ -38,6 +38,7 @@ import type { DbQueryConnection } from "../connection.js";
 import type { DbNotifier } from "../notifier.js";
 import {
   environments,
+  events,
   pendingInteractions,
   projects,
   terminalSessions,
@@ -705,6 +706,32 @@ function statusTransitionNeedsAttention(args: StatusTransition): boolean {
   }
 
   return args.currentStatus === "active" || args.currentStatus === "starting";
+}
+
+const AUTOMATIONS_PLUGIN_ID = "automations";
+
+function isAutomationTurnOnUserThread(
+  db: DbTransaction,
+  thread: { id: string; originPluginId: string | null },
+): boolean {
+  if (thread.originPluginId === AUTOMATIONS_PLUGIN_ID) return false;
+  const latestRequest = db
+    .select({
+      originPluginId: sql<
+        string | null
+      >`json_extract(${events.data}, '$.originPluginId')`,
+    })
+    .from(events)
+    .where(
+      and(
+        eq(events.threadId, thread.id),
+        eq(events.type, "client/turn/requested"),
+      ),
+    )
+    .orderBy(desc(events.sequence))
+    .limit(1)
+    .get();
+  return latestRequest?.originPluginId === AUTOMATIONS_PLUGIN_ID;
 }
 
 function buildListThreadsFilters(options: ListThreadsOptions) {
@@ -2376,7 +2403,11 @@ export function applyThreadLifecycleEventInTransaction(
       currentStatus: thread.status,
       newStatus: evaluation.to,
       parentThreadId: thread.parentThreadId,
-    })
+    }) &&
+    !(
+      evaluation.to === "idle" &&
+      isAutomationTurnOnUserThread(db, thread)
+    )
   ) {
     set.latestAttentionAt = now;
     set.snoozedUntil = null;
