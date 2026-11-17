@@ -49,6 +49,13 @@ export default async function forkUpdaterPlugin(bb: BbPluginApi): Promise<void> 
         "Apply pending updates on the 5 minute check when no thread is running. A rebuild packages first and waits for running threads to finish before it restarts bb.",
       default: true,
     },
+    autoUpdateProviders: {
+      type: "boolean",
+      label: "Update agent CLIs automatically when idle",
+      description:
+        "On the 5 minute check, update outdated agent CLIs such as Claude Code on every connected machine when no thread is running.",
+      default: true,
+    },
   });
   const host = bb.hosts.experimental_client({ contract: forkUpdaterHostContract });
 
@@ -284,7 +291,25 @@ export default async function forkUpdaterPlugin(bb: BbPluginApi): Promise<void> 
     }),
   );
 
+  async function updateProviderClis(): Promise<void> {
+    for (const machine of await bb.sdk.hosts.list()) {
+      if (machine.status !== "connected") continue;
+      const providers = await bb.sdk.hosts.providerCliStatus({ hostId: machine.id });
+      for (const [provider, cli] of Object.entries(providers)) {
+        if (!cli.installed || !(cli.needsUpdate || cli.versionUnsupported) || cli.installAction === null) continue;
+        if (!(await isIdle())) return;
+        bb.log.info(`Updating ${cli.displayName} on ${machine.name}`);
+        await bb.sdk.hosts.installProviderCli({ hostId: machine.id, provider, actionKind: cli.installAction.kind });
+      }
+    }
+  }
+
   bb.background.schedule("check", "*/5 * * * *", async () => {
+    if ((await settings.get()).autoUpdateProviders === true && (await isIdle())) {
+      await updateProviderClis().catch((error: unknown) =>
+        bb.log.warn(`Agent CLI auto update failed: ${errorMessage(error)}`),
+      );
+    }
     const current = await check();
     if ((await settings.get()).autoUpdate !== true) return;
     if (current.kind === "up-to-date" || current.error !== null || !(await isIdle())) return;

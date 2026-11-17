@@ -34,14 +34,17 @@ function headline(status: ForkUpdaterStatus, failure: string | null): string {
   return `${status.commits.length} ${status.commits.length === 1 ? "commit" : "commits"} behind main`;
 }
 
+const AUTO_UPDATED_BADGES = `[data-testid="sidebar-updates-badge-bb"], [data-testid="sidebar-updates-badge-providers"] { display: none; }`;
+
 export function footerCss(pluginId: string, status: ForkUpdaterStatus | undefined): string {
   const button = `[data-testid="plugin-sidebar-footer-item-${pluginId}-${FOOTER_ITEM_ID}"]`;
-  if (status === undefined || (status.kind === "up-to-date" && status.error === null)) {
-    return `[data-footer-item]:has(${button}) { display: none; }`;
+  if (status === undefined || (status.error === null && status.progress === null)) {
+    return `[data-footer-item]:has(${button}) { display: none; }\n${AUTO_UPDATED_BADGES}`;
   }
   const count = status.commits.length || status.installPluginDirs.length;
   const label = status.error !== null ? "!" : count > 0 ? String(count) : "";
-  return `${button} { position: relative; }
+  return `${AUTO_UPDATED_BADGES}
+${button} { position: relative; }
 ${button}::after {
   content: ${JSON.stringify(label)};
   position: absolute; top: 1px; right: 1px;
