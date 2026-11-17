@@ -72,6 +72,7 @@ describe("inboxSections", () => {
       [
         idle("blocked", 10, {
           experimental_snoozedUntil: NOW + 50,
+          experimental_incognito: false,
           hasPendingInteraction: true,
         }),
       ],

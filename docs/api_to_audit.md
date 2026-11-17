@@ -377,6 +377,18 @@ Docs: `frontend-registration.md`.
 1. **Settable.** Decide whether users should pick a project's color, which would need a stored column and a uniqueness check on the server.
 2. **Deletion.** Decide whether deleting a project may shift newer colors, or whether ranks should count deleted projects.
 
+## `PluginSidebarThread.experimental_incognito`
+
+`experimental_incognito` is true for a thread created with the Incognito toggle, `bb thread create --incognito` or `incognito: true` on the create request. It mirrors the `threads.incognito` column.
+
+**Core callers.** `toPluginSidebarThread` (`apps/app/src/lib/plugin-sidebar-threads.ts`) fills it from `ThreadListEntry.incognito`. The thread list plugin draws the incognito icon on the row.
+
+Docs: `frontend-registration.md`.
+
+**Audit before stabilizing.**
+
+1. **Other surfaces.** Decide whether the thread header, tabs and command palette should show the same marker.
+
 ## `BbNavigate.toCompose({ experimental_tab })` and `PluginSidebarProject.experimental_gitRemoteUrl`
 
 `toCompose({ projectId, experimental_tab: true })` opens the New thread screen in a new pane tab in that project through `openComposeTab`, and falls back to plain navigation on compact viewports. `experimental_gitRemoteUrl` is the project's git remote from the sidebar payload, or null.

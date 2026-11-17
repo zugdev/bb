@@ -24,6 +24,7 @@ function sidebarThread(
     projectId: "proj_a",
     experimental_lastUserMessageAt: null,
     experimental_snoozedUntil: null,
+    experimental_incognito: false,
     title: null,
     titleFallback: null,
     displayTitle: overrides.id,

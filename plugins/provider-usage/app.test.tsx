@@ -63,6 +63,7 @@ function threadOnMachine(
     latestAttentionAt: 1,
     experimental_lastUserMessageAt: null,
     experimental_snoozedUntil: null,
+    experimental_incognito: false,
   };
 }
 

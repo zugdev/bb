@@ -102,5 +102,6 @@ export function toPluginSidebarThread(
     latestAttentionAt: entry.latestAttentionAt,
     experimental_lastUserMessageAt: entry.lastUserMessageAt,
     experimental_snoozedUntil: entry.snoozedUntil,
+    experimental_incognito: entry.incognito,
   };
 }

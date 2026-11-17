@@ -47,6 +47,7 @@ export function makeThread(
     latestAttentionAt: 0,
     experimental_lastUserMessageAt: null,
     experimental_snoozedUntil: null,
+    experimental_incognito: false,
     ...overrides,
   };
 }

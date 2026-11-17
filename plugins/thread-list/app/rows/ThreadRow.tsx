@@ -683,6 +683,17 @@ function ThreadRowComponent({
               </span>
             )}
           </span>
+          {thread.experimental_incognito ? (
+            <span
+              data-sidebar-thread-incognito=""
+              role="img"
+              aria-label="Incognito"
+              title="Incognito"
+              className="relative flex size-5 shrink-0 items-center justify-center text-muted-foreground"
+            >
+              <Icon name="Incognito" className="size-3.5" aria-hidden />
+            </span>
+          ) : null}
           {crossProjectLabel !== null ? (
             <Tooltip>
               <TooltipTrigger asChild>
