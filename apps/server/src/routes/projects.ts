@@ -54,11 +54,12 @@ import {
   requirePublicProject,
   requirePublicStandardProject,
 } from "../services/lib/entity-lookup.js";
-import {
-  isWindowsHostPath,
-  PROMPT_HISTORY_ENTRY_LIMIT,
-} from "@bb/domain";
+import { isWindowsHostPath, PROMPT_HISTORY_ENTRY_LIMIT } from "@bb/domain";
 import { toThreadListEntryResponses } from "../services/threads/thread-runtime-display.js";
+import {
+  clearProjectExecutionDefaults,
+  setProjectExecutionDefaults,
+} from "../services/threads/project-execution-defaults.js";
 import { callHostRetryableOnlineRpc } from "../services/hosts/online-rpc.js";
 import {
   cloneProjectSourceOnHost,
@@ -485,6 +486,21 @@ export function registerProjectRoutes(app: Hono, deps: AppDeps): void {
     const projectId = context.req.param("id");
     requirePublicProject(deps.db, projectId);
     return context.json(getProjectExecutionDefaults(deps.db, { projectId }));
+  });
+
+  put(routes.setDefaultExecutionOptions, (context, payload) => {
+    const projectId = context.req.param("id");
+    requirePublicProject(deps.db, projectId);
+    return context.json(
+      setProjectExecutionDefaults(deps, { projectId, request: payload }),
+    );
+  });
+
+  del(routes.clearDefaultExecutionOptions, (context) => {
+    const projectId = context.req.param("id");
+    requirePublicProject(deps.db, projectId);
+    clearProjectExecutionDefaults(deps, projectId);
+    return context.json({ ok: true });
   });
 
   get(routes.promptHistory, (context, query) => {

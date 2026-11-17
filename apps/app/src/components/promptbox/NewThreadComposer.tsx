@@ -921,19 +921,38 @@ export function NewThreadComposer({
       seed?.model === undefined ||
       seed?.reasoningLevel === undefined ||
       seed?.permissionMode === undefined);
+  const generalSettings = systemConfigQuery.data?.generalSettings;
+  const globalDefaultProviderId = generalSettings?.defaultProviderId ?? null;
+  const globalExecutionDefaults =
+    globalDefaultProviderId === null
+      ? null
+      : {
+          providerId: globalDefaultProviderId,
+          model: generalSettings?.defaultModel ?? undefined,
+          reasoningLevel: generalSettings?.defaultReasoningLevel ?? undefined,
+        };
+  const executionDefaults =
+    projectDefaults === undefined
+      ? undefined
+      : (projectDefaults ?? globalExecutionDefaults);
+  const initialProviderId = seed?.providerId ?? executionDefaults?.providerId;
+  const providerDefaults =
+    executionDefaults?.providerId === initialProviderId
+      ? executionDefaults
+      : undefined;
   const creationOptions = useThreadCreationOptions({
     scope: selectionScope,
     preferenceProjectId: projectId,
     catalogProjectId: isProjectless ? undefined : projectId,
     resetKey: `${projectId}\0${seedSignature}`,
     resolveProviderRouting,
-    initialProviderId: seed?.providerId ?? projectDefaults?.providerId,
+    initialProviderId,
     preferReadyProviderWhenUnset:
-      preferReadyProviderWhenUnset && projectDefaults === null,
-    initialModel: seed?.model ?? projectDefaults?.model,
+      preferReadyProviderWhenUnset && executionDefaults === null,
+    initialModel: seed?.model ?? providerDefaults?.model,
     initialServiceTier: seed?.serviceTier ?? projectDefaults?.serviceTier,
     initialReasoningLevel:
-      seed?.reasoningLevel ?? projectDefaults?.reasoningLevel,
+      seed?.reasoningLevel ?? providerDefaults?.reasoningLevel,
     initialPermissionMode:
       seed?.permissionMode ?? projectDefaults?.permissionMode,
     initialEnvironmentSelectionValue: environmentSeed?.selectionValue,

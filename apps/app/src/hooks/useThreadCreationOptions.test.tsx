@@ -1569,6 +1569,63 @@ describe("useThreadCreationOptions", () => {
     });
   });
 
+  it("opens a new-thread composer on the resolved defaults over the last pick until the user changes them", async () => {
+    window.localStorage.setItem("bb.promptbox.provider", GLOBAL_PROVIDER_ID);
+    window.localStorage.setItem(
+      `bb.promptbox.model-${PROJECT_PROVIDER_ID}-1`,
+      "project-default",
+    );
+    window.localStorage.setItem(
+      `bb.promptbox.reasoning-${PROJECT_PROVIDER_ID}-1`,
+      "high",
+    );
+    vi.mocked(sdk.system.executionOptions).mockImplementation(async (args) =>
+      providerExecutionOptionsResponse(args?.providerId),
+    );
+    const { result, rerender } = renderHook(
+      ({ resetKey }: { resetKey: string }) =>
+        useThreadCreationOptions({
+          scope: "new-thread",
+          resetKey,
+          initialProviderId: PROJECT_PROVIDER_ID,
+          initialModel: "project-remembered",
+          initialReasoningLevel: "medium",
+        }),
+      {
+        initialProps: { resetKey: "project-a" },
+        wrapper: createQueryClientTestHarness().wrapper,
+      },
+    );
+
+    await waitFor(() => {
+      expect(result.current.selectedProviderId).toBe(PROJECT_PROVIDER_ID);
+      expect(result.current.selectedModel).toBe("project-remembered");
+      expect(result.current.reasoningLevel).toBe("medium");
+    });
+    expect(result.current.executionInputSources).not.toHaveProperty(
+      "providerId",
+    );
+    expect(result.current.executionInputSources).not.toHaveProperty("model");
+    expect(result.current.executionInputSources).not.toHaveProperty(
+      "reasoningLevel",
+    );
+
+    act(() => {
+      result.current.setSelectedModel("project-default");
+    });
+    await waitFor(() => {
+      expect(result.current.selectedModel).toBe("project-default");
+      expect(result.current.executionInputSources.model).toBe("explicit");
+    });
+
+    rerender({ resetKey: "project-b" });
+    await waitFor(() => {
+      expect(result.current.selectedProviderId).toBe(PROJECT_PROVIDER_ID);
+      expect(result.current.selectedModel).toBe("project-remembered");
+      expect(result.current.reasoningLevel).toBe("medium");
+    });
+  });
+
   it("overrides a stale project model default when creating a new thread", async () => {
     const { wrapper } = createQueryClientTestHarness();
     const { result } = renderHook(

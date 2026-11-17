@@ -334,6 +334,8 @@ type ExpectedProjectsKey =
   | "commands"
   | "create"
   | "defaultExecutionOptions"
+  | "setDefaultExecutionOptions"
+  | "clearDefaultExecutionOptions"
   | "delete"
   | "fileContent"
   | "files"

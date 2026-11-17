@@ -91,7 +91,14 @@ export interface ThreadExecutionDefaults {
   serviceTier: ServiceTier;
 }
 
+export interface GlobalExecutionDefaults {
+  providerId: string | null;
+  model: string | null;
+  reasoningLevel: ReasoningLevel | null;
+}
+
 interface ResolveThreadExecutionDefaultsArgs {
+  globalDefaults: GlobalExecutionDefaults;
   parent: ThreadParentExecution | null;
   projectDefaults: ProjectExecutionDefaults | null;
   providerId: string;
@@ -156,7 +163,7 @@ function requireHostEnvironmentId(
   throw new Error("Host environment is missing hostId");
 }
 
-function resolveSupportedPermissionMode(
+export function resolveSupportedPermissionMode(
   registry: ProviderRegistryService,
   args: ResolveSupportedPermissionModeArgs,
 ): PermissionMode {
@@ -230,8 +237,12 @@ export function resolveThreadExecutionDefaults(
       : null;
   const parent =
     args.parent?.providerId === args.providerId ? args.parent.execution : null;
+  const global =
+    args.globalDefaults.providerId === args.providerId
+      ? args.globalDefaults
+      : null;
   return {
-    model: parent?.model ?? project?.model ?? null,
+    model: parent?.model ?? project?.model ?? global?.model ?? null,
     permissionMode:
       args.parent !== null
         ? resolveSupportedPermissionMode(registry, {
@@ -248,6 +259,7 @@ export function resolveThreadExecutionDefaults(
     reasoningLevel:
       parent?.reasoningLevel ??
       project?.reasoningLevel ??
+      global?.reasoningLevel ??
       DEFAULT_REASONING_LEVEL,
     serviceTier:
       parent?.serviceTier ?? project?.serviceTier ?? DEFAULT_SERVICE_TIER,

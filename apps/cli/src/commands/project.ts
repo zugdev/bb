@@ -1,6 +1,7 @@
 import { readFile, writeFile } from "node:fs/promises";
 import { basename } from "node:path";
 import { Command } from "commander";
+import type { ProjectExecutionDefaults } from "@bb/domain";
 import type {
   CreateProjectSourceRequest,
   HostDiscoveredRepo,
@@ -70,6 +71,14 @@ function addProjectWorkspaceRoutingOptions(command: Command): Command {
       "--environment <id>",
       "Environment workspace (mutually exclusive with machine)",
     );
+}
+
+interface ProjectDefaultsCommandOptions {
+  clear?: boolean;
+  json?: boolean;
+  model?: string;
+  provider?: string;
+  reasoning?: string;
 }
 
 interface ProjectUpdateCommandOptions {
@@ -552,6 +561,67 @@ export function registerProjectCommands(
     );
 
   project
+    .command("defaults <id>")
+    .description(
+      "Show, set, or clear the provider, model, and reasoning new threads in a project start on",
+    )
+    .option("--provider <id>", "Provider for new threads")
+    .option("--model <model>", "Model for new threads")
+    .option("--reasoning <level>", "Reasoning level for new threads")
+    .option("--clear", "Remove the project's defaults")
+    .option("--json", "Print machine-readable JSON output")
+    .action(
+      action(async (id: string, opts: ProjectDefaultsCommandOptions) => {
+        const sdk = createCliBbSdk(getUrl());
+        const setFlags = [opts.provider, opts.model, opts.reasoning];
+        const anySetFlag = setFlags.some((value) => value !== undefined);
+        if (opts.clear) {
+          if (anySetFlag) {
+            throw new Error(
+              "--clear cannot be combined with --provider, --model, or --reasoning.",
+            );
+          }
+          const result = await sdk.projects.clearDefaultExecutionOptions({
+            projectId: id,
+          });
+          if (outputJson(opts, result)) return;
+          console.log(`Defaults cleared for project ${id}`);
+          return;
+        }
+        if (!anySetFlag) {
+          const defaults = await sdk.projects.defaultExecutionOptions({
+            projectId: id,
+          });
+          if (outputJson(opts, defaults)) return;
+          if (defaults === null) {
+            console.log(`Project ${id} has no defaults`);
+            return;
+          }
+          printProjectDefaults(defaults);
+          return;
+        }
+        if (
+          opts.provider === undefined ||
+          opts.model === undefined ||
+          opts.reasoning === undefined
+        ) {
+          throw new Error(
+            "Setting defaults needs --provider, --model, and --reasoning together.",
+          );
+        }
+        const defaults = await sdk.projects.setDefaultExecutionOptions({
+          projectId: id,
+          providerId: opts.provider,
+          model: opts.model,
+          reasoningLevel: opts.reasoning,
+        });
+        if (outputJson(opts, defaults)) return;
+        console.log(`Defaults set for project ${id}`);
+        printProjectDefaults(defaults);
+      }),
+    );
+
+  project
     .command("update <id>")
     .description("Update a project")
     .option("--name <name>", "Set the project name")
@@ -719,6 +789,16 @@ function printProject(project: ProjectResponse): void {
       console.log(`    ${source.type}  ${source.path}${defaultMarker}`);
     }
   }
+  console.log("");
+}
+
+function printProjectDefaults(defaults: ProjectExecutionDefaults): void {
+  console.log("");
+  console.log(`  Provider:         ${defaults.providerId}`);
+  console.log(`  Model:            ${defaults.model}`);
+  console.log(`  Reasoning:        ${defaults.reasoningLevel}`);
+  console.log(`  Permission mode:  ${defaults.permissionMode}`);
+  console.log(`  Service tier:     ${defaults.serviceTier}`);
   console.log("");
 }
 

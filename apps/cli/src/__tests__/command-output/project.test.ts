@@ -779,4 +779,87 @@ describe("bb project command output", () => {
       }),
     );
   });
+
+  it("bb project defaults sets the provider, model, and reasoning for proj_personal", async () => {
+    const put = vi.fn(async () => ({
+      providerId: "codex",
+      model: "gpt-6.1-terra",
+      reasoningLevel: "low",
+      permissionMode: "auto",
+      serviceTier: "default",
+    }));
+    stubServerApi({ "v1.projects.:id.default-execution-options.$put": put });
+
+    await runCommand(
+      [
+        "project",
+        "defaults",
+        "proj_personal",
+        "--provider",
+        "codex",
+        "--model",
+        "gpt-6.1-terra",
+        "--reasoning",
+        "low",
+      ],
+      register,
+    );
+
+    expect(put).toHaveBeenCalledWith({
+      param: { id: "proj_personal" },
+      json: {
+        providerId: "codex",
+        model: "gpt-6.1-terra",
+        reasoningLevel: "low",
+      },
+    });
+    expect(collectLogLines(vi.mocked(console.log))).toEqual([
+      "Defaults set for project proj_personal",
+      "",
+      "  Provider:         codex",
+      "  Model:            gpt-6.1-terra",
+      "  Reasoning:        low",
+      "  Permission mode:  auto",
+      "  Service tier:     default",
+      "",
+    ]);
+  });
+
+  it("bb project defaults with no flags says when a project has none", async () => {
+    const get = vi.fn(async () => null);
+    stubServerApi({ "v1.projects.:id.default-execution-options.$get": get });
+
+    await runCommand(["project", "defaults", "proj-1"], register);
+
+    expect(collectLogLines(vi.mocked(console.log))).toEqual([
+      "Project proj-1 has no defaults",
+    ]);
+  });
+
+  it("bb project defaults --clear deletes the defaults", async () => {
+    const del = vi.fn(async () => ({ ok: true }));
+    stubServerApi({
+      "v1.projects.:id.default-execution-options.$delete": del,
+    });
+
+    await runCommand(["project", "defaults", "proj-1", "--clear"], register);
+
+    expect(del).toHaveBeenCalledWith({ param: { id: "proj-1" } });
+    expect(collectLogLines(vi.mocked(console.log))).toEqual([
+      "Defaults cleared for project proj-1",
+    ]);
+  });
+
+  it("bb project defaults rejects a partial set", async () => {
+    await expect(
+      runCommand(
+        ["project", "defaults", "proj-1", "--provider", "codex"],
+        register,
+      ),
+    ).rejects.toThrow("process.exit:1");
+
+    expect(console.error).toHaveBeenCalledWith(
+      "Error: Setting defaults needs --provider, --model, and --reasoning together.",
+    );
+  });
 });

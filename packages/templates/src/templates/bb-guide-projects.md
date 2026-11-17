@@ -29,6 +29,18 @@ A project maps to a code repository. All threads belong to a project.
 
   bb project show <id>                    Show project details
     Accepts proj_personal to inspect Personal.
+  bb project defaults <id>                Show the project's new thread defaults
+    --provider <id>                       Set the provider (needs --model, --reasoning)
+    --model <model>                       Set the model
+    --reasoning <level>                   Set the reasoning level
+    --clear                               Remove the project's defaults
+    Accepts proj_personal for threads without a project. A new thread whose
+    request omits provider, model, or reasoning takes them from the project
+    defaults, then from the defaultProviderId, defaultModel, and
+    defaultReasoningLevel general settings. Permission mode is the provider's
+    auto mode when it has one, and service tier is the default. SDK:
+    projects.defaultExecutionOptions, projects.setDefaultExecutionOptions, and
+    projects.clearDefaultExecutionOptions.
   bb project update <id>                  Update a project
     --name <name>                         New name
 

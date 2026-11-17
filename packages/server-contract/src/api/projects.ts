@@ -3,10 +3,13 @@ import {
   FILE_LIST_QUERY_MAX_LENGTH,
   getProjectPathValidationMessage,
   normalizeProjectPathInput,
+  permissionModeSchema,
   projectExecutionDefaultsSchema,
   projectSchema,
   projectSourceSchema,
   promptHistoryEntrySchema,
+  reasoningLevelSchema,
+  serviceTierSchema,
   threadListEntrySchema,
   gitBranchNameSchema,
   projectSourceCheckoutSchema,
@@ -213,6 +216,19 @@ export type ProjectAttachmentContentQuery = z.infer<
 export const projectDefaultExecutionOptionsQuerySchema = z.object({});
 export type ProjectDefaultExecutionOptionsQuery = z.infer<
   typeof projectDefaultExecutionOptionsQuerySchema
+>;
+
+export const setProjectDefaultExecutionOptionsRequestSchema = z
+  .object({
+    providerId: z.string().min(1),
+    model: z.string().min(1),
+    reasoningLevel: reasoningLevelSchema,
+    permissionMode: permissionModeSchema.optional(),
+    serviceTier: serviceTierSchema.optional(),
+  })
+  .strict();
+export type SetProjectDefaultExecutionOptionsRequest = z.infer<
+  typeof setProjectDefaultExecutionOptionsRequestSchema
 >;
 
 export const promptHistoryQuerySchema = z

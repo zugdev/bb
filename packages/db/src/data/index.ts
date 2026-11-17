@@ -41,6 +41,7 @@ export type {
 } from "./prompt-history.js";
 
 export {
+  deleteProjectExecutionDefaults,
   getProjectExecutionDefaults,
   listProjectExecutionDefaultsByProjectIds,
   upsertProjectExecutionDefaults,
