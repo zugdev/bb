@@ -160,6 +160,15 @@ export function NewThreadOverview({
       >
         <div className="flex flex-wrap items-center gap-1.5">
           {picker}
+          <button
+            type="button"
+            aria-pressed={projectId === null}
+            disabled={setProjectId === null}
+            onClick={() => setProjectId?.(null)}
+            className={pillClass(projectId === null)}
+          >
+            No project
+          </button>
           {recent.map((option) => {
             const selected = option.id === projectId;
             return (

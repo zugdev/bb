@@ -131,9 +131,10 @@ describe("NewThreadOverview", () => {
           button.closest('[aria-label="Thread filters"]') === null,
       );
     expect(chips.map((chip) => chip.textContent)).toEqual(
-      ["newest", "recent", "mid", "older", "old", "never"],
+      ["No project", "newest", "recent", "mid", "older", "old", "never"],
     );
     expect(chips.map((chip) => chip.getAttribute("aria-pressed"))).toEqual([
+      "false",
       "false",
       "false",
       "true",
@@ -142,8 +143,10 @@ describe("NewThreadOverview", () => {
       "false",
     ]);
     expect(screen.getByText("⌥ O")).toBeTruthy();
-    fireEvent.click(chips[1]!);
+    fireEvent.click(chips[2]!);
     expect(setProjectId).toHaveBeenCalledWith("recent");
+    fireEvent.click(chips[0]!);
+    expect(setProjectId).toHaveBeenCalledWith(null);
   });
 
   it("disables the chips while the project can't change", () => {
