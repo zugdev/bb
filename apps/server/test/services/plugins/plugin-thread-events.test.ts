@@ -300,6 +300,7 @@ describe("plugin thread lifecycle events", () => {
         providerId: "codex",
         startedOnBehalfOf: null,
         titleFallback: "Plugin event test thread",
+        incognito: false,
         visibility: "visible",
         parentNotifications: "auto",
       };
@@ -363,6 +364,7 @@ describe("plugin thread lifecycle events", () => {
               providerId: "codex",
               startedOnBehalfOf: null,
               titleFallback: "Hidden plugin worker",
+              incognito: false,
               visibility: "hidden",
               parentNotifications: "auto",
             },

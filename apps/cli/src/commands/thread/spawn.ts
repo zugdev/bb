@@ -75,6 +75,7 @@ interface ThreadSpawnCommandOptions {
   image?: string[];
   section?: string;
   pinned?: boolean;
+  incognito?: boolean;
   originKind?: string;
   sourceThread?: string;
   sourceSeqEnd?: string;
@@ -400,6 +401,10 @@ export function registerSpawnCommand(
     .option("--section <id>", "Create the thread in a section")
     .option("--pinned", "Create the thread in Pinned")
     .option(
+      "--incognito",
+      "Skip AI titles, AI commit messages and telemetry, write no provider session files, and delete the thread when it is archived",
+    )
+    .option(
       "--visibility <visibility>",
       "Thread visibility: visible or hidden (a child inherits its parent)",
     )
@@ -626,6 +631,7 @@ export function registerSpawnCommand(
               : {}),
             ...(opts.section ? { sectionId: opts.section } : {}),
             ...(opts.pinned ? { pinned: true } : {}),
+            ...(opts.incognito ? { incognito: true } : {}),
             ...(opts.sourceThread ? { sourceThreadId: opts.sourceThread } : {}),
             ...(sourceSeqEnd !== undefined ? { sourceSeqEnd } : {}),
             ...(sendAt !== undefined ? { sendAt } : {}),

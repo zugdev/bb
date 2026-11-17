@@ -729,6 +729,10 @@ export async function createThreadFromRequest(
     ...(sourceThread ? { sourceThreadId: sourceThread.id } : {}),
     originKind,
     parentNotifications: requestInput.parentNotifications ?? "auto",
+    incognito:
+      requestInput.incognito === true ||
+      parentThread?.incognito === true ||
+      sourceThread?.incognito === true,
     pluginMetadata,
     visibility: resolveCreateThreadVisibility({
       parentThread,
@@ -859,6 +863,9 @@ export async function createThreadFromRequest(
     ...createArgs,
     sendAt: request.sendAt,
   });
+  if (request.incognito) {
+    return thread;
+  }
   const { initiator } = resolveDispatchAuthor({
     retrying: false,
     systemNotice: false,

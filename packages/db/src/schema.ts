@@ -643,6 +643,9 @@ export const threads = sqliteTable(
     })
       .notNull()
       .default("auto"),
+    incognito: integer("incognito", { mode: "boolean" })
+      .notNull()
+      .default(false),
     archivedAt: integer("archived_at"),
     pinnedAt: integer("pinned_at"),
     pinSortKey: text("pin_sort_key"),

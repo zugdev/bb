@@ -340,6 +340,7 @@ export async function buildThreadStartCommand(
     contributedEnv: runtimeContext.contributedEnv,
     injectedSkillSources: runtimeContext.injectedSkillSources,
     instructionMode: runtimeContext.instructionMode,
+    ephemeral: runtimeContext.ephemeral,
     threadStoragePath: runtimeContext.threadStoragePath,
     ...(args.fork ? { fork: args.fork } : {}),
   };
@@ -382,6 +383,7 @@ function buildPreparedTurnSubmitCommandPayload(
       contributedEnv: args.runtimeContext.contributedEnv,
       injectedSkillSources: args.runtimeContext.injectedSkillSources,
       instructionMode: args.runtimeContext.instructionMode,
+      ephemeral: args.runtimeContext.ephemeral,
     },
   };
 }

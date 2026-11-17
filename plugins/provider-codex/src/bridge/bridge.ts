@@ -431,6 +431,7 @@ function describeCodexLaunchError(error: unknown): string {
 interface CodexSessionConstruction {
   cwd: string;
   instructionMode: "append" | "replace";
+  ephemeral: boolean;
   dynamicTools: DynamicTool[] | undefined;
 }
 
@@ -1203,6 +1204,7 @@ interface ConstructThreadSessionArgs {
   cwd: string;
   options: BridgeExecutionOptions;
   instructionMode: "append" | "replace";
+  ephemeral: boolean;
   dynamicTools?: DynamicTool[];
   request: CodexSessionConstructionRequest;
 }
@@ -1241,6 +1243,7 @@ async function constructThreadSession(
     construction: {
       cwd: args.cwd,
       instructionMode: args.instructionMode,
+      ephemeral: args.ephemeral,
       dynamicTools: args.dynamicTools,
     },
     constructionSignature: constructionSignature(
@@ -1354,7 +1357,7 @@ async function constructThreadSession(
         method = "thread/start";
         const startParams: BbThreadStartParams = {
           ...sharedConstructionParams,
-          ephemeral: false,
+          ephemeral: args.ephemeral,
           experimentalRawEvents: true,
           ...(decoded.daybreak === null
             ? {}
@@ -1514,6 +1517,7 @@ async function rebuildThreadSession(
       cwd: session.construction.cwd,
       options,
       instructionMode: session.construction.instructionMode,
+      ephemeral: session.construction.ephemeral,
       ...(session.construction.dynamicTools !== undefined
         ? { dynamicTools: session.construction.dynamicTools }
         : {}),
@@ -1655,6 +1659,7 @@ async function handleThreadConstruction(
       cwd: params.cwd,
       options: params.options,
       instructionMode: params.instructionMode,
+      ephemeral: params.ephemeral,
       ...(params.dynamicTools !== undefined
         ? { dynamicTools: params.dynamicTools }
         : {}),

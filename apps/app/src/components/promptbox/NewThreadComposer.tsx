@@ -209,6 +209,7 @@ interface NewThreadComposerPromptOptions {
   placeholder?: string;
   autoFocus?: boolean;
   banner?: ReactNode;
+  incognitoControl?: ReactNode;
   blocker?: NewThreadBlocker;
   resolveMentionLink?: PromptMentionLinkResolver;
   pluginComposerHost?: PluginComposerHost;
@@ -2091,6 +2092,7 @@ export function NewThreadComposer({
               ),
             environmentProviderInputsSlot,
             machineProviderInputsSlot: machineProviderInputs.control,
+            incognitoControl: options.incognitoControl,
             banner:
               options.banner ??
               (machineServerAccessReason !== null ? (

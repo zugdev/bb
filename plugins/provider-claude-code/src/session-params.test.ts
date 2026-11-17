@@ -82,6 +82,7 @@ describe("buildClaudeSessionParams", () => {
       threadId: "thread-1",
       cwd: "/tmp/worktree",
       instructionMode: "append",
+      ephemeral: false,
       dynamicTools: [
         { name: "tool", description: "desc", inputSchema: { type: "object" } },
       ],
@@ -112,6 +113,7 @@ describe("buildClaudeSessionParams", () => {
       threadId: "thread-1",
       cwd: "/tmp/worktree",
       instructionMode: "append",
+      ephemeral: false,
       options: FULL_POLICY,
     });
     expect(params).toMatchObject({
@@ -130,6 +132,7 @@ describe("buildClaudeSessionParams", () => {
         threadId: "thread-1",
         cwd: "/tmp/worktree",
         instructionMode: "append",
+        ephemeral: false,
         options: {
           ...FULL_POLICY,
           providerOptions: { workflowsEnabled: false },
@@ -141,6 +144,7 @@ describe("buildClaudeSessionParams", () => {
         threadId: "thread-1",
         cwd: "/tmp/worktree",
         instructionMode: "append",
+        ephemeral: false,
         options: {
           ...FULL_POLICY,
           providerOptions: { workflowsEnabled: true },
@@ -175,6 +179,7 @@ describe("claude session workspace-write roots", () => {
         threadId: "bb-thread-1",
         cwd: "/tmp/worktree",
         instructionMode: "append",
+        ephemeral: false,
         options: toWireOptionsWithRoots({
           policy: WORKSPACE_ACCEPT_EDITS_POLICY,
           additionalWorkspaceWriteRoots: [],
@@ -187,6 +192,7 @@ describe("claude session workspace-write roots", () => {
     const shared = {
       cwd: "/tmp/worktree",
       instructionMode: "append" as const,
+      ephemeral: false,
     };
     const autoParams = buildClaudeSessionParams({
       ...shared,
@@ -219,6 +225,7 @@ describe("claude session option passthrough", () => {
       threadId: "bb-thread-1",
       cwd: "/tmp/worktree",
       instructionMode: "append",
+      ephemeral: false,
       options: {
         ...WORKSPACE_ACCEPT_EDITS_POLICY,
         permissionEscalation: "ask",

@@ -26,6 +26,7 @@ import { SdkSession, type SdkSessionOptions } from "../sdk-session.js";
 const defaultOptions: SdkSessionOptions = {
   cwd: "/tmp/test",
   systemPrompt: "You are a test assistant.",
+  persistSession: true,
   allowBypassPermissions: false,
 };
 
@@ -182,6 +183,22 @@ describe("SdkSession", () => {
         options: expect.objectContaining({
           pathToClaudeCodeExecutable: "/usr/local/bin/claude",
         }),
+      }),
+    );
+  });
+
+  it("tells the SDK not to write a transcript for sessions that must not persist", () => {
+    const session = new SdkSession(
+      { ...defaultOptions, persistSession: false },
+      vi.fn(),
+      vi.fn(),
+    );
+
+    session.start();
+
+    expect(queryMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        options: expect.objectContaining({ persistSession: false }),
       }),
     );
   });

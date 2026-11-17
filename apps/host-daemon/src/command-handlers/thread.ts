@@ -214,6 +214,7 @@ async function resumeThreadRuntimeIfMissing(
     instructions: resumeContext.instructions,
     dynamicTools: resumeContext.dynamicTools,
     instructionMode: resumeContext.instructionMode,
+    ephemeral: resumeContext.ephemeral,
   });
 }
 
@@ -255,6 +256,7 @@ export async function startThread(
       instructions: command.instructions,
       dynamicTools: command.dynamicTools,
       instructionMode: command.instructionMode,
+      ephemeral: command.ephemeral,
       ...(command.fork ? { fork: command.fork } : {}),
     });
     return result;
@@ -288,6 +290,7 @@ export async function prepareThreadRewind(
     instructions: command.instructions,
     dynamicTools: command.dynamicTools,
     instructionMode: command.instructionMode,
+    ephemeral: command.ephemeral,
   });
 }
 

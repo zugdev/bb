@@ -20,6 +20,7 @@ export interface BuildSessionOptionsArgs {
   baseInstructions?: string;
   cwd: string;
   instructionMode: InstructionMode;
+  ephemeral: boolean;
   model?: string;
   permissionMode: ClaudePermissionMode;
   permissionScope: RuntimePermissionScope;
@@ -250,6 +251,7 @@ export function buildSessionOptions(
   return {
     cwd: params.cwd,
     systemPrompt,
+    persistSession: !params.ephemeral,
     model,
     env: {
       ...env,

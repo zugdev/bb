@@ -1095,7 +1095,7 @@ describe("host-daemon command schemas", () => {
   });
 
   it("uses the current host-daemon protocol version", () => {
-    expect(HOST_DAEMON_PROTOCOL_VERSION).toBe(260);
+    expect(HOST_DAEMON_PROTOCOL_VERSION).toBe(261);
     expect(HOST_ARTIFACT_MAX_BYTES).toBe(256 * 1024 * 1024);
   });
 
@@ -1115,7 +1115,8 @@ describe("host-daemon command schemas", () => {
     expect(contract.isCompatibleHostDaemonProtocolVersion(257)).toBe(false);
     expect(contract.isCompatibleHostDaemonProtocolVersion(258)).toBe(false);
     expect(contract.isCompatibleHostDaemonProtocolVersion(259)).toBe(false);
-    expect(contract.isCompatibleHostDaemonProtocolVersion(260)).toBe(true);
+    expect(contract.isCompatibleHostDaemonProtocolVersion(260)).toBe(false);
+    expect(contract.isCompatibleHostDaemonProtocolVersion(261)).toBe(true);
     expect(contract.hostDaemonSupportsConnectNext(246)).toBe(false);
     expect(contract.hostDaemonSupportsConnectNext(247)).toBe(true);
     expect(contract.hostDaemonSupportsDesktopBrokerProof(247)).toBe(false);
@@ -1791,6 +1792,7 @@ describe("host-daemon command schemas", () => {
         contributedEnv: [],
         injectedSkillSources: [],
         instructionMode: "append",
+        ephemeral: false,
         requestId: CLIENT_REQUEST_ID,
         input: [{ type: "text", text: "hello", mentions: [] }],
       }),
@@ -1826,6 +1828,7 @@ describe("host-daemon command schemas", () => {
           contributedEnv: [],
           injectedSkillSources: [],
           instructionMode: "append",
+          ephemeral: false,
         },
         target: { mode: "start" },
       }),
@@ -1883,6 +1886,7 @@ describe("host-daemon command schemas", () => {
         contributedEnv: [],
         injectedSkillSources: [],
         instructionMode: "replace",
+        ephemeral: false,
       }),
     ).toMatchObject({
       type: "thread.start",
@@ -1947,6 +1951,7 @@ describe("host-daemon command schemas", () => {
         contributedEnv: [],
         injectedSkillSources: [],
         instructionMode: "append" as const,
+        ephemeral: false,
       };
 
       expect(hostDaemonCommandSchema.parse(command)).toMatchObject({
@@ -1990,6 +1995,7 @@ describe("host-daemon command schemas", () => {
       contributedEnv: [],
       injectedSkillSources: [],
       instructionMode: "replace",
+      ephemeral: false,
     };
 
     expect(() => hostDaemonCommandSchema.parse(threadStartCommand)).toThrow(
@@ -2034,6 +2040,7 @@ describe("host-daemon command schemas", () => {
         contributedEnv: [],
         injectedSkillSources: [],
         instructionMode: "append",
+        ephemeral: false,
       },
       target: { mode: "start" },
     };
@@ -2096,6 +2103,7 @@ describe("host-daemon command schemas", () => {
       contributedEnv: CONTRIBUTED_ENV,
       injectedSkillSources: [],
       instructionMode: "append",
+      ephemeral: false,
     };
     const threadStartRoundTrip = JSON.parse(JSON.stringify(threadStartCommand));
 
@@ -2133,6 +2141,7 @@ describe("host-daemon command schemas", () => {
         contributedEnv: CONTRIBUTED_ENV,
         injectedSkillSources: [],
         instructionMode: "append",
+        ephemeral: false,
       },
       target: { mode: "start" },
     };
@@ -2211,6 +2220,7 @@ describe("host-daemon command schemas", () => {
       contributedEnv: [],
       injectedSkillSources: [],
       instructionMode: "append",
+      ephemeral: false,
     };
     expect(
       hostDaemonCommandSchema.parse(
@@ -2235,6 +2245,7 @@ describe("host-daemon command schemas", () => {
         contributedEnv: [],
         injectedSkillSources: [],
         instructionMode: "append",
+        ephemeral: false,
       },
     };
     expect(
@@ -2377,6 +2388,7 @@ describe("host-daemon command schemas", () => {
           contributedEnv: [],
           injectedSkillSources: [],
           instructionMode: "append",
+          ephemeral: false,
         },
         target: { mode: "start" },
       }),
@@ -2423,6 +2435,7 @@ describe("host-daemon command schemas", () => {
           contributedEnv: [],
           injectedSkillSources: [],
           instructionMode: "append",
+          ephemeral: false,
         },
         target: { mode: "auto", expectedTurnId: "turn_123" },
       }),
@@ -2523,6 +2536,7 @@ describe("host-daemon command schemas", () => {
         contributedEnv: [],
         injectedSkillSources: [],
         instructionMode: "append",
+        ephemeral: false,
       }),
     ).toThrow();
 
@@ -2558,6 +2572,7 @@ describe("host-daemon command schemas", () => {
           contributedEnv: [],
           injectedSkillSources: [],
           instructionMode: "append",
+          ephemeral: false,
         },
         target: { mode: "start" },
       }),

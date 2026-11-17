@@ -71,6 +71,7 @@ Spawning:
                                    unpinning reveals it in that section)
     --visibility <visibility>      visible or hidden; a child inherits its parent by default
     --parent-notifications <value> auto (default), stuck, or off; which outcomes wake the parent
+    --incognito                    Create an incognito thread (see below)
     --send-at <when>               Dispatch the first message at an ISO 8601 timestamp or a duration from now (30s, 10m, 2h, 7d)
     --file <path>                  CLI-local absolute path, file: URL, or uploaded file path
     --image <path>                 CLI-local absolute path, file: URL, or uploaded image path
@@ -104,6 +105,15 @@ Spawning:
   say so in its prompt. off reports nothing. Under stuck and off, unassigning
   the child does not notify the former parent either. `bb status` and
   `bb thread show` print the value for a child thread.
+  --incognito creates a thread that bb keeps off AI services and disk where it
+  can: no AI title (the title is the start of the prompt), no AI commit
+  message for its environment, no usage telemetry, and the provider writes no
+  session files (Claude Code runs with persistSession off, Codex with an
+  ephemeral thread). Archiving it deletes it. Children and forks of an
+  incognito thread are incognito too. The thread can't resume once its
+  provider session ends, for example after a restart, and can't be forked or
+  rewound. Prompts still reach the provider's API. The New thread page has an
+  Incognito toggle, and `bb thread show` prints "Incognito: yes".
   A machine selector accepts an exact ID or an unambiguous name. It works with
   an unmanaged --environment path, --new-environment worktree, or the personal
   workspace. It cannot be combined with an existing environment ID because that

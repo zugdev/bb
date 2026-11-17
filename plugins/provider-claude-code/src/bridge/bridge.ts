@@ -1065,6 +1065,7 @@ function toSessionConstructionConfig(
       artifactsEnabled: params.artifactsEnabled,
       cwd: params.cwd,
       instructionMode: params.instructionMode,
+      ephemeral: params.ephemeral,
       permissionMode: params.permissionMode,
       permissionScope: params.permissionScope,
       plugins: params.plugins,
@@ -2577,6 +2578,7 @@ async function toClaudeSessionParams(
     cwd: params.cwd,
     options: params.options,
     instructionMode: params.instructionMode,
+    ephemeral: params.ephemeral,
     dynamicTools: params.dynamicTools,
     skillRoots: roots,
   });

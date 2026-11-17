@@ -589,7 +589,10 @@ async function sendThreadMessageWithoutContextClear(
     startedOnBehalfOf: null,
   });
   const shouldCaptureUserMessageSent =
-    args.trigger === "user" && initiator === "user" && input.length > 0;
+    args.trigger === "user" &&
+    initiator === "user" &&
+    input.length > 0 &&
+    !thread.incognito;
   const telemetryInitiator = resolveTelemetryInitiator({
     origin: args.payload.originPluginId === undefined ? null : "plugin",
     originPluginId: args.payload.originPluginId ?? null,

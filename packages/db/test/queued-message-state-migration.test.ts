@@ -12,6 +12,7 @@ import {
   dropQueuedMessageDeliveryColumns,
   dropThreadLastUserMessageAtColumn,
   dropThreadSnoozedUntilColumn,
+  dropThreadIncognitoColumn,
   rewindQueuedMessageStateMigration,
 } from "./helpers/rewind.js";
 
@@ -63,6 +64,7 @@ function rewoundDatabase(): { db: DbConnection; threadId: string } {
   dropQueuedMessageDeliveryColumns(db);
   dropThreadLastUserMessageAtColumn(db);
   dropThreadSnoozedUntilColumn(db);
+  dropThreadIncognitoColumn(db);
   return { db, threadId: thread.id };
 }
 

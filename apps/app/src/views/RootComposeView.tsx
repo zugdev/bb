@@ -14,6 +14,7 @@ import { composerDraftScope, splitTabsAtom } from "@/lib/split-layout/tabs";
 import type { PromptDraftScope } from "@/hooks/usePromptDraftStorage";
 import { useInitialPromptDraft } from "@/components/promptbox/mentions/initial-prompt-draft";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { IncognitoToggle } from "@/components/promptbox/IncognitoToggle";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useSystemProviders } from "@/hooks/queries/system-queries";
 import {
@@ -418,6 +419,7 @@ export function RootComposeView() {
     useRootComposeProjectId();
   const createThread = useCreateThread();
   const [placement, setPlacement] = useRootComposePlacement();
+  const [incognito, setIncognito] = useState(false);
   const [lastCreatedThreadId, setLastCreatedThreadId] = useState<string | null>(
     null,
   );
@@ -430,6 +432,7 @@ export function RootComposeView() {
       const thread = await createThread.mutateAsync({
         ...requestFields,
         ...placement,
+        ...(incognito ? { incognito } : {}),
         ...(sendAt === undefined ? {} : { sendAt }),
       });
       setLastCreatedThreadId(thread.id);
@@ -440,6 +443,7 @@ export function RootComposeView() {
     },
     [
       createThread,
+      incognito,
       navigateInPane,
       navigateToThreadAfterCreate,
       placement,
@@ -460,6 +464,8 @@ export function RootComposeView() {
       {(composer) => (
         <RootComposeSurface
           composer={composer}
+          incognito={incognito}
+          onIncognitoChange={setIncognito}
           lastCreatedThreadId={lastCreatedThreadId}
           rootComposeProjectId={rootComposeProjectId}
           setRootComposeProjectId={setRootComposeProjectId}
@@ -471,6 +477,8 @@ export function RootComposeView() {
 
 interface RootComposeSurfaceProps {
   composer: NewThreadComposerState;
+  incognito: boolean;
+  onIncognitoChange: (incognito: boolean) => void;
   lastCreatedThreadId: string | null;
   rootComposeProjectId: string;
   setRootComposeProjectId: (projectId: string) => void;
@@ -478,6 +486,8 @@ interface RootComposeSurfaceProps {
 
 function RootComposeSurface({
   composer,
+  incognito,
+  onIncognitoChange,
   lastCreatedThreadId,
   rootComposeProjectId,
   setRootComposeProjectId,
@@ -1430,6 +1440,13 @@ function RootComposeSurface({
     autoFocus: !isProviderCliBlocked,
     mentionMenuPlacement: isCompactViewport ? "top" : "bottom",
     banner: promptBanner,
+    incognitoControl: (
+      <IncognitoToggle
+        value={incognito}
+        onChange={onIncognitoChange}
+        disabled={isSubmitting}
+      />
+    ),
     blocker:
       blockingProviderCliStatus === null
         ? undefined

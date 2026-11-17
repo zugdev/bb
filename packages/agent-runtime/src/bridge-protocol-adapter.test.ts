@@ -196,6 +196,7 @@ describe("fork narrowing", () => {
     sourceProviderThreadId: "p_1",
     options: fullModeOptions,
     instructionMode: "replace",
+    ephemeral: false,
   } as const;
 
   it("refuses a fork the handshake does not support, however the declaration reads", () => {

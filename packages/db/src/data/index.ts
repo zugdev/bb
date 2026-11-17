@@ -254,6 +254,7 @@ export {
   reserveEnvironment,
   updatePreparingEnvironment,
   listProviderLifecycleEnvironments,
+  environmentHasIncognitoThread,
   environmentHasLiveThreads,
   releaseFinishedEnvironmentPreparationOwners,
   claimEnvironmentPath,

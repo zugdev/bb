@@ -216,6 +216,7 @@ describe("provider registry", () => {
         envVars: { BB_THREAD_ID: "thread-1" },
       },
       instructionMode: "append",
+      ephemeral: false,
     });
     expect(startPlan).toMatchObject({
       kind: "request",
@@ -274,6 +275,7 @@ describe("provider registry", () => {
         permissionEscalation: null,
       },
       instructionMode: "append",
+      ephemeral: false,
     });
     expect(plan).toMatchObject({
       kind: "request",

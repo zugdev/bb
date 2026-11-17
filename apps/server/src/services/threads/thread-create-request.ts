@@ -35,6 +35,7 @@ export interface ThreadCreateServiceRequestInput {
   parentThreadId?: string;
   senderThreadId?: CreateThreadRequest["senderThreadId"];
   parentNotifications?: ThreadParentNotifications;
+  incognito?: boolean;
   lifecycleOwnerThreadId?: string;
   permissionMode?: CreateThreadRequest["permissionMode"];
   projectId: string;
@@ -51,8 +52,9 @@ export interface ThreadCreateServiceRequestInput {
 
 export interface ThreadCreateServiceRequest extends Omit<
   ThreadCreateServiceRequestInput,
-  "environment" | "pluginMetadata" | "providerId"
+  "environment" | "incognito" | "pluginMetadata" | "providerId"
 > {
+  incognito: boolean;
   environment: EnvironmentArgs | ProviderEnvironmentArgs;
   pluginMetadata: { pluginId: string; metadata: JsonObject } | null;
   providerId: string;

@@ -213,8 +213,9 @@ export async function ensureThreadProvisionEnvironmentReady(
         context,
       });
     }
+    const generateTitle = !context.request.titleProvided && !thread.incognito;
     if (context.request.environmentIntent.type === "provider") {
-      if (!context.request.titleProvided)
+      if (generateTitle)
         await inferThreadMetadata(deps, {
           input: context.request.input,
           provisioningId: context.state.provisioningId,
@@ -222,7 +223,7 @@ export async function ensureThreadProvisionEnvironmentReady(
           writeTranscript: true,
         });
     } else {
-      if (!context.request.titleProvided) {
+      if (generateTitle) {
         void inferThreadMetadata(deps, {
           input: context.request.input,
           provisioningId: context.state.provisioningId,

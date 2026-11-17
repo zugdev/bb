@@ -1,6 +1,6 @@
 import { countUnarchivedThreadDescendants } from "../../services/threads/thread-archive.js";
 import { listThreadCascades } from "../../services/threads/thread-cascade.js";
-import { cancelAbandonedProviderCreations } from "../../services/threads/thread-environment-providers.js";
+import { deleteThreadTree } from "../../services/threads/thread-delete.js";
 import {
   THREAD_SEARCH_LIMIT_PER_GROUP_DEFAULT,
   THREAD_SEARCH_LIMIT_PER_GROUP_MAX,
@@ -12,8 +12,6 @@ import {
   getThreadSectionById,
   listThreadMentionRowsByIds,
   listThreadsWithPendingInteractionState,
-  markThreadDeleted,
-  listThreadDeletionTree,
   listPluginThreadMetadata,
   listThreadAncestors,
   listThreadDescendants,
@@ -58,7 +56,6 @@ import {
 } from "../../services/lib/entity-lookup.js";
 import { listRunningThreadsWithIntendedHosts } from "../../services/threads/dispatch-attempt.js";
 import { syncThreadTitleToProvider } from "../../services/threads/thread-commands.js";
-import { requestThreadStorageDeletion } from "../../services/threads/thread-lifecycle.js";
 import { createThreadFromRequest } from "../../services/threads/thread-create.js";
 import { createThreadForkFromRequest } from "../../services/threads/thread-fork.js";
 import {
@@ -75,7 +72,6 @@ import { assertValidParentThread } from "../../services/threads/thread-parent.js
 import { handleThreadOwnershipChange } from "../../services/threads/thread-ownership.js";
 import { applyThreadExecutionOverride } from "../../services/threads/thread-execution-override.js";
 import { applyThreadSessionOptionPatch } from "../../services/threads/thread-session-options.js";
-import { emitPluginThreadDeleted } from "../../services/plugins/plugin-thread-events.js";
 
 function parseThreadIncludes(query: ThreadGetQuery): Set<ThreadIncludeOption> {
   const includes = new Set<ThreadIncludeOption>();
@@ -538,24 +534,7 @@ export function registerThreadBaseRoutes(app: Hono, deps: AppDeps): void {
       deps,
       thread,
     });
-    const dependents = listThreadDeletionTree(deps.db, thread.id);
-    markThreadDeleted(deps.db, deps.hub, { threadId: thread.id });
-    for (const dependent of dependents) {
-      const deleted = getThread(deps.db, dependent.id);
-      if (!deleted) continue;
-      if (dependent.deletedAt === null) emitPluginThreadDeleted(deleted);
-      cancelAbandonedProviderCreations(deps, deleted.id);
-      deps.terminalSessions.closeDeletedThreadTerminals({
-        threadId: deleted.id,
-      });
-      requestThreadStorageDeletion(
-        deps,
-        deleted,
-        deleted.environmentId === null
-          ? null
-          : getEnvironment(deps.db, deleted.environmentId),
-      );
-    }
+    deleteThreadTree(deps, thread.id);
     return context.json({ ok: true });
   });
 }

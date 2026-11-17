@@ -210,6 +210,7 @@ interface ThreadRuntimeConfig {
   dynamicTools?: DynamicTool[];
   environmentId: string;
   instructionMode: InstructionMode;
+  ephemeral: boolean;
   instructions?: string;
   envVars: Record<string, string>;
   options: AgentRuntimeExecutionOptions;
@@ -733,7 +734,10 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
     }
     const current = threadRuntimeConfigs.get(threadId);
     if (current) {
-      threadRuntimeConfigs.set(threadId, { ...current, sessionRestorable });
+      threadRuntimeConfigs.set(threadId, {
+        ...current,
+        sessionRestorable: sessionRestorable && !current.ephemeral,
+      });
     }
   }
 
@@ -1091,6 +1095,7 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
         ? { dynamicTools: currentConfig.dynamicTools }
         : {}),
       instructionMode: currentConfig.instructionMode,
+      ephemeral: currentConfig.ephemeral,
     });
   }
 
@@ -1528,6 +1533,7 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
       instructions,
       dynamicTools,
       instructionMode = "append",
+      ephemeral = false,
       fork,
     }) {
       return runThreadOperation({
@@ -1572,6 +1578,7 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
             environmentId,
             envVars: resolvedEnvironment.envVars,
             instructionMode,
+            ephemeral,
             instructions,
             options: execOpts,
             processKey,
@@ -1600,6 +1607,7 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
                 options: providerExecutionContext,
                 dynamicTools,
                 instructionMode,
+                ephemeral,
               }
             : {
                 type: "thread/start",
@@ -1608,6 +1616,7 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
                 options: providerExecutionContext,
                 dynamicTools,
                 instructionMode,
+                ephemeral,
               };
           let resolved: string;
           try {
@@ -1686,6 +1695,7 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
       instructions,
       dynamicTools,
       instructionMode = "append",
+      ephemeral = false,
     }) {
       const existing = stagedThreadRewinds.get(leaseId);
       if (existing !== undefined) {
@@ -1751,6 +1761,7 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
               }),
               dynamicTools,
               instructionMode,
+              ephemeral,
             };
             const command = requireProviderRequestPlan({
               commandType: adapterCommand.type,
@@ -1856,6 +1867,7 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
       instructions,
       dynamicTools,
       instructionMode = "append",
+      ephemeral = false,
     }) {
       return runThreadOperation({
         threadId,
@@ -1911,6 +1923,7 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
             environmentId,
             envVars: resolvedEnvironment.envVars,
             instructionMode,
+            ephemeral,
             instructions,
             options: execOpts,
             processKey,
@@ -1936,6 +1949,7 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
             }),
             dynamicTools,
             instructionMode,
+            ephemeral,
           };
           const plan = proc.adapter.buildCommandPlan(adapterCommand);
           if (plan.kind === "noop") {

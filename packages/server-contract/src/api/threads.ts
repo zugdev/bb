@@ -153,6 +153,7 @@ export const createThreadRequestSchema = z
      * (failed, interrupted, or blocked on an approval or question), or `off`.
      */
     parentNotifications: threadParentNotificationsSchema.optional(),
+    incognito: z.boolean().optional(),
     sectionId: z.string().min(1).nullable().optional(),
     pinned: z.boolean().optional(),
     sourceThreadId: z.string().min(1).optional(),

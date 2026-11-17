@@ -111,6 +111,7 @@ export function makeThreadResponse(
     originPluginId: null,
     visibility: "visible",
     parentNotifications: "auto",
+    incognito: false,
     archivedAt: null,
     pinnedAt: null,
     snoozedUntil: null,

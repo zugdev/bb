@@ -6,6 +6,7 @@ import {
 import { parsePaginationQuery } from "../services/lib/validation.js";
 import {
   clearDiffViewedFiles,
+  environmentHasIncognitoThread,
   environmentHasLiveThreads,
   listDiffViewedFiles,
   listEnvironments,
@@ -357,12 +358,14 @@ export function registerEnvironmentRoutes(
       );
     }
 
-    const aiMessage = await generateCommitMessage(deps, {
-      diffDescription: "uncommitted changes",
-      shortstat: workspaceDiff.shortstat,
-      files: workspaceDiff.files,
-      patch: workspaceDiff.diff,
-    });
+    const aiMessage = environmentHasIncognitoThread(deps.db, environment.id)
+      ? null
+      : await generateCommitMessage(deps, {
+          diffDescription: "uncommitted changes",
+          shortstat: workspaceDiff.shortstat,
+          files: workspaceDiff.files,
+          patch: workspaceDiff.diff,
+        });
     const commitMessage = aiMessage ?? COMMIT_FALLBACK_MESSAGE;
 
     const result = await mapNoChangesTo409(

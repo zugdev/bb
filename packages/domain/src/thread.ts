@@ -123,6 +123,7 @@ export const threadSchema = z.object({
   originPluginId: z.string().nullable(),
   visibility: threadVisibilitySchema,
   parentNotifications: threadParentNotificationsSchema,
+  incognito: z.boolean(),
   archivedAt: z.number().nullable(),
   pinnedAt: z.number().nullable(),
   snoozedUntil: z.number().nullable(),

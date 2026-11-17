@@ -289,6 +289,7 @@ export interface CreateThreadInput {
   startupContext?: string;
   visibility?: ThreadVisibility;
   parentNotifications?: ThreadParentNotifications;
+  incognito?: boolean;
 }
 
 export class InvalidLifecycleOwnerError extends Error {
@@ -355,6 +356,7 @@ export function createThread(
           originPluginId: input.originPluginId ?? null,
           visibility,
           parentNotifications: input.parentNotifications ?? "auto",
+          incognito: input.incognito ?? false,
           lastReadAt: now,
           latestAttentionAt: now,
           createdAt: now,

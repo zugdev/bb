@@ -95,6 +95,7 @@ interface BuildInternalSessionParamsArgs {
   cwd: string;
   dynamicTools?: readonly DynamicTool[] | undefined;
   instructionMode: InstructionMode;
+  ephemeral: boolean;
   options: ClaudeSessionExecutionOptions;
   threadId: string;
 }
@@ -122,6 +123,7 @@ function buildInternalSessionParams(
     threadId: args.threadId,
     cwd: args.cwd,
     instructionMode: args.instructionMode,
+    ephemeral: args.ephemeral,
     permissionMode: resolveClaudeSessionPermissionMode(args.options),
     approvedPlanPermissionMode: toClaudePermissionMode(permissionPolicy),
     permissionScope: permissionPolicy.permissionScope,
@@ -177,6 +179,7 @@ interface BuildClaudeSessionParamsArgs {
   cwd: string;
   options: ClaudeCanonicalExecutionOptions;
   instructionMode: InstructionMode;
+  ephemeral: boolean;
   dynamicTools?: readonly DynamicTool[] | undefined;
   skillRoots?: readonly ClaudeCodeSkillRoot[] | undefined;
 }
@@ -194,6 +197,7 @@ export function buildClaudeSessionParams(
     cwd: args.cwd,
     dynamicTools: args.dynamicTools,
     instructionMode: args.instructionMode,
+    ephemeral: args.ephemeral,
     threadId: args.threadId,
     options: {
       ...args.options,
