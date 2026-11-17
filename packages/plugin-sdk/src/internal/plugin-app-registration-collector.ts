@@ -739,8 +739,14 @@ export function collectPluginAppRegistrations(
         const id = requireSlotId(kind, registration?.id);
         requireUniqueId(kind, seenIds.homepageSection, id);
         const placement = registration.experimental_placement;
-        if (placement !== undefined && placement !== "lead") {
-          throw new Error(`${kind}: experimental_placement must be "lead"`);
+        if (
+          placement !== undefined &&
+          placement !== "top" &&
+          placement !== "lead"
+        ) {
+          throw new Error(
+            `${kind}: experimental_placement must be "top" or "lead"`,
+          );
         }
         collected.homepageSections.push({
           id,

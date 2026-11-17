@@ -128,6 +128,22 @@ describe("RootComposeHome", () => {
     );
   });
 
+  it("anchors homepage sections under the app chrome when there are no recents", () => {
+    render(
+      <RootComposeHome
+        isCompact
+        composer={<div />}
+        compactScrollContent={null}
+        homepageSections={<div data-testid="lead-section" />}
+      />,
+    );
+
+    expect(
+      screen.getByTestId("root-compose-compact-scroll-content").style
+        .justifyContent,
+    ).toBe("flex-start");
+  });
+
   it("drops the composer fade when nothing scrolls behind it", () => {
     vi.spyOn(HTMLElement.prototype, "scrollHeight", "get").mockReturnValue(534);
     vi.spyOn(HTMLElement.prototype, "clientHeight", "get").mockReturnValue(534);

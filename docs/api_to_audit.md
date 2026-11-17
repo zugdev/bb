@@ -242,15 +242,15 @@ Mobile.
 
 ## `PluginHomepageSectionProps.experimental_setProjectId` and `PluginHomepageSectionRegistration.experimental_placement`
 
-On the New thread screen a homepage section gets `projectId`, the composer's selected project (null for No project), and `experimental_setProjectId(projectId | null)`, which selects a project through the composer's own `changeProject`. That is the path the composer's footer project picker takes, so it copies draft attachments and refuses while uploads run the same way. `experimental_setProjectId` is null on Home and while the composer is submitting. `experimental_placement: "lead"` renders a section before all other sections on the New thread screen, without the host heading, and keeps it off Home.
+On the New thread screen a homepage section gets `projectId`, the composer's selected project (null for No project), and `experimental_setProjectId(projectId | null)`, which selects a project through the composer's own `changeProject`. That is the path the composer's footer project picker takes, so it copies draft attachments and refuses while uploads run the same way. `experimental_setProjectId` is null on Home and while the composer is submitting. `experimental_placement: "lead"` renders a section before all other sections on the New thread screen, without the host heading, and keeps it off Home. `"top"` does the same and renders before every lead section.
 
-**Core callers.** `RootComposeSurface` (`apps/app/src/views/RootComposeView.tsx`) builds the section project from `changeProject` and `isSubmitting`. `PluginHomepageSections` renders lead and titled sections there, and `experimental_HomepageSection` renders one titled section with no project. The assistant plugin's card and the home plugin's New thread overview are the lead sections, in that order.
+**Core callers.** `RootComposeSurface` (`apps/app/src/views/RootComposeView.tsx`) builds the section project from `changeProject` and `isSubmitting`. `PluginHomepageSections` renders lead and titled sections there, and `experimental_HomepageSection` renders one titled section with no project. The home plugin's project chips are the top section. The assistant plugin's card and the home plugin's New thread overview are the lead sections, in that order.
 
 Docs: `frontend-core-slots.md`.
 
 **Audit before stabilizing.**
 
-1. **Ordering.** Several lead sections render in registration order. Decide whether lead needs an order key once a second plugin uses it.
+1. **Ordering.** Sections in one placement render sorted by plugin id. `"top"` exists so the home plugin's chips sit above the assistant card; decide whether an order key should replace the two placements.
 2. **Home.** Decide whether Home should pass a project setter that opens a New thread tab in that project.
 
 ## `PluginSidebarThread.experimental_lastUserMessageAt`

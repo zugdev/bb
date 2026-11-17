@@ -19,7 +19,7 @@ export const HOME_SECTION_PROJECT: HomepageSectionProject = {
 export function isLeadHomepageSection(
   section: PluginHomepageSectionSlot,
 ): boolean {
-  return section.experimental_placement === "lead";
+  return section.experimental_placement !== undefined;
 }
 
 export function PluginHomepageSections({
@@ -28,7 +28,14 @@ export function PluginHomepageSections({
   project: HomepageSectionProject;
 }) {
   const { homepageSections } = usePluginSlots();
-  const lead = homepageSections.filter(isLeadHomepageSection);
+  const lead = [
+    ...homepageSections.filter(
+      (section) => section.experimental_placement === "top",
+    ),
+    ...homepageSections.filter(
+      (section) => section.experimental_placement === "lead",
+    ),
+  ];
   const titled = homepageSections.filter(
     (section) => !isLeadHomepageSection(section),
   );

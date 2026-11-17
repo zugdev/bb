@@ -28,7 +28,7 @@ import {
   type HomeThreadFilter,
   type HomeThreadSort,
 } from "./home-overview";
-import { NewThreadOverview } from "./NewThreadOverview";
+import { NewThreadOverview, ProjectChips } from "./NewThreadOverview";
 
 export const CYCLE_PROJECT_COMMAND_ID = "cycle-project";
 
@@ -49,17 +49,66 @@ export function cycleProjectFromComposer(composer: PluginComposerApi): boolean {
   return false;
 }
 
+function ProjectChipsSection({
+  projectId,
+  experimental_setProjectId: setProjectId,
+}: PluginHomepageSectionProps) {
+  const [showArchived, setShowArchived] = useShowArchived();
+  const { threads, projects } = experimental_useSidebarThreads({
+    experimental_lifecycles: ["active"],
+  });
+  const cycleShortcut = experimental_useCommandShortcut(
+    CYCLE_PROJECT_COMMAND_ID,
+  );
+  const rootRef = useRef<HTMLDivElement>(null);
+  const recent = useMemo(
+    () => recentProjects(projects, threads),
+    [projects, threads],
+  );
+  const cycleRef = useRef<() => boolean>(() => false);
+  cycleRef.current = () => {
+    if (setProjectId === null) return false;
+    setProjectId(nextCycledProject(projectId, recent));
+    return true;
+  };
+  useEffect(() => {
+    const overview: MountedOverview = {
+      root: rootRef,
+      cycle: () => cycleRef.current(),
+    };
+    mountedOverviews.add(overview);
+    return () => {
+      mountedOverviews.delete(overview);
+    };
+  }, []);
+  return (
+    <ProjectChips
+      rootRef={rootRef}
+      threads={threads}
+      projects={projects}
+      projectId={projectId}
+      setProjectId={setProjectId}
+      cycleShortcutLabel={cycleShortcut?.label ?? null}
+      showArchived={showArchived}
+      setShowArchived={setShowArchived}
+      picker={
+        <ProjectPicker
+          value={projectId}
+          onChange={(nextProjectId) => setProjectId?.(nextProjectId)}
+          disabled={setProjectId === null}
+        />
+      }
+    />
+  );
+}
+
 function NewThreadOverviewSection({
   projectId,
   experimental_setProjectId: setProjectId,
 }: PluginHomepageSectionProps) {
   const settings = useSettings().values;
   const showFilters = settings?.showFilters === true;
-  const [showArchived, setShowArchived] = useStoredState(
-    HOME_SHOW_ARCHIVED_KEY,
-    isBoolean,
-    false,
-  );
+  const [showArchived] = useShowArchived();
   const [pullRequestsExpanded, setPullRequestsExpanded] = useState(false);
   const { threads, projects } = experimental_useSidebarThreads({
     experimental_lifecycles: showArchived ? ["active", "archived"] : ["active"],
@@ -93,44 +142,17 @@ function NewThreadOverviewSection({
     enabled: projectId !== null && setProjectId !== null && pullRequestsExpanded,
   });
   const pullRequestHostId = pullRequestsQuery.data?.hostId ?? null;
-  const cycleShortcut = experimental_useCommandShortcut(
-    CYCLE_PROJECT_COMMAND_ID,
-  );
-  const rootRef = useRef<HTMLDivElement>(null);
   const order = useHomeThreadOrder();
-  const recent = useMemo(
-    () => recentProjects(projects, threads),
-    [projects, threads],
-  );
-  const cycleRef = useRef<() => boolean>(() => false);
-  cycleRef.current = () => {
-    if (setProjectId === null) return false;
-    setProjectId(nextCycledProject(projectId, recent));
-    return true;
-  };
-  useEffect(() => {
-    const overview: MountedOverview = {
-      root: rootRef,
-      cycle: () => cycleRef.current(),
-    };
-    mountedOverviews.add(overview);
-    return () => {
-      mountedOverviews.delete(overview);
-    };
-  }, []);
   return (
     <NewThreadOverview
-      rootRef={rootRef}
       threads={threads}
       projects={projects}
       projectId={projectId}
       setProjectId={setProjectId}
-      cycleShortcutLabel={cycleShortcut?.label ?? null}
       order={order}
       filter={showFilters ? filter : DEFAULT_HOME_THREAD_FILTER}
       setFilter={showFilters ? setFilter : null}
       showArchived={showArchived}
-      setShowArchived={setShowArchived}
       onArchiveThreads={archiveThreads}
       pullRequests={
         pullRequestsQuery.data === undefined
@@ -158,13 +180,6 @@ function NewThreadOverviewSection({
             ),
           );
       }}
-      picker={
-        <ProjectPicker
-          value={projectId}
-          onChange={(nextProjectId) => setProjectId?.(nextProjectId)}
-          disabled={setProjectId === null}
-        />
-      }
       onOpenThread={(thread, { newTab }) =>
         navigate.toThread(
           thread.id,
@@ -201,18 +216,37 @@ function useStoredState<T>(
   fallback: T,
 ): [T, (value: T) => void] {
   const [value, setValue] = useState(() => readStored(key, isValue, fallback));
+  useEffect(() => {
+    const listeners = storedStateListeners.get(key) ?? new Set();
+    storedStateListeners.set(key, listeners);
+    const listener = (next: unknown) => {
+      if (isValue(next)) setValue(next);
+    };
+    listeners.add(listener);
+    return () => {
+      listeners.delete(listener);
+    };
+  }, [key, isValue]);
   const store = useCallback(
     (next: T) => {
-      setValue(next);
       window.localStorage.setItem(key, JSON.stringify(next));
+      for (const listener of storedStateListeners.get(key) ?? []) {
+        listener(next);
+      }
     },
     [key],
   );
   return [value, store];
 }
 
+const storedStateListeners = new Map<string, Set<(next: unknown) => void>>();
+
 const isBoolean = (value: unknown): value is boolean =>
   typeof value === "boolean";
+
+function useShowArchived() {
+  return useStoredState(HOME_SHOW_ARCHIVED_KEY, isBoolean, false);
+}
 
 function useHomeThreadOrder() {
   const [sort, setSort] = useStoredState<HomeThreadSort>(
@@ -229,6 +263,12 @@ function useHomeThreadOrder() {
 }
 
 export default definePluginApp((app) => {
+  app.slots.homepageSection({
+    id: "project-chips",
+    title: "Project chips",
+    component: ProjectChipsSection,
+    experimental_placement: "top",
+  });
   app.slots.homepageSection({
     id: "new-thread-overview",
     title: "New thread overview",

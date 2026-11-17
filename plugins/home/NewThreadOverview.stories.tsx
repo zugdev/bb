@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { PluginSidebarThread } from "@get-bb/plugin-sdk/app";
 import { makeProject, makeThread, PERSONAL } from "./fixtures";
-import { NewThreadOverview } from "./NewThreadOverview";
+import { NewThreadOverview, ProjectChips } from "./NewThreadOverview";
 import {
   DEFAULT_HOME_THREAD_FILTER,
   type HomeThreadSort,
@@ -54,7 +54,7 @@ function Stage({ initialProject }: { initialProject: string | null }) {
     PROJECTS.find((project) => project.id === projectId)?.name ?? "No project";
   return (
     <div className="flex w-[720px] flex-col gap-4 bg-background p-4">
-      <NewThreadOverview
+      <ProjectChips
         threads={THREADS}
         projects={PROJECTS}
         projectId={projectId}
@@ -65,11 +65,18 @@ function Stage({ initialProject }: { initialProject: string | null }) {
           </span>
         }
         cycleShortcutLabel="⌥ O"
+        showArchived={false}
+        setShowArchived={() => undefined}
+      />
+      <NewThreadOverview
+        threads={THREADS}
+        projects={PROJECTS}
+        projectId={projectId}
+        setProjectId={setProjectId}
         order={{ sort, setSort, isOldestFirst, setIsOldestFirst }}
         filter={filter}
         setFilter={setFilter}
         showArchived={false}
-        setShowArchived={() => undefined}
         pullRequestsExpanded={true}
         setPullRequestsExpanded={() => undefined}
         pullRequests={[

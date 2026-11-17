@@ -77,10 +77,13 @@ function DollarQuote({ dollar }: { dollar: Dollar }) {
   const change = pctFormat.format(dollar.pctChange);
   const tone = change.startsWith("+") ? "text-destructive-text" : "text-success";
   return (
-    <span className="shrink-0 text-xs tabular-nums text-muted-foreground" title="US$ 1 em reais e a variação de hoje">
-      Dólar {brlFormat.format(dollar.brl)}
-      {change === "0" ? null : <span className={`ml-1.5 ${tone}`}>{change}%</span>}
-    </span>
+    <li className="flex gap-2 tabular-nums" title="US$ 1 em reais e a variação de hoje">
+      <span aria-hidden className="flex size-3.5 shrink-0 justify-center font-medium">$</span>
+      <span className="min-w-0">
+        Dólar {brlFormat.format(dollar.brl)}
+        {change === "0" ? null : <span className={`ml-1.5 ${tone}`}>{change}%</span>}
+      </span>
+    </li>
   );
 }
 
@@ -163,7 +166,6 @@ function AssistantHomeSection() {
       <div className="-mr-2 flex h-8 items-center gap-2">
         <Icon name="Bot" className="size-4 text-muted-foreground" aria-hidden />
         <h2 className="min-w-0 flex-1 text-sm font-semibold">Assistant</h2>
-        {data?.dollar ? <DollarQuote dollar={data.dollar} /> : null}
         <button type="button" className={ACTION_CLASS} onClick={openAssistant}>
           Open
         </button>
@@ -173,11 +175,12 @@ function AssistantHomeSection() {
       ) : (
         items.map((item) => <AgendaRow key={item.key} item={item} onOpen={openAssistant} />)
       )}
-      {data?.news.length ? (
+      {data?.news.length || data?.dollar ? (
         <ul className="mt-1 flex flex-col gap-1 border-t border-border-hairline pt-2 pb-1 text-xs text-muted-foreground">
+          {data.dollar ? <DollarQuote dollar={data.dollar} /> : null}
           {data.news.map((line) => (
             <li key={line} className="flex gap-2">
-              <Icon name="Newspaper" aria-hidden className="mt-px size-3.5 shrink-0" />
+              <Icon name="News01" aria-hidden className="mt-px size-3.5 shrink-0" />
               <span className="min-w-0">{line}</span>
             </li>
           ))}

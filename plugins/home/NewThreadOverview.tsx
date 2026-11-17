@@ -30,20 +30,16 @@ export interface NewThreadOverviewProps {
   projects: readonly PluginSidebarProject[];
   projectId: string | null;
   setProjectId: ((projectId: string | null) => void) | null;
-  picker: ReactNode;
-  cycleShortcutLabel: string | null;
   order: HomeThreadOrder;
   filter: HomeThreadFilter;
   setFilter: ((filter: HomeThreadFilter) => void) | null;
   showArchived: boolean;
-  setShowArchived: (showArchived: boolean) => void;
   onArchiveThreads: (threads: readonly PluginSidebarThread[]) => Promise<void>;
   pullRequests: readonly ProjectPullRequest[] | null;
   pullRequestsExpanded: boolean;
   setPullRequestsExpanded: (expanded: boolean) => void;
   onSelectPullRequest: (pr: ProjectPullRequest) => void;
   onOpenThread: OpenThread;
-  rootRef?: Ref<HTMLDivElement>;
 }
 
 const PILL_CLASS =
@@ -58,35 +54,101 @@ function pillClass(selected: boolean) {
   );
 }
 
-export function NewThreadOverview({
+export interface ProjectChipsProps {
+  threads: readonly PluginSidebarThread[];
+  projects: readonly PluginSidebarProject[];
+  projectId: string | null;
+  setProjectId: ((projectId: string | null) => void) | null;
+  picker: ReactNode;
+  cycleShortcutLabel: string | null;
+  showArchived: boolean;
+  setShowArchived: (showArchived: boolean) => void;
+  rootRef?: Ref<HTMLDivElement>;
+}
+
+export function ProjectChips({
   threads,
   projects,
   projectId,
   setProjectId,
   picker,
   cycleShortcutLabel,
+  showArchived,
+  setShowArchived,
+  rootRef,
+}: ProjectChipsProps) {
+  const recent = useMemo(
+    () => recentProjects(projects, threads),
+    [projects, threads],
+  );
+  return (
+    <div ref={rootRef} className="flex flex-wrap items-center gap-1.5">
+      {picker}
+      <button
+        type="button"
+        aria-pressed={projectId === null}
+        disabled={setProjectId === null}
+        onClick={() => setProjectId?.(null)}
+        className={pillClass(projectId === null)}
+      >
+        No project
+      </button>
+      {recent.map((option) => {
+        const selected = option.id === projectId;
+        return (
+          <button
+            key={option.id}
+            type="button"
+            aria-pressed={selected}
+            disabled={setProjectId === null}
+            onClick={() => setProjectId?.(option.id)}
+            className={pillClass(selected)}
+          >
+            {option.name}
+          </button>
+        );
+      })}
+      {recent.length === 0 || cycleShortcutLabel === null ? null : (
+        <span
+          className="text-xs text-muted-foreground/70 pointer-coarse:hidden"
+          aria-hidden="true"
+        >
+          {cycleShortcutLabel}
+        </span>
+      )}
+      <button
+        type="button"
+        aria-pressed={showArchived}
+        onClick={() => setShowArchived(!showArchived)}
+        className={cn(pillClass(showArchived), "ml-auto")}
+      >
+        Archived
+      </button>
+    </div>
+  );
+}
+
+export function NewThreadOverview({
+  threads,
+  projects,
+  projectId,
+  setProjectId,
   order,
   filter,
   setFilter,
   showArchived,
-  setShowArchived,
   onArchiveThreads,
   pullRequests,
   pullRequestsExpanded,
   setPullRequestsExpanded,
   onSelectPullRequest,
   onOpenThread,
-  rootRef,
 }: NewThreadOverviewProps) {
   const [isArchiving, setIsArchiving] = useState(false);
   const descendants = useMemo(() => liveThreadDescendants(threads), [threads]);
   const filteredThreads = useMemo(
     () => filterHomeThreads(threads, filter, Date.now()),
     [filter, threads],
-  );
-  const recent = useMemo(
-    () => recentProjects(projects, threads),
-    [projects, threads],
   );
   const selectedProject =
     projectId === null
@@ -154,58 +216,14 @@ export function NewThreadOverview({
   return (
     <ThreadDescendantsContext value={descendants}>
       <div
-        ref={rootRef}
         className="flex flex-col gap-6"
         data-testid="root-compose-overview"
       >
-        <div className="flex flex-wrap items-center gap-1.5">
-          {picker}
-          <button
-            type="button"
-            aria-pressed={projectId === null}
-            disabled={setProjectId === null}
-            onClick={() => setProjectId?.(null)}
-            className={pillClass(projectId === null)}
-          >
-            No project
-          </button>
-          {recent.map((option) => {
-            const selected = option.id === projectId;
-            return (
-              <button
-                key={option.id}
-                type="button"
-                aria-pressed={selected}
-                disabled={setProjectId === null}
-                onClick={() => setProjectId?.(option.id)}
-                className={pillClass(selected)}
-              >
-                {option.name}
-              </button>
-            );
-          })}
-          {recent.length === 0 || cycleShortcutLabel === null ? null : (
-            <span
-              className="text-xs text-muted-foreground/70 pointer-coarse:hidden"
-              aria-hidden="true"
-            >
-              {cycleShortcutLabel}
-            </span>
-          )}
-          <button
-            type="button"
-            aria-pressed={showArchived}
-            onClick={() => setShowArchived(!showArchived)}
-            className={cn(pillClass(showArchived), "ml-auto")}
-          >
-            Archived
-          </button>
-        </div>
         {setFilter === null ? null : (
           <div
             role="group"
             aria-label="Thread filters"
-            className="-mt-3 flex flex-wrap items-center gap-1.5"
+            className="flex flex-wrap items-center gap-1.5"
           >
             {HOME_STATUS_FILTERS.map((option) => (
               <button
