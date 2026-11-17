@@ -136,6 +136,7 @@ import {
   placeThreadBesideSplit,
   placeThreadInProjectTab,
   reconcileLayoutForContent,
+  replaceInactiveTabPaneContent,
   replaceOriginPaneContent,
   threadPaneContent,
 } from "./splitThreadNavigation";
@@ -207,6 +208,7 @@ type BeginPaneDrag = (
 const EMPTY_PATH: SplitPath = [];
 
 type NavigateInPane = (
+  tabId: string,
   paneId: string,
   originContent: PaneContent,
   thread: ThreadRoutePathArgs,
@@ -506,7 +508,19 @@ function SplitThreadAreaContent({ routeContent }: SplitThreadAreaProps) {
   }, []);
 
   const navigateInPane = useCallback<NavigateInPane>(
-    (paneId, originContent, thread) => {
+    (tabId, paneId, originContent, thread) => {
+      const tabs = store.get(splitTabsAtom);
+      if (tabId !== tabs.activeTabId) {
+        const next = replaceInactiveTabPaneContent(
+          tabs,
+          tabId,
+          paneId,
+          originContent,
+          threadPaneContent(thread),
+        );
+        if (next !== null) store.set(splitTabsAtom, next);
+        return;
+      }
       const current = store.get(splitLayoutAtom);
       if (current === null) return;
       const next = replaceOriginPaneContent(
@@ -876,6 +890,7 @@ function SplitThreadAreaContent({ routeContent }: SplitThreadAreaProps) {
       <StandalonePaneContent
         content={currentContent}
         paneId={layout.focusedPaneId}
+        tabId={splitTabs.activeTabId}
         onRequestClose={
           currentContent.kind === "thread" ||
           currentContent.kind === "new-thread"
@@ -935,6 +950,7 @@ function SplitThreadAreaContent({ routeContent }: SplitThreadAreaProps) {
         >
           {keptTabs.map((tab) => {
             const tabProps = {
+              tabId: tab.id,
               isTopRow: true,
               isBottomRow: true,
               isLeftEdge: true,
@@ -1002,6 +1018,7 @@ function SplitThreadAreaContent({ routeContent }: SplitThreadAreaProps) {
           key="single"
           content={singlePaneContent}
           paneId={singlePane.paneId}
+          tabId={splitTabs.activeTabId}
           isFocused
           isSplitPane={false}
           timelineEnabled
@@ -1147,6 +1164,7 @@ interface SplitTreeProps {
   isBottomRow: boolean;
   isLeftEdge: boolean;
   isRightEdge: boolean;
+  tabId: string;
   isTabActive: boolean;
   focusedPaneId: string | null;
   maximizedPaneId: string | null;
@@ -1249,6 +1267,7 @@ function SplitPaneLeaf(props: SplitPaneLeafProps) {
       <WorkspacePaneContent
         content={node.content}
         paneId={node.paneId}
+        tabId={props.tabId}
         isFocused={isFocused}
         onFocusPane={props.onFocusPane}
         isSplitPane
@@ -1373,6 +1392,7 @@ function paneEdges(rect: PaneRect | undefined) {
 interface WorkspacePaneContentProps {
   content: PaneContent;
   paneId: string;
+  tabId: string;
   isFocused: boolean;
   onFocusPane?: (paneId: string) => void;
   isSplitPane: boolean;
@@ -1392,6 +1412,7 @@ interface WorkspacePaneContentProps {
 const WorkspacePaneContent = memo(function WorkspacePaneContent({
   content,
   paneId,
+  tabId,
   isFocused,
   onFocusPane,
   isSplitPane,
@@ -1424,8 +1445,9 @@ const WorkspacePaneContent = memo(function WorkspacePaneContent({
     [onMovePaneToSide, paneId],
   );
   const navigateInPane = useCallback(
-    (thread: ThreadRoutePathArgs) => onNavigateInPane(paneId, content, thread),
-    [content, onNavigateInPane, paneId],
+    (thread: ThreadRoutePathArgs) =>
+      onNavigateInPane(tabId, paneId, content, thread),
+    [content, onNavigateInPane, paneId, tabId],
   );
   const beginPaneDrag = useMemo(
     () =>
@@ -1533,18 +1555,21 @@ const WorkspacePaneContent = memo(function WorkspacePaneContent({
 function StandalonePaneContent({
   content,
   paneId,
+  tabId,
   onRequestClose,
   onNavigateInPane,
 }: {
   content: PaneContent;
   paneId: string;
+  tabId: string;
   onRequestClose: (() => void) | null;
   onNavigateInPane: NavigateInPane;
 }) {
   const navPanelChrome = usePluginNavPanelChrome();
   const navigateInPane = useCallback(
-    (thread: ThreadRoutePathArgs) => onNavigateInPane(paneId, content, thread),
-    [content, onNavigateInPane, paneId],
+    (thread: ThreadRoutePathArgs) =>
+      onNavigateInPane(tabId, paneId, content, thread),
+    [content, onNavigateInPane, paneId, tabId],
   );
   if (content.kind === "thread" || content.kind === "new-thread") {
     return (

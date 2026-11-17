@@ -23,6 +23,7 @@ import {
   placeThreadBesideSplit,
   placeThreadInProjectTab,
   reconcileLayoutForContent,
+  replaceInactiveTabPaneContent,
   showInOwnedTab,
 } from "./splitThreadNavigation";
 
@@ -373,6 +374,52 @@ describe("thread panel tab panes", () => {
       ...diffPane,
       tabId: "terminal-1",
     });
+  });
+});
+
+describe("replaceInactiveTabPaneContent", () => {
+  const compose: SplitLayout = {
+    root: { type: "pane", paneId: "pane-1", content: { kind: "new-thread" } },
+    focusedPaneId: "pane-1",
+  };
+  const state: SplitTabsState = {
+    tabs: [
+      { id: "origin", layout: compose, projectId: "p1", name: null },
+      { id: "personal", layout: compose, projectId: "personal", name: null },
+    ],
+    activeTabId: "personal",
+  };
+
+  it("puts a thread created in a tab the user left into that tab only", () => {
+    const next = replaceInactiveTabPaneContent(
+      state,
+      "origin",
+      "pane-1",
+      { kind: "new-thread" },
+      { kind: "thread", projectId: "p1", threadId: "created" },
+    );
+
+    expect(next?.activeTabId).toBe("personal");
+    expect(next?.tabs.map((tab) => tab.layout?.root)).toEqual([
+      {
+        type: "pane",
+        paneId: "pane-1",
+        content: { kind: "thread", projectId: "p1", threadId: "created" },
+      },
+      compose.root,
+    ]);
+  });
+
+  it("leaves the tab alone once its pane moved on", () => {
+    expect(
+      replaceInactiveTabPaneContent(
+        state,
+        "origin",
+        "pane-1",
+        { kind: "thread", projectId: "p1", threadId: "other" },
+        { kind: "thread", projectId: "p1", threadId: "created" },
+      ),
+    ).toBeNull();
   });
 });
 
