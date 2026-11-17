@@ -116,6 +116,7 @@ export interface NewThreadModeConfig {
   worktree: NewThreadWorktreeConfig;
   permission: ExecutionPermissionConfig;
   sessionOptionsControl?: ReactNode;
+  incognitoControl?: ReactNode;
   environmentProviderInputsSlot?: ReactNode;
   machineProviderInputsSlot?: ReactNode;
   banner?: ReactNode;
@@ -369,6 +370,7 @@ const DefaultNewThreadComposer = memo(function DefaultNewThreadComposer({
           />
         </div>
         <div className="flex shrink-0 items-center gap-2">
+          {modeConfig.incognitoControl}
           {modeConfig.sessionOptionsControl}
           <PermissionModePicker
             value={modeConfig.permission.value}

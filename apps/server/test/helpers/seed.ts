@@ -214,6 +214,7 @@ export function seedThread(
     titleFallback?: string | null;
     visibility?: ThreadVisibility;
     parentNotifications?: ThreadParentNotifications;
+    incognito?: boolean;
   },
 ) {
   return createThread(deps.db, deps.hub, {
@@ -230,6 +231,7 @@ export function seedThread(
     originPluginId: args.originPluginId ?? null,
     visibility: args.visibility ?? "visible",
     parentNotifications: args.parentNotifications ?? "auto",
+    incognito: args.incognito ?? false,
   });
 }
 

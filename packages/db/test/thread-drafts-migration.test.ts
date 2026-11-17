@@ -18,6 +18,7 @@ import {
   dropQueuedMessageDeliveryColumns,
   dropThreadLastUserMessageAtColumn,
   dropThreadSnoozedUntilColumn,
+  dropThreadIncognitoColumn,
   dropQueuedMessageEditHeldUntilColumn,
 } from "./helpers/rewind.js";
 
@@ -124,6 +125,7 @@ it.each([false, true])(
       dropQueuedMessageDeliveryColumns(db);
       dropThreadLastUserMessageAtColumn(db);
       dropThreadSnoozedUntilColumn(db);
+      dropThreadIncognitoColumn(db);
       migrate(db);
       migrate(db);
 

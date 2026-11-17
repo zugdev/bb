@@ -130,6 +130,7 @@ function createTurnSubmitCommand(
       contributedEnv: [],
       injectedSkillSources: [],
       instructionMode: "append",
+      ephemeral: false,
     },
     target: { mode: "start" },
   };
@@ -163,6 +164,7 @@ function createThreadStartCommand(): ThreadStartCommand {
     contributedEnv: [],
     injectedSkillSources: [],
     instructionMode: "append",
+    ephemeral: false,
   };
 }
 

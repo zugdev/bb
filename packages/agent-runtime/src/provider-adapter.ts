@@ -68,6 +68,7 @@ export type AdapterCommand =
       options: ProviderExecutionContext;
       dynamicTools?: DynamicTool[];
       instructionMode: InstructionMode;
+      ephemeral: boolean;
     }
   | {
       type: "thread/resume";
@@ -77,6 +78,7 @@ export type AdapterCommand =
       options: ProviderExecutionContext;
       dynamicTools?: DynamicTool[];
       instructionMode: InstructionMode;
+      ephemeral: boolean;
     }
   | {
       type: "thread/fork";
@@ -87,6 +89,7 @@ export type AdapterCommand =
       options: ProviderExecutionContext;
       dynamicTools?: DynamicTool[];
       instructionMode: InstructionMode;
+      ephemeral: boolean;
     }
   | {
       type: "turn/start";

@@ -64,6 +64,7 @@ export const claudeThreadStartParamsSchema = z.object({
   memoryEnabled: z.boolean().optional(),
   providerSubagentsEnabled: z.boolean().optional(),
   instructionMode: bridgeInstructionModeSchema,
+  ephemeral: z.boolean().default(false),
   dynamicTools: z.array(dynamicToolSchema).optional(),
 });
 

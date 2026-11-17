@@ -17,6 +17,7 @@ import {
   dropQueuedMessageDeliveryColumns,
   dropThreadLastUserMessageAtColumn,
   dropThreadSnoozedUntilColumn,
+  dropThreadIncognitoColumn,
   dropQueuedMessageEditHeldUntilColumn,
 } from "./helpers/rewind.js";
 
@@ -98,6 +99,7 @@ describe.each(["project", "thread", "preference"] as const)(
           dropQueuedMessageDeliveryColumns(db);
           dropThreadLastUserMessageAtColumn(db);
           dropThreadSnoozedUntilColumn(db);
+          dropThreadIncognitoColumn(db);
           db.$client
             .prepare("DELETE FROM __drizzle_migrations WHERE created_at >= ?")
             .run(SIDEBAR_INSTALLATION_DEFAULTS_MIGRATION_TIMESTAMP);

@@ -1,0 +1,1 @@
+ALTER TABLE `threads` ADD `incognito` integer DEFAULT false NOT NULL;

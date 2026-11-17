@@ -65,6 +65,7 @@ export interface ResolvedThreadRuntimeCommandConfig {
   dynamicTools: DynamicTool[];
   injectedSkillSources: HostDaemonInjectedSkillSource[];
   instructionMode: InstructionMode;
+  ephemeral: boolean;
   instructions: string;
   projectId: string;
   providerId: string;
@@ -286,6 +287,7 @@ export async function resolveThreadRuntimeCommandConfig(
     dynamicTools,
     injectedSkillSources,
     instructionMode: "append",
+    ephemeral: args.thread.incognito,
     instructions,
     projectId: args.thread.projectId,
     providerId: args.thread.providerId,

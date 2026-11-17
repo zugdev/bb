@@ -224,6 +224,7 @@ const hostDaemonThreadRuntimeContextSchema = z
     contributedEnv: z.array(hostDaemonContributedEnvEntrySchema).default([]),
     injectedSkillSources: z.array(hostDaemonInjectedSkillSourceSchema),
     instructionMode: instructionModeSchema,
+    ephemeral: z.boolean().default(false),
   })
   .strict();
 

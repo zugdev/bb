@@ -553,6 +553,10 @@ export function environmentHasLiveThreads(db: EnvironmentWriteConnection, enviro
   return db.select({ id: threads.id }).from(threads).where(and(eq(threads.environmentId, environmentId), threadHoldsEnvironment)).limit(1).get() !== undefined;
 }
 
+export function environmentHasIncognitoThread(db: EnvironmentWriteConnection, environmentId: string): boolean {
+  return db.select({ id: threads.id }).from(threads).where(and(eq(threads.environmentId, environmentId), eq(threads.incognito, true), isNull(threads.deletedAt))).limit(1).get() !== undefined;
+}
+
 export function releaseFinishedEnvironmentPreparationOwners(db: EnvironmentWriteConnection): void {
   db.update(environments).set({ ownerThreadId: null }).where(and(isNotNull(environments.ownerThreadId), eq(environments.teardownStatus, "removed"), sql`not exists (select 1 from ${threads} where ${threads.id} = ${environments.ownerThreadId} and ${threads.deletedAt} is null)`)).run();
 }

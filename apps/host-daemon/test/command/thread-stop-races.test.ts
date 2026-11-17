@@ -239,6 +239,7 @@ function threadStartCommand(
     contributedEnv: [],
     injectedSkillSources: [],
     instructionMode: "append",
+    ephemeral: false,
   };
 }
 
@@ -276,6 +277,7 @@ function turnSubmitCommand(
       contributedEnv: [],
       injectedSkillSources: [],
       instructionMode: "append",
+      ephemeral: false,
     },
     target: { mode: "start" },
   };

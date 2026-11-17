@@ -25,6 +25,7 @@ import {
 
 export interface SdkSessionOptions {
   cwd: string;
+  persistSession: boolean;
   systemPrompt: Exclude<Options["systemPrompt"], undefined>;
   model?: string;
   additionalDirectories?: readonly string[];
@@ -263,7 +264,7 @@ export class SdkSession {
         : {}),
       includePartialMessages: true,
       settingSources: ["user", "project", "local"],
-      persistSession: true,
+      persistSession: this.options.persistSession,
       env: this.options.env ?? process.env,
       stderr: onStderr,
       ...(this.options.mcpServers

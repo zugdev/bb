@@ -137,6 +137,7 @@ export interface StartThreadArgs {
   instructions?: string;
   dynamicTools?: DynamicTool[];
   instructionMode?: InstructionMode;
+  ephemeral?: boolean;
   fork?: {
     sourceProviderThreadId: string;
     sourceProviderCheckpointId?: string;
@@ -162,6 +163,7 @@ interface PrepareThreadRewindArgs {
   instructions?: string;
   dynamicTools?: DynamicTool[];
   instructionMode?: InstructionMode;
+  ephemeral?: boolean;
 }
 
 interface PrepareThreadRewindResult {
@@ -185,6 +187,7 @@ export interface ResumeThreadArgs {
   instructions?: string;
   dynamicTools?: DynamicTool[];
   instructionMode?: InstructionMode;
+  ephemeral?: boolean;
 }
 
 export interface ResumeThreadResult {

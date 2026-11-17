@@ -590,6 +590,9 @@ function printThreadStatus(
     console.log(`  Parent: ${thread.parentThreadId}`);
     console.log(`  Parent notifications: ${thread.parentNotifications}`);
   }
+  if (thread.incognito) {
+    console.log("  Incognito: yes");
+  }
   if (thread.archivedAt !== null) {
     console.log(`  Archived: ${new Date(thread.archivedAt).toLocaleString()}`);
   }

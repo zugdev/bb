@@ -373,6 +373,7 @@ turn running, and `user` otherwise.
 `install_turn_number`, in addition to the standard event properties. The stored
 per-install number increments atomically on each enabled finish. It pauses while
 telemetry is off and resumes at the next number when enabled again.
+Incognito threads (`bb thread spawn --incognito`, or the Incognito toggle on the New thread page) send no `thread_created`, `user_message_sent`, or `turn_finished` events.
 
 ## AI services
 
@@ -387,7 +388,7 @@ the task in lexicographic order of plugin id and service id; unavailable
 services and failed requests fall through. A picked service is used alone; if
 it fails, titles fall back to the start of the prompt and commits to
 `bb: automated commit`. `bb ai off|on` turns bb cloud off and on; see the
-`bb-cloud-ai` skill.
+`bb-cloud-ai` skill. Incognito threads never reach these services: their title is the start of the prompt, title regeneration is refused, and commits in an environment that has an incognito thread use `bb: automated commit`.
 
 The removed `BB_INFERENCE`, `BB_INFERENCE_FALLBACK`, and `BB_TRANSCRIPTION`
 keys are ignored with a warning in `~/.bb/config.json`, and `bb-app config set`

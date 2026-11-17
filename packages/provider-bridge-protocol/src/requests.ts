@@ -40,6 +40,7 @@ const sessionConstructionFields = {
   dynamicTools: z.array(dynamicToolSchema).optional(),
   disallowedTools: z.array(z.string().min(1)).optional(),
   instructionMode: instructionModeSchema,
+  ephemeral: z.boolean().default(false),
 };
 
 export const modelListParamsSchema = z

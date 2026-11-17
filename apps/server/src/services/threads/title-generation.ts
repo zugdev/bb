@@ -394,6 +394,13 @@ export async function regenerateThreadTitle(
   deps: CommandResultSideEffectsDeps,
   args: RegenerateThreadTitleArgs,
 ): Promise<Thread> {
+  if (args.thread.incognito) {
+    throw new ApiError(
+      409,
+      "invalid_request",
+      "Incognito threads don't send their messages to AI services, so their title can't be regenerated",
+    );
+  }
   const context = loadThreadTitleRegenerationContext(deps, args.thread);
   const prompt =
     context === null ? null : buildThreadTitleRegenerationPrompt(context);

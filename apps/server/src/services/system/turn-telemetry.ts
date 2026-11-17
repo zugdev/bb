@@ -146,7 +146,7 @@ export function recordFinishedTurn(
   if (outcome === null) return;
   try {
     const thread = getThread(db, threadId);
-    if (!thread) return;
+    if (!thread || thread.incognito) return;
     const properties = {
       outcome,
       provider: reportedProviderId(thread.providerId),

@@ -11,6 +11,7 @@ import {
   listLifecycleThreadDependents,
   archiveThread,
   getEnvironment,
+  getThread,
   listNonDeletedChildThreads,
   listNonDeletedHiddenSourceThreads,
 } from "@bb/db";
@@ -32,6 +33,7 @@ import {
   archiveUndoGraceKeepsTurnRunning,
 } from "./archive-undo-grace.js";
 import { archiveThreadAndReleaseChildren } from "./thread-ownership.js";
+import { deleteThreadTree } from "./thread-delete.js";
 import { resolveThreadHostCommandEnvironment } from "./thread-command-environment.js";
 
 interface ArchiveThreadEnvironment {
@@ -171,8 +173,21 @@ function archiveThreadTrees(
     }
     archivedThreadIds.push(result.id);
   }
+  deleteArchivedIncognitoThreads(deps, archivedThreadIds);
 
   return archivedThreadIds;
+}
+
+function deleteArchivedIncognitoThreads(
+  deps: AppDeps,
+  archivedThreadIds: readonly string[],
+): void {
+  for (const threadId of archivedThreadIds) {
+    const thread = getThread(deps.db, threadId);
+    if (thread?.incognito === true && thread.deletedAt === null) {
+      deleteThreadTree(deps, threadId);
+    }
+  }
 }
 
 export function listArchiveCascadeThreadIds(

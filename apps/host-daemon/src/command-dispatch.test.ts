@@ -230,6 +230,7 @@ function createTurnSubmitCommand(
       contributedEnv: [],
       injectedSkillSources: [],
       instructionMode: "append",
+      ephemeral: false,
     },
     target,
   };
@@ -330,6 +331,7 @@ function createInstallationGatedThreadStart(
     contributedEnv: [],
     injectedSkillSources: [],
     instructionMode: "append",
+    ephemeral: false,
   };
 }
 
@@ -806,6 +808,7 @@ describe("dispatchCommand", () => {
         contributedEnv: [],
         injectedSkillSources: [],
         instructionMode: "append",
+        ephemeral: false,
       },
     };
 
@@ -883,6 +886,7 @@ describe("dispatchCommand", () => {
         contributedEnv: [],
         injectedSkillSources: [],
         instructionMode: "append",
+        ephemeral: false,
       },
       target: { mode: "start" },
     };
@@ -1275,6 +1279,7 @@ describe("dispatchCommand", () => {
         contributedEnv: [],
         injectedSkillSources: [],
         instructionMode: "append",
+        ephemeral: false,
       },
     };
 
@@ -1368,6 +1373,7 @@ describe("dispatchCommand", () => {
       contributedEnv: [],
       injectedSkillSources: [],
       instructionMode: "append",
+      ephemeral: false,
     };
 
     const unsupportedCodexStatus: ProviderCliStatus = {
@@ -1447,6 +1453,7 @@ describe("dispatchCommand", () => {
       contributedEnv: [],
       injectedSkillSources: [],
       instructionMode: "append",
+      ephemeral: false,
     };
     const providerInstallationStatus = vi.fn(async () => {
       throw new Error("Provider installation status should not be checked");
@@ -1514,6 +1521,7 @@ describe("dispatchCommand", () => {
       contributedEnv: [],
       injectedSkillSources: [],
       instructionMode: "append",
+      ephemeral: false,
     };
     const supportedCodexStatus: ProviderCliStatus = {
       displayName: "Codex",
@@ -1719,6 +1727,7 @@ describe("dispatchCommand", () => {
       contributedEnv: [],
       injectedSkillSources: start.injectedSkillSources,
       instructionMode: start.instructionMode,
+      ephemeral: start.ephemeral,
     };
 
     await dispatchCommand(start, options);
@@ -2298,6 +2307,7 @@ describe("dispatchCommand", () => {
       contributedEnv: [],
       injectedSkillSources: [fixture.source],
       instructionMode: "append",
+      ephemeral: false,
     };
 
     const result = await dispatchCommand(command, {
@@ -2380,6 +2390,7 @@ describe("dispatchCommand", () => {
         contributedEnv: [],
         injectedSkillSources: [fixture.source],
         instructionMode: "append",
+        ephemeral: false,
       },
       target: { mode: "start" },
     };

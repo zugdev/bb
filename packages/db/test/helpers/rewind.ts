@@ -74,6 +74,15 @@ export function dropThreadSnoozedUntilColumn(db: DbConnection): void {
   }
 }
 
+export function dropThreadIncognitoColumn(db: DbConnection): void {
+  const columns = db.$client
+    .prepare<[], { name: string }>("PRAGMA table_info(threads)")
+    .all();
+  if (columns.some((column) => column.name === "incognito")) {
+    db.$client.exec("ALTER TABLE threads DROP COLUMN incognito");
+  }
+}
+
 export function dropThreadParentNotificationsColumn(db: DbConnection): void {
   const columns = db.$client
     .prepare<[], { name: string }>("PRAGMA table_info(threads)")
