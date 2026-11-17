@@ -86,13 +86,15 @@ function useCompactHomeMetrics(isCompact: boolean) {
         );
       }
       const composerHeight = composer.offsetHeight;
+      const hasRecents =
+        scrollContent.querySelector("[data-root-compose-mobile-recents]") !==
+        null;
       leadingSpacer.style.height = `${getCompactHomeLeadingSpace({
         regionHeight: region.offsetHeight,
         composerHeight,
-        hasRecents:
-          scrollContent.querySelector("[data-root-compose-mobile-recents]") !==
-          null,
+        hasRecents,
       })}px`;
+      scrollContent.style.justifyContent = hasRecents ? "" : "flex-start";
       bottomSpacer.style.height = `${composerHeight}px`;
       composerFade.hidden =
         scrollViewport.scrollHeight <= scrollViewport.clientHeight;

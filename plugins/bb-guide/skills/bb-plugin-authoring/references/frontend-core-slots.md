@@ -67,7 +67,8 @@ Slot props contracts (versioned, additive-only):
   way its project picker does; it is null on Home and while the composer is
   submitting. Registration: `{ id, title, component, experimental_placement? }`;
   `experimental_placement: "lead"` renders the section first on the New thread
-  screen without the host heading and leaves it off Home. Pair it with
+  screen without the host heading and leaves it off Home; `"top"` does the
+  same and renders before every lead section. Pair it with
   `experimental_ProjectPicker` (bb's project picker, `{ value, onChange,
   disabled }`) and `experimental_useCommandShortcut(id)`, which returns the
   `{ label, ariaKeyshortcuts }` bound to one of your commands or null.

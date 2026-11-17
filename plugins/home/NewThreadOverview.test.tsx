@@ -11,39 +11,47 @@ import {
 } from "./home-overview";
 import {
   NewThreadOverview,
+  ProjectChips,
   type NewThreadOverviewProps,
+  type ProjectChipsProps,
 } from "./NewThreadOverview";
 
 beforeAll(installTestPluginRuntime);
 afterEach(cleanup);
 
-function renderOverview(props: Partial<NewThreadOverviewProps>) {
+function renderOverview(
+  props: Partial<NewThreadOverviewProps & ProjectChipsProps>,
+) {
+  const merged = {
+    threads: [],
+    projects: [PERSONAL, WEB],
+    projectId: null,
+    setProjectId: () => undefined,
+    picker: <span>picker</span>,
+    cycleShortcutLabel: "⌥ O",
+    order: {
+      sort: "message" as const,
+      setSort: () => undefined,
+      isOldestFirst: false,
+      setIsOldestFirst: () => undefined,
+    },
+    filter: DEFAULT_HOME_THREAD_FILTER,
+    setFilter: () => undefined,
+    showArchived: false,
+    setShowArchived: () => undefined,
+    onArchiveThreads: () => Promise.resolve(),
+    pullRequests: [],
+    pullRequestsExpanded: true,
+    setPullRequestsExpanded: () => undefined,
+    onSelectPullRequest: () => undefined,
+    onOpenThread: () => undefined,
+    ...props,
+  };
   return render(
-    <NewThreadOverview
-      threads={[]}
-      projects={[PERSONAL, WEB]}
-      projectId={null}
-      setProjectId={() => undefined}
-      picker={<span>picker</span>}
-      cycleShortcutLabel="⌥ O"
-      order={{
-        sort: "message",
-        setSort: () => undefined,
-        isOldestFirst: false,
-        setIsOldestFirst: () => undefined,
-      }}
-      filter={DEFAULT_HOME_THREAD_FILTER}
-      setFilter={() => undefined}
-      showArchived={false}
-      setShowArchived={() => undefined}
-      onArchiveThreads={() => Promise.resolve()}
-      pullRequests={[]}
-      pullRequestsExpanded={true}
-      setPullRequestsExpanded={() => undefined}
-      onSelectPullRequest={() => undefined}
-      onOpenThread={() => undefined}
-      {...props}
-    />,
+    <>
+      <ProjectChips {...merged} />
+      <NewThreadOverview {...merged} />
+    </>,
   );
 }
 

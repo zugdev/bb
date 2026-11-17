@@ -10,8 +10,10 @@ import { asking, makeProject, makeThread, PERSONAL, WEB } from "./fixtures";
 afterEach(cleanup);
 
 const app = await loadPluginApp(() => import("./app"));
-const section = app.homepageSections[0];
-if (section === undefined) throw new Error("overview section not registered");
+const [chips, overview] = app.homepageSections;
+if (chips === undefined || overview === undefined) {
+  throw new Error("home sections not registered");
+}
 
 const API = makeProject("proj_api", "Api");
 const THREADS = [
@@ -31,9 +33,10 @@ const THREADS = [
 function renderSection(
   setProjectId: ((projectId: string | null) => void) | null,
   projectId: string | null = null,
+  section = chips!,
 ) {
   return renderSlot(
-    section!,
+    section,
     { projectId, experimental_setProjectId: setProjectId },
     {
       pluginId: "home",
@@ -52,12 +55,13 @@ function newThreadComposer(): PluginComposerApi {
 }
 
 describe("home plugin", () => {
-  it("registers the overview as the lead section", () => {
-    expect(section.experimental_placement).toBe("lead");
+  it("puts the project chips on top and the overview in the lead", () => {
+    expect(chips.experimental_placement).toBe("top");
+    expect(overview.experimental_placement).toBe("lead");
   });
 
   it("opens a thread in the pane, or in a new tab with Cmd or Ctrl", () => {
-    const view = renderSection(() => undefined);
+    const view = renderSection(() => undefined, null, overview);
     const row = screen.getByRole("button", { name: /ask-web/ });
     fireEvent.click(row);
     fireEvent.click(row, { metaKey: true });

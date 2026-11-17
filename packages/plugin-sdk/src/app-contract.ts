@@ -839,10 +839,11 @@ export interface PluginHomepageSectionRegistration {
   /**
    * `"lead"` renders the section first on the New thread screen, before
    * other sections and without the host's heading, and leaves it off Home.
+   * `"top"` does the same and renders before every `"lead"` section.
    * Omitted renders a titled section in registration order on both.
    * Experimental: see docs/api_to_audit.md.
    */
-  experimental_placement?: "lead";
+  experimental_placement?: "top" | "lead";
 }
 
 export interface PluginSettingsSectionRegistration {
@@ -3509,7 +3510,7 @@ export interface ExperimentalHomepageSectionInfo {
   id: string;
   title: string;
   /** The registration's `experimental_placement`; null when omitted. */
-  experimental_placement: "lead" | null;
+  experimental_placement: "top" | "lead" | null;
 }
 
 /** Props of `experimental_HomepageSection`. */

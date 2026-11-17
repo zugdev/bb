@@ -215,6 +215,48 @@ describe("PluginHomepageSections", () => {
     fireEvent.click(bodies[0]!);
     expect(setProjectId).toHaveBeenCalledWith("proj_next");
   });
+
+  it("renders top sections before lead sections from earlier plugins", () => {
+    const named = (name: string) => () => <div>{name}</div>;
+    setPluginSlotRegistrations(
+      "alpha",
+      registrationSet({
+        homepageSections: [
+          {
+            id: "card",
+            title: "Card",
+            component: named("alpha lead"),
+            experimental_placement: "lead",
+          },
+        ],
+      }),
+    );
+    setPluginSlotRegistrations(
+      "zeta",
+      registrationSet({
+        homepageSections: [
+          {
+            id: "picker",
+            title: "Picker",
+            component: named("zeta top"),
+            experimental_placement: "top",
+          },
+        ],
+      }),
+    );
+    render(
+      <MemoryRouter initialEntries={["/"]}>
+        <PluginHomepageSections project={HOME_SECTION_PROJECT} />
+      </MemoryRouter>,
+    );
+    expect(
+      screen
+        .getByText("zeta top")
+        .compareDocumentPosition(screen.getByText("alpha lead")) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(screen.queryByRole("heading", { name: "Picker" })).toBeNull();
+  });
 });
 
 function ThreadDraftViewer({ threadId }: { threadId: string }) {

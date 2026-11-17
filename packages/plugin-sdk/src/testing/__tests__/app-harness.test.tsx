@@ -590,6 +590,12 @@ describe("loadPluginApp", () => {
           experimental_placement: "lead",
         });
         builder.slots.homepageSection({
+          id: "top",
+          title: "Top",
+          component: Section,
+          experimental_placement: "top",
+        });
+        builder.slots.homepageSection({
           id: "titled",
           title: "Titled",
           component: Section,
@@ -600,20 +606,20 @@ describe("loadPluginApp", () => {
       captured.homepageSections.map(
         (section) => section.experimental_placement,
       ),
-    ).toEqual(["lead", undefined]);
+    ).toEqual(["lead", "top", undefined]);
     await expect(
       loadPluginApp(
         definePluginApp((builder) => {
           builder.slots.homepageSection({
-            id: "top",
-            title: "Top",
+            id: "bottom",
+            title: "Bottom",
             component: Section,
-            experimental_placement: "top" as "lead",
+            experimental_placement: "bottom" as "lead",
           });
         }),
       ),
     ).rejects.toThrow(
-      'slots.homepageSection: experimental_placement must be "lead"',
+      'slots.homepageSection: experimental_placement must be "top" or "lead"',
     );
   });
 
