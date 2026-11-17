@@ -381,7 +381,7 @@ Docs: `frontend-registration.md`.
 
 `experimental_incognito` is true for a thread created with the Incognito toggle, `bb thread create --incognito` or `incognito: true` on the create request. It mirrors the `threads.incognito` column.
 
-**Core callers.** `toPluginSidebarThread` (`apps/app/src/lib/plugin-sidebar-threads.ts`) fills it from `ThreadListEntry.incognito`. The thread list plugin draws the incognito icon on the row.
+**Core callers.** `toPluginSidebarThread` (`apps/app/src/lib/plugin-sidebar-threads.ts`) fills it from `ThreadListEntry.incognito`. The thread list and inbox plugins draw the incognito icon on their rows.
 
 Docs: `frontend-registration.md`.
 

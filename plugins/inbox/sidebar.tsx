@@ -351,7 +351,19 @@ function InboxRow({
             projects={projects}
             className="text-2xs leading-4"
           />
-          <span className="truncate">{thread.displayTitle}</span>
+          <span className="flex min-w-0 items-center gap-1">
+            <span className="truncate">{thread.displayTitle}</span>
+            {thread.experimental_incognito ? (
+              <span
+                role="img"
+                aria-label="Incognito"
+                title="Incognito"
+                className="flex shrink-0 text-muted-foreground"
+              >
+                <Icon name="Incognito" className="size-3.5" />
+              </span>
+            ) : null}
+          </span>
         </span>
         <span className="shrink-0 text-2xs tabular-nums text-muted-foreground pointer-fine:group-hover:invisible pointer-fine:group-focus-within:invisible pointer-fine:group-has-data-[state=open]:invisible">
           {trailing}
