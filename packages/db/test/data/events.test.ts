@@ -4292,13 +4292,14 @@ describe("events", () => {
       taskType: string;
       skipTranscript?: boolean;
       foreground?: boolean;
+      description?: string;
     }) =>
       JSON.stringify({
         item: {
           id: args.itemId,
           type: "backgroundTask",
           taskType: args.taskType,
-          description: "fixture background task",
+          description: args.description ?? "fixture background task",
           status: args.itemStatus,
           taskStatus: args.taskStatus,
           skipTranscript: args.skipTranscript ?? false,
@@ -4492,6 +4493,22 @@ describe("events", () => {
             taskStatus: "running",
             skipTranscript: false,
           },
+        }),
+      },
+      {
+        threadId: thread.id,
+        sequence: 13,
+        scope: turnScope("turn-1"),
+        type: "item/started",
+        itemId: "task:dev-server",
+        itemKind: "backgroundTask",
+        parentToolCallId: null,
+        data: taskData({
+          itemId: "task:dev-server",
+          itemStatus: "pending",
+          taskStatus: "running",
+          taskType: LOCAL_BASH_TASK_TYPE,
+          description: "Run app dev server on port 3200",
         }),
       },
     ]);

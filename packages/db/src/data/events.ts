@@ -85,6 +85,13 @@ import { queryInSqliteVariableBatches } from "./sqlite-variable-batches.js";
 
 const STORED_EVENT_SEQUENCE_LOOKUP_CHUNK_SIZE = 250;
 const CLIENT_TURN_REQUEST_KEY_BATCH_SIZE = 995;
+const DEV_SERVER_DESCRIPTION_PATTERNS = [
+  "%dev server%",
+  "%pnpm dev%",
+  "%run dev%",
+  "%app dev%",
+  "%server.py%",
+];
 const ITEM_EVENT_TYPES = threadEventTypeValues.filter((type) =>
   type.startsWith("item/"),
 );
@@ -2599,7 +2606,7 @@ export function listActiveBackgroundTaskCountsByThreadIds(
 ): ActiveBackgroundTaskCountRow[] {
   const rows = queryInSqliteVariableBatches({
     dedupeKey: (threadId) => threadId,
-    fixedVariableCount: 14,
+    fixedVariableCount: 20,
     queryBatch: (threadIds) => {
       const startedType = "item/started" satisfies ThreadEventType;
       const progressType =
@@ -2685,6 +2692,17 @@ export function listActiveBackgroundTaskCountsByThreadIds(
         json_extract(active_event.data, '$.item.foreground'),
         0
       ) = 0
+      AND NOT (
+        json_extract(active_event.data, '$.item.taskType') =
+          ${LOCAL_BASH_TASK_TYPE}
+        AND (${sql.join(
+          DEV_SERVER_DESCRIPTION_PATTERNS.map(
+            (pattern) =>
+              sql`json_extract(active_event.data, '$.item.description') LIKE ${pattern}`,
+          ),
+          sql` OR `,
+        )})
+      )
     GROUP BY active_event.thread_id
     ORDER BY active_event.thread_id
   `);

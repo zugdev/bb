@@ -875,6 +875,13 @@ describe("ThreadRow", () => {
       }),
     },
     {
+      label: "background command + pending input",
+      thread: createThread({
+        hasPendingInteraction: true,
+        activity: activity({ backgroundCommands: 1 }),
+      }),
+    },
+    {
       label: "plan mode + unread error",
       thread: createThread({
         status: "error",
@@ -916,10 +923,6 @@ describe("ThreadRow", () => {
   it.each([
     ["idle", createThread()],
     ["unread error only", createThread({ status: "error" })],
-    [
-      "a background command",
-      createThread({ activity: activity({ backgroundCommands: 1 }) }),
-    ],
   ])("keeps the split map static for %s", (_label, thread) => {
     renderSplitThreadRow({ thread });
 
