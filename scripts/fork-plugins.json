@@ -10,6 +10,7 @@
     "plugins/muon-copy",
     "plugins/perf",
     "plugins/keep-awake-toggle",
+    "plugins/focus-mode",
     "plugins/thread-finder"
   ]
 }
