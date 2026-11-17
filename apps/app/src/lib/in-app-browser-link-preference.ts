@@ -25,6 +25,11 @@ function isHttpOrHttpsUrl(url: string): boolean {
   return HTTP_URL_SCHEME_PATTERN.test(url);
 }
 
+function isGitHubUrl(url: string): boolean {
+  const { hostname } = new URL(url);
+  return hostname === "github.com" || hostname.endsWith(".github.com");
+}
+
 export function resolveUrlOpenTarget({
   desktopBrowserAvailable,
   openLinksInAppBrowser,
@@ -34,7 +39,7 @@ export function resolveUrlOpenTarget({
   if (!isHttpOrHttpsUrl(url)) {
     return "unhandled";
   }
-  if (desktopBrowserAvailable && openLinksInAppBrowser) {
+  if (desktopBrowserAvailable && openLinksInAppBrowser && !isGitHubUrl(url)) {
     return "in-app-browser";
   }
   return "external-browser";
