@@ -12,10 +12,18 @@ function readHosts(): string {
   return readFileSync(HOSTS_PATH, "utf8");
 }
 
-function runAsAdmin(shellCommand: string): Promise<void> {
-  const script = `do shell script ${JSON.stringify(shellCommand)} with administrator privileges with prompt "bb Focus mode wants to update /etc/hosts."`;
+const ASKPASS_SCRIPT = `#!/bin/sh
+exec /usr/bin/osascript -e 'text returned of (display dialog "bb Focus mode needs your password to update /etc/hosts." default answer "" with hidden answer with icon caution)'
+`;
+
+function runAsAdmin(dir: string, shellCommand: string): Promise<void> {
+  const askpass = join(dir, "askpass");
+  writeFileSync(askpass, ASKPASS_SCRIPT, { mode: 0o700 });
   return new Promise((resolve, reject) => {
-    const child = spawn("/usr/bin/osascript", ["-e", script], { stdio: ["ignore", "ignore", "pipe"] });
+    const child = spawn("/usr/bin/sudo", ["-A", "/bin/sh", "-c", shellCommand], {
+      env: { ...process.env, SUDO_ASKPASS: askpass },
+      stdio: ["ignore", "ignore", "pipe"],
+    });
     let stderr = "";
     child.stderr?.on("data", (chunk: Buffer) => {
       stderr += chunk.toString("utf8");
@@ -23,7 +31,7 @@ function runAsAdmin(shellCommand: string): Promise<void> {
     child.once("error", reject);
     child.once("close", (code) => {
       if (code === 0) resolve();
-      else reject(new Error(stderr.trim() || `osascript exited with ${code}`));
+      else reject(new Error(stderr.trim() || `sudo exited with ${code}`));
     });
   });
 }
@@ -44,6 +52,7 @@ export default experimental_defineHostEntry({
         try {
           writeFileSync(staged, next);
           await runAsAdmin(
+            dir,
             `/bin/cat '${staged}' > ${HOSTS_PATH} && /usr/bin/dscacheutil -flushcache && /usr/bin/killall -HUP mDNSResponder`,
           );
         } finally {
