@@ -115,11 +115,7 @@ export function inboxSections(
     if (dot === "waiting") sections.needsAnswer.push(thread);
     else if (isSnoozed(thread, now)) sections.snoozed.push(thread);
     else if (dot === "working") sections.working.push(thread);
-    else if (
-      thread.latestAttentionAt > (thread.experimental_lastUserMessageAt ?? 0)
-    ) {
-      sections.waitingOnYou.push(thread);
-    }
+    else sections.waitingOnYou.push(thread);
   }
   sections.needsAnswer.sort(byArrival);
   sections.waitingOnYou.sort(byArrival);

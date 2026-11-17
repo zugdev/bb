@@ -27,20 +27,20 @@ const ids = (threads: readonly { id: string }[]) =>
   threads.map((thread) => thread.id);
 
 describe("inboxSections", () => {
-  it("lists idle threads awaiting a reply, oldest first", () => {
+  it("lists every idle top-level thread as waiting, oldest first", () => {
     const sections = inboxSections(
       [
         idle("new", 30),
         idle("old", 10),
-        idle("replied", 20, { experimental_lastUserMessageAt: 25 }),
+        idle("stopped", 20, { experimental_lastUserMessageAt: 25 }),
         idle("archived", 5, { archivedAt: 6 }),
         idle("child", 5, { parentThreadId: "old" }),
         idle("hidden", 5, { isHidden: true }),
       ],
       NOW,
     );
-    expect(ids(sections.waitingOnYou)).toEqual(["old", "new"]);
-    expect(ids(inboxQueue(sections))).toEqual(["old", "new"]);
+    expect(ids(sections.waitingOnYou)).toEqual(["old", "stopped", "new"]);
+    expect(ids(inboxQueue(sections))).toEqual(["old", "stopped", "new"]);
   });
 
   it("puts running agents under working and out of the queue", () => {
