@@ -1,0 +1,36 @@
+{
+  "name": "bb-plugin-remote-bb",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Opens another bb server, such as a team instance on a tailnet, as a full page from the sidebar.",
+  "engines": {
+    "bb": ">=0.0",
+    "bbPluginSdk": ">=0.6.115"
+  },
+  "bb": {
+    "name": "Remote bb",
+    "description": "Opens another bb server, such as a team instance on a tailnet, as a full page from the sidebar.",
+    "branding": {
+      "icon": "Globe"
+    },
+    "server": "./server.ts",
+    "app": "./app.tsx"
+  },
+  "keywords": [
+    "bb-plugin"
+  ],
+  "scripts": {
+    "typecheck": "tsrs --noEmit",
+    "lint": "oxlint --ignore-pattern node_modules --ignore-pattern dist ."
+  },
+  "devDependencies": {
+    "@bb/plugin-build": "workspace:*",
+    "@get-bb/plugin-sdk": "workspace:*",
+    "@types/node": "^22.0.0",
+    "@types/react": "^19.0.0",
+    "react": "^19.0.0",
+    "tsrs": "0.18.0-ts7.1.0-dev.20260929",
+    "typescript": "npm:@typescript/typescript6@^6.0.2"
+  }
+}
