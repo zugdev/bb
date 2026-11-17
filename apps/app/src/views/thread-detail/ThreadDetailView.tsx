@@ -32,7 +32,8 @@ import {
   useSystemConfig,
 } from "@/hooks/queries/system-queries";
 import { useImmediateRouteNavigate } from "@/components/ui/app-route-anchor";
-import { useAtom, useAtomValue } from "jotai";
+import { useAtom, useAtomValue, useStore } from "jotai";
+import { openOutsideOwnedTabAtom } from "@/lib/split-layout/tabs";
 import { threadPanelTabPanesAtom } from "@/lib/split-layout/atoms";
 import { usePaneContentSplitActions } from "@/components/sidebar/usePaneContentSplitDrag";
 import { PaneMaximizeButton } from "./PaneMaximizeButton";
@@ -312,6 +313,7 @@ function ThreadDetailViewInternal(
     isBoundedPane,
   } = usePaneContext();
   const navigate = useImmediateRouteNavigate();
+  const store = useStore();
   useFixedPanelTabsStorageMaintenance();
   const systemConfigQuery = useSystemConfig();
   const isCompactViewport = useIsCompactViewport();
@@ -1465,6 +1467,7 @@ function ThreadDetailViewInternal(
       : undefined;
   const onMentionInNewThread = () => {
     if (forkProjectId) setRootComposeProjectId(forkProjectId);
+    store.set(openOutsideOwnedTabAtom, { kind: "new-thread" });
     navigate(getRootComposeRoutePath(), {
       state: {
         focusPrompt: true,
