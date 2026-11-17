@@ -1,0 +1,1 @@
+DELETE FROM `project_execution_defaults`;

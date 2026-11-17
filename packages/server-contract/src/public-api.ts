@@ -170,6 +170,7 @@ import {
   type ProjectBranchesResponse,
   type ProjectCommandsQuery,
   type ProjectDefaultExecutionOptionsQuery,
+  type SetProjectDefaultExecutionOptionsRequest,
   type ProjectFilesQuery,
   type ProjectListQuery,
   type ProjectPathsQuery,
@@ -349,6 +350,7 @@ import {
   projectBranchesQuerySchema,
   projectCommandsQuerySchema,
   projectDefaultExecutionOptionsQuerySchema,
+  setProjectDefaultExecutionOptionsRequestSchema,
   projectFilesQuerySchema,
   projectListQuerySchema,
   projectPathsQuerySchema,
@@ -542,6 +544,21 @@ export const publicApiRoutes = {
         projectDefaultExecutionOptionsQuerySchema,
       ),
       response: jsonResponse<ProjectExecutionDefaults | null>(),
+    }),
+    setDefaultExecutionOptions: defineRoute({
+      path: "/projects/:id/default-execution-options",
+      method: "put",
+      request: jsonRequest<
+        PathProjectId,
+        SetProjectDefaultExecutionOptionsRequest
+      >(setProjectDefaultExecutionOptionsRequestSchema),
+      response: jsonResponse<ProjectExecutionDefaults>(),
+    }),
+    clearDefaultExecutionOptions: defineRoute({
+      path: "/projects/:id/default-execution-options",
+      method: "delete",
+      request: noRequest<PathProjectId>(),
+      response: jsonResponse<{ ok: true }>(),
     }),
     promptHistory: defineRoute({
       path: "/projects/:id/prompt-history",

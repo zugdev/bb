@@ -110,3 +110,12 @@ export function upsertProjectExecutionDefaults(
 
   return row;
 }
+
+export function deleteProjectExecutionDefaults(
+  db: DbConnection,
+  args: GetProjectExecutionDefaultsArgs,
+): void {
+  db.delete(projectExecutionDefaults)
+    .where(eq(projectExecutionDefaults.projectId, args.projectId))
+    .run();
+}

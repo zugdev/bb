@@ -40,6 +40,7 @@ import {
   allPluginSourceQueryKeyPrefix,
   pluginSafeModeQueryKey,
   allProjectCommandsQueryKeyPrefix,
+  projectDefaultExecutionOptionsQueryKey,
   allThreadStorageFilePreviewQueryKeyPrefix,
   allThreadStorageFilesQueryKeyPrefix,
   allThreadStorageLocationsQueryKeyPrefix,
@@ -495,7 +496,10 @@ export const REALTIME_PROJECT_CHANGE_REGISTRY = {
     dirty: [getProjectListInvalidationQueryKeys],
   },
   "project-updated": {
-    dirty: [getProjectListInvalidationQueryKeys],
+    dirty: [
+      getProjectListInvalidationQueryKeys,
+      dirtyProjectDefaultExecutionOptionsQueries,
+    ],
   },
   "project-deleted": {
     dirty: [getProjectListInvalidationQueryKeys],
@@ -983,6 +987,14 @@ function dirtyThreadStorageQueriesForThread({
     threadStoragePathsForThreadQueryKeyPrefix(threadId),
     threadStorageFilePreviewQueryKeyPrefix(threadId),
   ];
+}
+
+function dirtyProjectDefaultExecutionOptionsQueries({
+  projectId,
+}: ProjectRealtimeDirtyContext): QueryKey[] {
+  return projectId === undefined
+    ? []
+    : [projectDefaultExecutionOptionsQueryKey({ projectId })];
 }
 
 function dirtyProjectPromptHistoryQueries({

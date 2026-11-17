@@ -327,6 +327,14 @@ export function registerSystemRoutes(
       confirmThreadArchive:
         settings.confirmThreadArchive ?? current.confirmThreadArchive,
       earlyAdopter: settings.earlyAdopter ?? current.earlyAdopter,
+      defaultModel:
+        settings.defaultModel === undefined
+          ? current.defaultModel
+          : settings.defaultModel,
+      defaultReasoningLevel:
+        settings.defaultReasoningLevel === undefined
+          ? current.defaultReasoningLevel
+          : settings.defaultReasoningLevel,
       onboardingCompletedAt:
         settings.onboardingCompletedAt === undefined
           ? current.onboardingCompletedAt

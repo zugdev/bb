@@ -91,6 +91,7 @@ const EMPTY_COMPOSER_ACTIONS: ProviderComposerAction[] = [];
 const EMPTY_SERVICE_TIER_OPTIONS: readonly ProviderOptionDescriptor[] = [];
 
 const DEFAULT_SUPPORTED_PERMISSION_MODES: readonly PermissionMode[] = ["full"];
+const NO_TOUCHED_FIELDS: ReadonlySet<ThreadPromptField> = new Set();
 
 const PERMISSION_CEILING_REASON =
   "Above the selected machine's permission limit. Change it in Settings → Machines.";
@@ -333,8 +334,17 @@ export function useThreadCreationOptions(
     usesLocalThreadSelections,
   ]);
 
+  const currentTouchedFields =
+    threadResetKeyRef.current === resetKey
+      ? touchedThreadFieldsRef.current
+      : NO_TOUCHED_FIELDS;
+  const appliedStoredProviderId =
+    renderedThreadSelections.selectedProviderId !== "" &&
+    !currentTouchedFields.has("selectedProviderId")
+      ? ""
+      : storedProviderId;
   const selectedProviderIdBeforeReadyFallback = usesStoredCreateSelections
-    ? storedProviderId || renderedThreadSelections.selectedProviderId
+    ? appliedStoredProviderId || renderedThreadSelections.selectedProviderId
     : renderedThreadSelections.selectedProviderId;
   const rawPermissionMode = usesStoredCreateSelections
     ? storedPermissionMode || renderedThreadSelections.permissionMode
@@ -506,8 +516,21 @@ export function useThreadCreationOptions(
   const effectiveProviderMatchesInitialProvider =
     effectiveProviderId.length > 0 &&
     effectiveProviderId === renderedThreadSelections.selectedProviderId;
+  const appliedStoredSelectedModel =
+    effectiveProviderMatchesInitialProvider &&
+    renderedThreadSelections.selectedModel !== "" &&
+    !currentTouchedFields.has("selectedModel")
+      ? ""
+      : storedSelectedModel;
+  const appliedStoredReasoningLevel =
+    effectiveProviderMatchesInitialProvider &&
+    initialReasoningLevel !== undefined &&
+    !currentTouchedFields.has("reasoningLevel") &&
+    !currentTouchedFields.has("selectedModel")
+      ? ""
+      : storedReasoningLevel;
   const rawSelectedModel = usesStoredCreateSelections
-    ? storedSelectedModel ||
+    ? appliedStoredSelectedModel ||
       (effectiveProviderMatchesInitialProvider
         ? renderedThreadSelections.selectedModel
         : "")
@@ -520,7 +543,7 @@ export function useThreadCreationOptions(
     : renderedThreadSelections.serviceTier;
   const preferredReasoningLevel: ReasoningLevel | undefined =
     usesStoredCreateSelections
-      ? storedReasoningLevel ||
+      ? appliedStoredReasoningLevel ||
         (effectiveProviderMatchesInitialProvider
           ? initialReasoningLevel
           : undefined)
@@ -577,10 +600,7 @@ export function useThreadCreationOptions(
   );
 
   const resolveReasoningForModel = useCallback(
-    (
-      model: string,
-      preferred: ReasoningLevel,
-    ): ModelReasoningOptions => {
+    (model: string, preferred: ReasoningLevel): ModelReasoningOptions => {
       const selection = resolveModelCatalogSelection({
         models: executionOptionsQuery.data?.models ?? [],
         selectedOnlyModels:
@@ -782,8 +802,7 @@ export function useThreadCreationOptions(
         : permissionModes,
   });
   const environmentSelectionValue = rawEnvironmentSelectionValue;
-  const touchedFieldsPendingReset =
-    usesLocalThreadSelections && threadResetKeyRef.current !== resetKey;
+  const touchedFieldsPendingReset = threadResetKeyRef.current !== resetKey;
   const effectiveInitialProviderSource: ExecutionInputFieldSource | undefined =
     canResolveReadyProvider &&
     readyProviderId !== undefined &&
@@ -805,10 +824,10 @@ export function useThreadCreationOptions(
         initialProviderSource: effectiveInitialProviderSource,
         scope,
         storedValues: {
-          selectedProviderId: storedProviderId,
-          selectedModel: storedSelectedModel,
+          selectedProviderId: appliedStoredProviderId,
+          selectedModel: appliedStoredSelectedModel,
           serviceTier: storedServiceTier,
-          reasoningLevel: storedReasoningLevel,
+          reasoningLevel: appliedStoredReasoningLevel,
           permissionMode: storedPermissionMode,
         },
         touchedFields: touchedFieldsPendingReset
@@ -825,17 +844,23 @@ export function useThreadCreationOptions(
       scope,
       selectedModel,
       serviceTier,
+      appliedStoredProviderId,
+      appliedStoredReasoningLevel,
+      appliedStoredSelectedModel,
       storedPermissionMode,
-      storedProviderId,
-      storedReasoningLevel,
-      storedSelectedModel,
       storedServiceTier,
       touchedFieldsPendingReset,
     ],
   );
 
   useLayoutEffect(() => {
-    if (!usesLocalThreadSelections) return;
+    if (!usesLocalThreadSelections) {
+      if (threadResetKeyRef.current !== resetKey) {
+        threadResetKeyRef.current = resetKey;
+        touchedThreadFieldsRef.current = new Set();
+      }
+      return;
+    }
     if (threadResetKeyRef.current !== resetKey) {
       threadResetKeyRef.current = resetKey;
       touchedThreadFieldsRef.current = new Set();

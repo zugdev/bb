@@ -1,10 +1,24 @@
-import { getProjectExecutionDefaults, getThread } from "@bb/db";
-import type { Thread } from "@bb/domain";
+import {
+  deleteProjectExecutionDefaults,
+  getAppSettings,
+  getProjectExecutionDefaults,
+  getThread,
+  upsertProjectExecutionDefaults,
+} from "@bb/db";
+import {
+  DEFAULT_SERVICE_TIER,
+  type ProjectExecutionDefaults,
+  type Thread,
+} from "@bb/domain";
+import type { SetProjectDefaultExecutionOptionsRequest } from "@bb/server-contract";
+import { ApiError } from "../../errors.js";
 import type { AppDeps } from "../../types.js";
 import type { ThreadCreateServiceRequestInput } from "./thread-create-request.js";
 import {
   resolveCreateThreadExecutionDefaults,
+  resolveSupportedPermissionMode,
   resolveThreadExecutionDefaults,
+  type GlobalExecutionDefaults,
   type ThreadExecutionDefaults,
   type ThreadParentExecution,
 } from "./thread-default-policy.js";
@@ -49,11 +63,23 @@ function loadThreadParentExecution(
     : { execution, providerId: parentThread.providerId };
 }
 
+function loadGlobalExecutionDefaults(
+  deps: Pick<AppDeps, "db">,
+): GlobalExecutionDefaults {
+  const settings = getAppSettings(deps.db);
+  return {
+    providerId: settings.defaultProviderId,
+    model: settings.defaultModel,
+    reasoningLevel: settings.defaultReasoningLevel,
+  };
+}
+
 export function loadThreadExecutionDefaults(
   deps: Pick<AppDeps, "db" | "providerRegistry">,
   thread: Pick<Thread, "parentThreadId" | "projectId" | "providerId">,
 ): ThreadExecutionDefaults {
   return resolveThreadExecutionDefaults(deps.providerRegistry, {
+    globalDefaults: loadGlobalExecutionDefaults(deps),
     parent: loadThreadParentExecution(
       deps,
       thread.parentThreadId === null
@@ -128,6 +154,7 @@ export function resolveProjectExecutionDefaultsForCreate(
 
   return {
     defaultModel: resolveThreadExecutionDefaults(deps.providerRegistry, {
+      globalDefaults: loadGlobalExecutionDefaults(deps),
       parent,
       projectDefaults: storedDefaults,
       providerId,
@@ -136,4 +163,58 @@ export function resolveProjectExecutionDefaultsForCreate(
     providerFallbackCandidates,
     requestedModel: requestedModel ?? null,
   };
+}
+
+interface SetProjectExecutionDefaultsArgs {
+  projectId: string;
+  request: SetProjectDefaultExecutionOptionsRequest;
+}
+
+export function setProjectExecutionDefaults(
+  deps: Pick<AppDeps, "db" | "hub" | "providerRegistry">,
+  { projectId, request }: SetProjectExecutionDefaultsArgs,
+): ProjectExecutionDefaults {
+  if (deps.providerRegistry.get(request.providerId) === null) {
+    throw new ApiError(
+      400,
+      "invalid_request",
+      `Unknown provider "${request.providerId}"`,
+    );
+  }
+  const supportedPermissionModes =
+    deps.providerRegistry.getSupportedPermissionModes(request.providerId);
+  if (
+    request.permissionMode !== undefined &&
+    supportedPermissionModes !== null &&
+    !supportedPermissionModes.includes(request.permissionMode)
+  ) {
+    throw new ApiError(
+      400,
+      "invalid_request",
+      `Provider "${request.providerId}" does not support permission mode "${request.permissionMode}". Supported: ${supportedPermissionModes.join(", ")}.`,
+    );
+  }
+  const defaults = upsertProjectExecutionDefaults(deps.db, {
+    projectId,
+    providerId: request.providerId,
+    model: request.model,
+    reasoningLevel: request.reasoningLevel,
+    permissionMode:
+      request.permissionMode ??
+      resolveSupportedPermissionMode(deps.providerRegistry, {
+        providerId: request.providerId,
+        preferredPermissionMode: "auto",
+      }),
+    serviceTier: request.serviceTier ?? DEFAULT_SERVICE_TIER,
+  });
+  deps.hub.notifyProject(projectId, ["project-updated"]);
+  return defaults;
+}
+
+export function clearProjectExecutionDefaults(
+  deps: Pick<AppDeps, "db" | "hub">,
+  projectId: string,
+): void {
+  deleteProjectExecutionDefaults(deps.db, { projectId });
+  deps.hub.notifyProject(projectId, ["project-updated"]);
 }

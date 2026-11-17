@@ -17,6 +17,7 @@ import type {
   PromptHistoryResponse,
   PromptHistoryQuery,
   ReorderProjectRequest,
+  SetProjectDefaultExecutionOptionsRequest,
   SidebarBootstrapResponse,
   UpdateProjectRequest,
   UpdateProjectSourceRequest,
@@ -97,6 +98,14 @@ export interface ProjectDefaultExecutionOptionsArgs {
   signal?: AbortSignal;
 }
 
+export interface ProjectSetDefaultExecutionOptionsArgs extends SetProjectDefaultExecutionOptionsRequest {
+  projectId: string;
+}
+
+export interface ProjectClearDefaultExecutionOptionsArgs {
+  projectId: string;
+}
+
 export interface ProjectSidebarBootstrapArgs {
   signal?: AbortSignal;
 }
@@ -164,6 +173,8 @@ export type ProjectAttachmentUploadResult = UploadedPromptAttachment;
 export type ProjectCommandsResult = CommandListResponse;
 export type ProjectCreateResult = ProjectResponse;
 export type ProjectDefaultExecutionOptionsResult = ProjectExecutionDefaults | null;
+export type ProjectSetDefaultExecutionOptionsResult = ProjectExecutionDefaults;
+export type ProjectClearDefaultExecutionOptionsResult = { ok: true };
 export type ProjectDeleteResult = { ok: true };
 export interface ProjectFileContentResult {
   content: string;
@@ -220,6 +231,12 @@ export interface ProjectsArea {
   defaultExecutionOptions(
     args: ProjectDefaultExecutionOptionsArgs,
   ): Promise<ProjectDefaultExecutionOptionsResult>;
+  setDefaultExecutionOptions(
+    args: ProjectSetDefaultExecutionOptionsArgs,
+  ): Promise<ProjectSetDefaultExecutionOptionsResult>;
+  clearDefaultExecutionOptions(
+    args: ProjectClearDefaultExecutionOptionsArgs,
+  ): Promise<ProjectClearDefaultExecutionOptionsResult>;
   delete(args: ProjectDeleteArgs): Promise<ProjectDeleteResult>;
   fileContent(args: ProjectFileContentArgs): Promise<ProjectFileContentResult>;
   files(args: ProjectFilesArgs): Promise<ProjectFilesResult>;
@@ -497,6 +514,22 @@ export function createProjectsArea(args: CreateSdkAreaArgs): ProjectsArea {
           ...signalRequestArgs(input.signal),
         ),
       );
+    },
+    async setDefaultExecutionOptions({ projectId, ...json }) {
+      return transport.readJson(
+        transport.api.v1.projects[":id"]["default-execution-options"].$put({
+          param: { id: projectId },
+          json,
+        }),
+      );
+    },
+    async clearDefaultExecutionOptions(input) {
+      await transport.readVoid(
+        transport.api.v1.projects[":id"]["default-execution-options"].$delete({
+          param: { id: input.projectId },
+        }),
+      );
+      return { ok: true };
     },
     async fileContent(input) {
       const { projectId, path, signal, environmentId, hostId } = input;

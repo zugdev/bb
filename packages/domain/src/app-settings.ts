@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { completedTurnDisplaySchema } from "./completed-turn-display.js";
 import { isValidGitBranchName } from "./git-checkout.js";
+import { reasoningLevelSchema } from "./shared-types.js";
 
 export const MANAGED_BRANCH_PREFIX_MAX_LENGTH = 64;
 
@@ -32,6 +33,8 @@ export const appSettingsSchema = z
     summarizeShellCommands: z.boolean(),
     providerOrder: z.array(z.string().min(1)),
     defaultProviderId: z.string().min(1).nullable(),
+    defaultModel: z.string().min(1).nullable(),
+    defaultReasoningLevel: reasoningLevelSchema.nullable(),
     providerCompletedTurnDisplay: z.record(
       z.string().min(1),
       completedTurnDisplaySchema,
@@ -71,6 +74,8 @@ export const defaultAppSettings: AppSettings = {
   summarizeShellCommands: true,
   providerOrder: [],
   defaultProviderId: null,
+  defaultModel: null,
+  defaultReasoningLevel: null,
   providerCompletedTurnDisplay: {},
   streamerMode: false,
   allowFastServiceTier: true,
@@ -99,6 +104,8 @@ export const appSettingsUpdateSchema = z.union([
     showUnhandledProviderEvents: z.boolean().optional(),
     onboardingCompletedAt: z.string().min(1).nullable().optional(),
     earlyAdopter: z.boolean().optional(),
+    defaultModel: z.string().min(1).nullable().optional(),
+    defaultReasoningLevel: reasoningLevelSchema.nullable().optional(),
   }),
   appSettingsSchema.omit({ showDiagnosticEvents: true }).extend({
     idleProviderSessionTimeoutMinutes:
@@ -112,6 +119,8 @@ export const appSettingsUpdateSchema = z.union([
     showUnhandledProviderEvents: z.boolean(),
     onboardingCompletedAt: z.string().min(1).nullable().optional(),
     earlyAdopter: z.boolean().optional(),
+    defaultModel: z.string().min(1).nullable().optional(),
+    defaultReasoningLevel: reasoningLevelSchema.nullable().optional(),
   }),
 ]);
 export type AppSettingsUpdate = z.infer<typeof appSettingsUpdateSchema>;
