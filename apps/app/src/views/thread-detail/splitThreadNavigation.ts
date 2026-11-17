@@ -277,6 +277,30 @@ export function replaceOriginPaneContent(
   };
 }
 
+export function replaceInactiveTabPaneContent(
+  state: SplitTabsState,
+  tabId: string,
+  paneId: string,
+  originContent: PaneContent,
+  content: PaneContent,
+): SplitTabsState | null {
+  const tab = state.tabs.find((candidate) => candidate.id === tabId);
+  if (tab?.layout == null) return null;
+  const layout = replaceOriginPaneContent(
+    tab.layout,
+    paneId,
+    originContent,
+    content,
+  );
+  if (layout === null) return null;
+  return {
+    ...state,
+    tabs: state.tabs.map((candidate) =>
+      candidate.id === tabId ? { ...candidate, layout } : candidate,
+    ),
+  };
+}
+
 export function openComposeTab(
   store: ReturnType<typeof useStore>,
   navigate: (route: string, options: { replace: true }) => void,
