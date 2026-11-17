@@ -47,7 +47,7 @@ export default definePluginApp((app) => {
     kind: "action",
     id: FOOTER_ITEM_ID,
     label: "Focus mode",
-    icon: "EyeOff",
+    icon: "Target",
     onActivate: () => toggleFocusMode?.(),
   });
   app.slots.experimental_appOverlay({ id: "focus-mode-controller", component: FocusModeController });
