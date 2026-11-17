@@ -20,10 +20,13 @@ const COMPACT_HOME_REST_BAND_PX =
 export function getCompactHomeLeadingSpace({
   regionHeight,
   composerHeight,
+  hasRecents,
 }: {
   regionHeight: number;
   composerHeight: number;
+  hasRecents: boolean;
 }): number {
+  if (!hasRecents) return 0;
   return Math.max(
     MOBILE_RECENT_ROW_HEIGHT_PX,
     regionHeight -
@@ -86,6 +89,9 @@ function useCompactHomeMetrics(isCompact: boolean) {
       leadingSpacer.style.height = `${getCompactHomeLeadingSpace({
         regionHeight: region.offsetHeight,
         composerHeight,
+        hasRecents:
+          scrollContent.querySelector("[data-root-compose-mobile-recents]") !==
+          null,
       })}px`;
       bottomSpacer.style.height = `${composerHeight}px`;
       composerFade.hidden =

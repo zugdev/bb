@@ -635,7 +635,7 @@ export function SplitTabBar() {
         !hidesChromeToggles && "pr-12",
         isInTitleBar
           ? [MACOS_TITLE_BAR_ROW_CLASS, TRAFFIC_LIGHT_RESERVE_CLASS]
-          : "h-7 border-b border-border",
+          : "h-7 border-b border-border max-md:pointer-coarse:h-10",
         usesDesktopChrome && MACOS_WINDOW_DRAG_CLASS,
       )}
     >

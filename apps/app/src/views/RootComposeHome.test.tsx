@@ -33,7 +33,9 @@ function renderCompactHome() {
     <RootComposeHome
       isCompact
       composer={<div data-testid="composer" />}
-      compactScrollContent={<div data-testid="recents" />}
+      compactScrollContent={
+        <div data-testid="recents" data-root-compose-mobile-recents="" />
+      }
       homepageSections={null}
     />,
   );
