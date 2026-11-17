@@ -59,6 +59,7 @@ try {
     },
     dataDir,
     tempDir: join(root, "sessions"),
+    livePreview: true,
     signal: new AbortController().signal,
   };
   const a = await createRuntime(args);
@@ -201,7 +202,11 @@ try {
   }
   const [port, path] = portFile.trim().split("\n");
   const connectionUrl = `ws://127.0.0.1:${port}${path}`;
-  const attached = await createRuntime({ ...args, connectionUrl });
+  const attached = await createRuntime({
+    ...args,
+    connectionUrl,
+    livePreview: false,
+  });
   sessions.push(attached);
   assert.equal(attached.preview, null);
   assert.equal(
@@ -223,6 +228,15 @@ try {
       .text,
     /handoff-preserved/,
   );
+  const reattachedFrame = await reattached.preview?.next(
+    0,
+    10_000,
+    args.signal,
+    "thumbnail",
+  );
+  assert.match(reattachedFrame?.url ?? "", /handoff-preserved/);
+  await reattached.close();
+  assert.equal(attachedBrowser.alive(), true);
   console.log(
     JSON.stringify({
       passed: true,
@@ -232,6 +246,7 @@ try {
         "live preview follows the active page while scripts run",
         "live preview switches to full-size frames on request",
         "attached sessions expose no preview",
+        "cdp sessions preview an existing Chrome and leave it running on close",
         "serialized scripts",
         "cancellation isolation",
         "infinite-loop timeout",

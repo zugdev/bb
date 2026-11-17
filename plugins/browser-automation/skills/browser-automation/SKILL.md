@@ -22,6 +22,10 @@ Plugin-owned local/headless Chrome launches with `--no-sandbox`, disabling Chrom
 sandbox. Desktop attachment does not change the browser's launch flags.
 Resolve the explicit instance with `bb browser instances --host <host-id> --json`
 first. Never silently choose a different host or mode.
+Choose `--backend cdp --machine <host-id> --cdp-url <ws-url>` to attach to a
+Chrome that something else already runs on that host, given its loopback
+DevTools WebSocket URL. It returns a previewDirective like local sessions.
+Closing the session leaves that Chrome running.
 Adding `--tab <tab-id>` takes control of an existing tab; do so only when the
 user asked to use that tab. The CLI uses the
 current thread, or `--thread <id>` outside a thread. Each session belongs to
@@ -32,6 +36,7 @@ CLI opening:
 ```sh
 bb browser-automation open --backend local --headless --machine <host-id> --json
 bb browser-automation open --backend desktop --machine <host-id> --desktop <instance-id> --json
+bb browser-automation open --backend cdp --machine <host-id> --cdp-url ws://127.0.0.1:<port>/devtools/browser/<id> --json
 ```
 
 Run scripts:

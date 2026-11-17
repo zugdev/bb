@@ -38,6 +38,7 @@ try {
     runtime: warm,
     dataDir,
     tempDir: join(root, "sessions"),
+    livePreview: true,
     signal,
   });
   try {

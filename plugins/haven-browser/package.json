@@ -1,0 +1,37 @@
+{
+  "name": "bb-plugin-haven-browser",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Show haven browser profiles live in the thread that drives them.",
+  "engines": {
+    "bb": ">=0.0",
+    "bbPluginSdk": ">=0.6.88"
+  },
+  "bb": {
+    "name": "Haven browser",
+    "description": "Show haven browser profiles live in the thread that drives them.",
+    "branding": {
+      "icon": "Globe"
+    },
+    "server": "./server.ts"
+  },
+  "keywords": [
+    "bb-plugin"
+  ],
+  "scripts": {
+    "test": "vitest run --config vitest.config.ts",
+    "typecheck": "tsrs --noEmit",
+    "lint": "oxlint --ignore-pattern node_modules --ignore-pattern dist ."
+  },
+  "dependencies": {
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@get-bb/plugin-sdk": "workspace:*",
+    "@types/node": "^22.0.0",
+    "tsrs": "0.18.0-ts7.1.0-dev.20260929",
+    "typescript": "npm:@typescript/typescript6@^6.0.2",
+    "vitest": "^4.1.1"
+  }
+}

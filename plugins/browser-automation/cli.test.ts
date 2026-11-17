@@ -63,7 +63,7 @@ describe("CLI boundaries", () => {
     const badBackend = await invoke(["open", "--backend", "cloud"]);
     expect(badBackend.exitCode).toBe(1);
     expect(badBackend.stderr).toContain(
-      "invalid value 'cloud' for --backend. Expected one of: desktop, local",
+      "invalid value 'cloud' for --backend. Expected one of: desktop, local, cdp",
     );
 
     const missingMachine = await invoke(["open", "--backend", "desktop"]);
@@ -72,6 +72,52 @@ describe("CLI boundaries", () => {
       "missing required options: --machine",
     );
     expect(execute).toHaveBeenCalledTimes(1);
+  });
+
+  it("attaches cdp sessions only to an explicit DevTools URL", async () => {
+    const { invoke, requestFor } = cli();
+    const url = "ws://127.0.0.1:9222/devtools/browser/abc";
+    const request = await requestFor([
+      "open",
+      "--backend",
+      "cdp",
+      "--machine",
+      "host",
+      "--cdp-url",
+      url,
+    ]);
+    expect(request.input.selection).toEqual({
+      backend: "cdp",
+      hostId: "host",
+      url,
+    });
+    for (const argv of [
+      ["open", "--backend", "cdp", "--machine", "host"],
+      [
+        "open",
+        "--backend",
+        "cdp",
+        "--machine",
+        "host",
+        "--cdp-url",
+        url,
+        "--headless",
+      ],
+      [
+        "open",
+        "--backend",
+        "local",
+        "--machine",
+        "host",
+        "--headless",
+        "--cdp-url",
+        url,
+      ],
+    ]) {
+      const result = await invoke(argv);
+      expect(result.exitCode).toBe(1);
+      expect(result.stderr).toContain("cdp");
+    }
   });
 
   it("rejects ignored flags and both script sources", async () => {

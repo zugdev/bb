@@ -189,6 +189,7 @@ export async function createRuntime(args: {
   dataDir: string;
   tempDir: string;
   connectionUrl?: string;
+  livePreview: boolean;
   signal: AbortSignal;
 }): Promise<RuntimeSession> {
   const binary = args.runtime.binary;
@@ -269,7 +270,7 @@ export async function createRuntime(args: {
       !["127.0.0.1", "localhost", "[::1]"].includes(endpoint.hostname)
     )
       throw new Error(
-        "Desktop connection must be a private loopback WebSocket on the selected host",
+        "Browser connection must be a private loopback WebSocket on the selected host",
       );
     processes.push(supervise(binary, ["daemon"], env));
     await waitForFile(join(home, "daemon.pid"));
@@ -324,7 +325,7 @@ export async function createRuntime(args: {
       return result;
     };
     await run("await browser.listPages()", 30_000, startup);
-    if (args.connectionUrl === undefined) preview = createPreview(url);
+    if (args.livePreview) preview = createPreview(url);
     return { run, preview, close };
   } catch (error) {
     await close();

@@ -90,14 +90,20 @@ export function createBrowserAutomationCli(deps: {
     commands: {
       open: cliCommand({
         summary:
-          "Open a desktop or local headless session; --tab takes over an existing tab",
+          "Open a desktop, local headless, or existing Chrome session; --tab takes over an existing tab",
         options: {
           backend: {
             type: "enum",
-            values: ["desktop", "local"],
+            values: ["desktop", "local", "cdp"],
             required: true,
             description:
-              "desktop drives a connected browser instance; local runs headless on the host",
+              "desktop drives a connected browser instance; local runs headless on the host; cdp attaches to a Chrome already running on the host",
+          },
+          "cdp-url": {
+            type: "string",
+            placeholder: "ws-url",
+            description:
+              "Loopback DevTools WebSocket of the Chrome to attach to (cdp backend only); closing the session leaves that Chrome running",
           },
           machine: {
             type: "string",
@@ -127,6 +133,35 @@ export function createBrowserAutomationCli(deps: {
         run(input, ctx) {
           const threadId = resolveThreadId(input.options.thread, ctx);
           const hostId = input.options.machine;
+          const cdpUrl = input.options["cdp-url"];
+          if (input.options.backend === "cdp") {
+            if (
+              cdpUrl === undefined ||
+              input.options.headless ||
+              input.options.desktop !== undefined ||
+              input.options.tab !== undefined
+            ) {
+              throw new PluginCliError(
+                "cdp sessions require --cdp-url and cannot use --headless or select desktop tabs",
+                { code: "invalid_selection" },
+              );
+            }
+            return deps.execute(
+              {
+                method: "open",
+                input: {
+                  threadId,
+                  selection: { backend: "cdp", hostId, url: cdpUrl },
+                },
+              },
+              ctx,
+            );
+          }
+          if (cdpUrl !== undefined) {
+            throw new PluginCliError("--cdp-url requires --backend cdp", {
+              code: "invalid_selection",
+            });
+          }
           if (input.options.backend === "local") {
             if (
               !input.options.headless ||

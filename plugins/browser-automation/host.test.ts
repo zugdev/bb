@@ -14,6 +14,7 @@ const resolver = async () => runtime;
 
 const open = (sessionId: string) => ({
   sessionId,
+  livePreview: true,
   expiresAt: Date.now() + 60_000,
   idleTimeoutMs: 30_000,
 });
@@ -159,6 +160,7 @@ describe("host session lifetime", () => {
       const id = randomUUID();
       await harness.experimental_call("open", {
         sessionId: id,
+        livePreview: true,
         expiresAt: Date.now() + 8 * 60 * 60_000,
         idleTimeoutMs: 30 * 60_000,
       });
@@ -197,6 +199,7 @@ describe("host session lifetime", () => {
         const id = randomUUID();
         await harness.experimental_call("open", {
           sessionId: id,
+          livePreview: true,
           expiresAt: Date.now() + 8 * 60 * 60_000,
           idleTimeoutMs: 30 * 60_000,
         });
@@ -252,6 +255,7 @@ describe("host session lifetime", () => {
       const id = randomUUID();
       await harness.experimental_call("open", {
         sessionId: id,
+        livePreview: true,
         expiresAt: Date.now() + 60_000,
         idleTimeoutMs: 30 * 60_000,
       });
@@ -443,6 +447,7 @@ describe("host live preview", () => {
     const id = randomUUID();
     await harness.experimental_call("open", {
       sessionId: id,
+      livePreview: true,
       expiresAt: Date.now() + 60_000,
       idleTimeoutMs: 1_200,
     });
@@ -500,6 +505,7 @@ describe("host live preview", () => {
       local = randomUUID();
     await harness.experimental_call("open", {
       ...open(desktop),
+      livePreview: false,
       connectionUrl: "ws://127.0.0.1:9/devtools/browser/x",
     });
     await harness.experimental_call("open", open(local));
@@ -510,7 +516,7 @@ describe("host live preview", () => {
         waitMs: 0,
         size: "thumbnail",
       }),
-    ).rejects.toThrow("local headless");
+    ).rejects.toThrow("desktop sessions");
     const pending = harness.experimental_call("preview", {
       sessionId: local,
       afterSequence: 0,
