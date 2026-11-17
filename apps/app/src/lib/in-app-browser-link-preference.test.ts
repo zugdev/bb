@@ -22,6 +22,29 @@ describe("resolveUrlOpenTarget", () => {
     ).toBe("in-app-browser");
   });
 
+  it("routes GitHub links to the external browser even when the preference is on", () => {
+    for (const url of [
+      "https://github.com/zugdev/bb/pull/1",
+      "https://GITHUB.COM/zugdev/bb",
+      "https://gist.github.com/abc",
+    ]) {
+      expect(
+        resolveUrlOpenTarget({
+          desktopBrowserAvailable: true,
+          openLinksInAppBrowser: true,
+          url,
+        }),
+      ).toBe("external-browser");
+    }
+    expect(
+      resolveUrlOpenTarget({
+        desktopBrowserAvailable: true,
+        openLinksInAppBrowser: true,
+        url: "https://notgithub.com/x",
+      }),
+    ).toBe("in-app-browser");
+  });
+
   it("routes http(s) links to the external browser when the preference is off", () => {
     expect(
       resolveUrlOpenTarget({
