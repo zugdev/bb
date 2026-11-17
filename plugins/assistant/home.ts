@@ -70,7 +70,27 @@ export function completeTodo(todos: readonly Todo[], id: string, at: number): To
     .filter((todo) => todo.doneAt === null || at - todo.doneAt < DONE_TODO_KEEP_MS);
 }
 
-const relativeDay = new Intl.RelativeTimeFormat(undefined, { numeric: "auto" });
+export const dollarSchema = z.object({ brl: z.number(), pctChange: z.number() });
+export type Dollar = z.infer<typeof dollarSchema>;
+
+const awesomeApiQuoteSchema = z.object({
+  USDBRL: z.object({ bid: z.coerce.number(), pctChange: z.coerce.number() }),
+});
+
+export function parseDollarQuote(body: unknown): Dollar {
+  const { bid, pctChange } = awesomeApiQuoteSchema.parse(body).USDBRL;
+  return { brl: bid, pctChange };
+}
+
+export const newsBriefSchema = z.object({ day: z.string(), items: z.array(z.string()) });
+export type NewsBrief = z.infer<typeof newsBriefSchema>;
+
+export function localDay(at: number): string {
+  const date = new Date(at);
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
+
+const relativeDay =new Intl.RelativeTimeFormat(undefined, { numeric: "auto" });
 const timeFormat = new Intl.DateTimeFormat(undefined, { hour: "numeric", minute: "2-digit" });
 const weekdayFormat = new Intl.DateTimeFormat(undefined, { weekday: "short" });
 const dateFormat = new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric" });
