@@ -132,19 +132,26 @@ function AgendaRow({ item, onOpen }: { item: AgendaItem; onOpen: () => void }) {
 const CHECKBOX_CLASS =
   "peer size-3.5 cursor-pointer appearance-none rounded-full border border-muted-foreground/60 transition-colors checked:border-foreground checked:bg-foreground focus-visible:outline-none";
 
-function HabitDays({ recent, today }: { recent: readonly boolean[]; today: boolean }) {
+const NARROW_DAYS = 14;
+
+function HabitDays({ habit, today }: { habit: HabitProgress; today: boolean }) {
+  const { recent } = habit;
   return (
-    <div aria-hidden className="flex gap-0.5 pb-1.5 pl-6.5">
+    <span
+      className="flex shrink-0 gap-0.5"
+      title={`${habit.streak} day streak, ${habit.last30} of the last 30 days, ${habit.total} total`}
+    >
       {recent.map((done, index) => {
         const filled = index === recent.length - 1 ? today : done;
+        const narrowHidden = index < recent.length - NARROW_DAYS ? "max-sm:hidden" : "";
         return (
           <span
             key={index}
-            className={`size-2 shrink-0 rounded-[2px] ${filled ? "bg-success" : "bg-foreground/10"}`}
+            className={`size-2 shrink-0 rounded-[2px] ${narrowHidden} ${filled ? "bg-success" : "bg-foreground/10"}`}
           />
         );
       })}
-    </div>
+    </span>
   );
 }
 
@@ -152,35 +159,26 @@ function HabitRow({ habit, onToggle }: { habit: HabitProgress; onToggle: () => P
   const [pending, setPending] = useState<{ checked: boolean; from: boolean } | null>(null);
   const checked = pending !== null && pending.from === habit.doneToday ? pending.checked : habit.doneToday;
   return (
-    <>
-      <label className={`${ROW_CLASS} cursor-pointer has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring`}>
-        <span className="relative flex size-4 shrink-0 items-center justify-center">
-          <input
-            type="checkbox"
-            checked={checked}
-            onChange={() => {
-              setPending({ checked: !checked, from: habit.doneToday });
-              onToggle().catch(() => setPending(null));
-            }}
-            className={CHECKBOX_CLASS}
-          />
-          <Icon
-            name="Check"
-            aria-hidden
-            className="pointer-events-none absolute size-2.5 text-background opacity-0 transition-opacity peer-checked:opacity-100"
-          />
-        </span>
-        <span className="min-w-0 flex-1 truncate">{habit.title}</span>
-        <span
-          className="shrink-0 text-xs tabular-nums text-muted-foreground"
-          title={`${habit.streak} day streak, ${habit.last30} of the last 30 days, ${habit.total} total`}
-        >
-          {habit.streak > 1 ? `${habit.streak}d streak · ` : ""}
-          {habit.last30}/30d
-        </span>
-      </label>
-      <HabitDays recent={habit.recent} today={checked} />
-    </>
+    <label className={`${ROW_CLASS} cursor-pointer has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring`}>
+      <span className="relative flex size-4 shrink-0 items-center justify-center">
+        <input
+          type="checkbox"
+          checked={checked}
+          onChange={() => {
+            setPending({ checked: !checked, from: habit.doneToday });
+            onToggle().catch(() => setPending(null));
+          }}
+          className={CHECKBOX_CLASS}
+        />
+        <Icon
+          name="Check"
+          aria-hidden
+          className="pointer-events-none absolute size-2.5 text-background opacity-0 transition-opacity peer-checked:opacity-100"
+        />
+      </span>
+      <span className="min-w-0 flex-1 truncate">{habit.title}</span>
+      <HabitDays habit={habit} today={checked} />
+    </label>
   );
 }
 
@@ -228,6 +226,12 @@ function AssistantHomeSection() {
       ) : (
         items.map((item) => <AgendaRow key={item.key} item={item} onOpen={openAssistant} />)
       )}
+      <button type="button" className={`${ROW_CLASS} text-muted-foreground hover:text-foreground`} onClick={openAssistant}>
+        <span className="flex size-4 shrink-0 items-center justify-center">
+          <Icon name="Plus" aria-hidden className="size-3.5" />
+        </span>
+        <span className="min-w-0 flex-1 truncate">Ask the assistant or add a reminder</span>
+      </button>
       {data?.news.length || data?.dollar ? (
         <ul className="mt-1 flex flex-col gap-1 border-t border-border-hairline pt-2 pb-1 text-xs text-muted-foreground">
           {data.dollar ? <DollarQuote dollar={data.dollar} /> : null}
