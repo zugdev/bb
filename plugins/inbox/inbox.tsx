@@ -376,6 +376,17 @@ export function InboxPanel() {
   return null;
 }
 
+function showInboxPill(text: string) {
+  toast.custom(
+    () => (
+      <div className="mx-auto w-fit max-w-[80vw] truncate rounded-full border border-border bg-popover/90 px-3 py-1 text-xs text-muted-foreground shadow-sm backdrop-blur">
+        {text}
+      </div>
+    ),
+    { id: "inbox-advance", duration: 1500, unstyled: true },
+  );
+}
+
 function announceInboxAdvance(
   paneId: string,
   left: PluginSidebarThread | undefined,
@@ -385,14 +396,7 @@ function announceInboxAdvance(
     left !== undefined &&
     left.archivedAt === null &&
     !isSnoozed(left, Date.now());
-  toast(
-    replied ? `Sent to ${left.displayTitle}` : `Next: ${next.displayTitle}`,
-    {
-      id: "inbox-advance",
-      duration: 2500,
-      description: replied ? `Next: ${next.displayTitle}` : undefined,
-    },
-  );
+  showInboxPill(`${replied ? "Sent · " : ""}Next: ${next.displayTitle}`);
   if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
   requestAnimationFrame(() => {
     document
@@ -531,7 +535,7 @@ export function InboxController() {
       return;
     }
     if (step.kind === "done") {
-      toast.success("All caught up");
+      showInboxPill("All caught up");
       tracked.current = null;
       ownTab.show({ kind: "compose" });
       return;

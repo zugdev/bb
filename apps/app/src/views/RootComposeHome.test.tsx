@@ -76,7 +76,7 @@ describe("RootComposeHome", () => {
     const bottomSpacer = screen.getByTestId(
       "root-compose-compact-bottom-spacer",
     );
-    expect(leadingSpacer.style.height).toBe("314px");
+    expect(leadingSpacer.style.height).toBe("362px");
     expect(bottomSpacer.style.height).toBe("188px");
   });
 
@@ -102,7 +102,7 @@ describe("RootComposeHome", () => {
     );
 
     expect(screen.getByTestId("composer-root").dataset.maxHeight).toBe(
-      `${480 - 56 - (682 - 600)}`,
+      `${480 - 8 - (682 - 600)}`,
     );
   });
 
@@ -111,7 +111,7 @@ describe("RootComposeHome", () => {
 
     const viewport = screen.getByTestId("root-compose-compact-scroll-viewport");
     const content = screen.getByTestId("root-compose-compact-scroll-content");
-    expect(viewport.style.top).toBe("56px");
+    expect(viewport.style.top).toBe("8px");
     expect(content.firstElementChild).toBe(
       screen.getByTestId("root-compose-compact-leading-spacer"),
     );
