@@ -49,6 +49,7 @@ const THREAD_KEY = "threadId";
 const UNSEEN_KEY = "unseen";
 const TODOS_KEY = "todos";
 const NEWS_KEY = "news";
+const NEWS_THREAD_KEY = "newsThreadId";
 const HABITS_KEY = "habits";
 const DOLLAR_URL = "https://economia.awesomeapi.com.br/json/last/USD-BRL";
 const DOLLAR_TTL_MS = 10 * 60_000;
@@ -308,11 +309,28 @@ export default async function plugin(bb: BbPluginApi) {
   }
 
   async function requestNewsBrief(): Promise<void> {
-    await bb.sdk.threads.send({
-      threadId: await ensureThread(),
-      mode: "auto",
-      input: [{ type: "text", text: NEWS_BRIEF_PROMPT, mentions: [] }],
+    const existing = await bb.storage.kv.get<string>(NEWS_THREAD_KEY);
+    if (existing !== undefined) {
+      try {
+        await bb.sdk.threads.send({
+          threadId: existing,
+          mode: "auto",
+          input: [{ type: "text", text: NEWS_BRIEF_PROMPT, mentions: [] }],
+        });
+        return;
+      } catch (error) {
+        bb.log.info(`news brief thread ${existing} is gone, starting a new one: ${String(error)}`);
+      }
+    }
+    const thread = await bb.sdk.threads.spawn({
+      projectId: PERSONAL_PROJECT_ID,
+      environment: { type: "project-default" },
+      title: "News brief",
+      visibility: "hidden",
+      prompt: NEWS_BRIEF_PROMPT,
+      pluginMetadata: { newsBrief: true },
     });
+    await bb.storage.kv.set(NEWS_THREAD_KEY, thread.id);
   }
 
   async function assistantReminders() {
@@ -640,15 +658,16 @@ export default async function plugin(bb: BbPluginApi) {
     },
   });
 
-  bb.agents.configure((context) =>
-    context.thread.id === threadId
+  bb.agents.configure((context) => {
+    if (context.pluginMetadata.newsBrief === true) return { tools: ["news_brief_set"], skills: [] };
+    return context.thread.id === threadId
       ? {
           tools: ["assistant_notify", "todo_add", "todo_done", "todo_list", "habit_add", "habit_done", "habit_list", "news_brief_set", "slack_search", "slack_thread", "email_search", "email_read", "calendar_events", "calendar_list", "calendar_add"],
           skills: [],
           instructions: assistantInstructions(context.thread.id),
         }
-      : { tools: [], skills: [] },
-  );
+      : { tools: [], skills: [] };
+  });
 
   bb.events.on("thread.idle", ({ thread }) => {
     if (thread.id === threadId) bb.rpc.experimental_invalidate(["home"]);
@@ -794,7 +813,7 @@ export default async function plugin(bb: BbPluginApi) {
           summary: "Ask the assistant for today's news brief now",
           async run() {
             await requestNewsBrief();
-            return { exitCode: 0, stdout: "Asked the assistant for the news brief." };
+            return { exitCode: 0, stdout: "Started a news brief run." };
           },
         }),
         check: cliCommand({
