@@ -5,10 +5,7 @@ import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { installTestPluginRuntime } from "@get-bb/plugin-sdk/testing/app";
 import type { PluginSidebarThread } from "@get-bb/plugin-sdk/app";
 import { asking, makeProject, makeThread, PERSONAL, WEB } from "./fixtures";
-import {
-  DEFAULT_HOME_THREAD_FILTER,
-  NEEDS_YOU_LIMIT,
-} from "./home-overview";
+import { DEFAULT_HOME_THREAD_FILTER } from "./home-overview";
 import {
   NewThreadOverview,
   ProjectChips,
@@ -63,46 +60,6 @@ function rowTitles(pattern: RegExp): string[] {
 }
 
 describe("NewThreadOverview", () => {
-  it("lists the threads that need you, newest first, capped, and opens one", () => {
-    const onOpenThread = vi.fn();
-    renderOverview({
-      threads: [
-        asking("ask-1", 1, PERSONAL.id),
-        asking("ask-2", 2),
-        asking("ask-3", 3),
-        asking("ask-4", 4),
-        makeThread({ id: "quiet", latestAttentionAt: 9 }),
-      ],
-      onOpenThread,
-    });
-    const rows = screen
-      .getAllByRole("button")
-      .filter((button) => button.textContent?.startsWith("ask-"));
-    expect(rows).toHaveLength(NEEDS_YOU_LIMIT);
-    expect(rows[0]?.textContent).toContain("ask-4");
-    expect(rows[0]?.textContent).toContain("Web");
-    fireEvent.click(rows[0]!);
-    expect(onOpenThread).toHaveBeenCalledWith(
-      expect.objectContaining({ id: "ask-4" }),
-      { newTab: false },
-    );
-    fireEvent.click(rows[1]!, { metaKey: true });
-    expect(onOpenThread).toHaveBeenLastCalledWith(
-      expect.objectContaining({ id: "ask-3" }),
-      { newTab: true },
-    );
-    fireEvent.click(rows[2]!, { ctrlKey: true });
-    expect(onOpenThread).toHaveBeenLastCalledWith(
-      expect.objectContaining({ id: "ask-2" }),
-      { newTab: true },
-    );
-  });
-
-  it("hides Needs you when nothing waits on you", () => {
-    renderOverview({});
-    expect(screen.queryByRole("heading", { name: "Needs you" })).toBeNull();
-  });
-
   it("offers the most recently messaged projects as chips that pick the project", () => {
     const setProjectId = vi.fn();
     const sent = (projectId: string, at: number | null) =>
@@ -193,13 +150,12 @@ describe("NewThreadOverview", () => {
     ]);
   });
 
-  it("shows the selected project's waiting threads and then all of its threads by your last message", () => {
+  it("shows all of the selected project's threads by your last message", () => {
     const sent = (id: string, at: number): PluginSidebarThread =>
       makeThread({ id, experimental_lastUserMessageAt: at });
     renderOverview({
       threads: [
         asking("mine", 9, PERSONAL.id),
-        asking("web-ask", 1),
         sent("web-1", 10),
         sent("web-6", 60),
         sent("web-3", 30),
@@ -208,26 +164,13 @@ describe("NewThreadOverview", () => {
       ],
       projectId: WEB.id,
     });
-    expect(rowTitles(/^(web-(?:ask|\d)|mine)/)).toEqual([
-      "web-ask",
+    expect(rowTitles(/^(web-\d|mine)/)).toEqual([
       "web-6",
       "web-5",
       "web-3",
       "web-2",
       "web-1",
     ]);
-    expect(screen.queryByText("Nothing waiting")).toBeNull();
-  });
-
-  it("says nothing is waiting in a selected project with no pending threads", () => {
-    renderOverview({
-      threads: [asking("mine", 9, PERSONAL.id)],
-      projectId: WEB.id,
-    });
-    expect(screen.getByRole("heading", { name: "Needs you" })).toBeTruthy();
-    expect(screen.getByText("Nothing waiting")).toBeTruthy();
-    expect(screen.queryByText("mine")).toBeNull();
-    expect(screen.getByRole("button", { name: "New thread" })).toBeTruthy();
   });
 
   it("archives the idle threads older than the age filter", () => {

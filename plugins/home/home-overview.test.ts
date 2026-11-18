@@ -7,7 +7,6 @@ import {
   repoWebUrl,
   sortAndFilterHomeThreads,
   liveThreadDescendants,
-  needsYouThreads,
   nextCycledProject,
   NO_THREAD_DESCENDANTS,
 } from "./home-overview";
@@ -83,12 +82,6 @@ describe("parent status roll up", () => {
     },
   ])("shows $dot for $name", ({ others, dot }) => {
     expect(parentDot(...others)).toBe(dot);
-  });
-
-  it("puts a parent with a waiting child under Needs you", () => {
-    expect(
-      needsYouThreads([parent, child(waiting)]).map((thread) => thread.id),
-    ).toEqual(["parent"]);
   });
 });
 

@@ -13,15 +13,12 @@ import {
   HOME_STATUS_FILTERS,
   lastMessageTime,
   liveThreadDescendants,
-  NEEDS_YOU_LIMIT,
-  needsYouThreads,
   recentProjects,
   type HomeThreadFilter,
 } from "./home-overview";
 import { ProjectSection, type HomeThreadOrder } from "./ProjectSection";
 import {
   ThreadDescendantsContext,
-  ThreadRow,
   type OpenThread,
 } from "./ThreadRow";
 
@@ -170,17 +167,12 @@ export function NewThreadOverview({
         : archivableHomeThreads(projectThreads),
     [filter.olderThanDays, projectThreads],
   );
-  const needsYou = useMemo(
-    () => needsYouThreads(projectThreads),
-    [projectThreads],
-  );
   const projectSections = useMemo(() => {
     const listed = selectedProject === null ? projects : [selectedProject];
     const latestByProject = new Map<string, number>();
     const threadsByProject = new Map<string, PluginSidebarThread[]>();
-    const waiting = new Set(needsYou.map((thread) => thread.id));
     for (const thread of projectThreads) {
-      if (thread.parentThreadId !== null || waiting.has(thread.id)) continue;
+      if (thread.parentThreadId !== null) continue;
       if (thread.archivedAt !== null && !showArchived) continue;
       threadsByProject.set(thread.projectId, [
         ...(threadsByProject.get(thread.projectId) ?? []),
@@ -207,12 +199,7 @@ export function NewThreadOverview({
         project,
         threads: threadsByProject.get(project.id) ?? [],
       }));
-  }, [needsYou, projectThreads, projects, selectedProject, showArchived]);
-  const projectNames = useMemo(
-    () => new Map(projects.map((project) => [project.id, project.name])),
-    [projects],
-  );
-  const showsProjectName = selectedProject === null;
+  }, [projectThreads, projects, selectedProject, showArchived]);
   return (
     <ThreadDescendantsContext value={descendants}>
       <div
@@ -266,37 +253,6 @@ export function NewThreadOverview({
               </button>
             )}
           </div>
-        )}
-        {needsYou.length === 0 && selectedProject === null ? null : (
-          <section className="flex flex-col">
-            <h2 className="flex items-baseline gap-2 pb-1.5 text-sm font-medium">
-              Needs you
-              {needsYou.length === 0 ? null : (
-                <span className="text-xs font-normal text-muted-foreground tabular-nums">
-                  {needsYou.length}
-                </span>
-              )}
-            </h2>
-            {needsYou.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Nothing waiting</p>
-            ) : (
-              needsYou
-                .slice(0, NEEDS_YOU_LIMIT)
-                .map((thread) => (
-                  <ThreadRow
-                    key={thread.id}
-                    thread={thread}
-                    projectName={
-                      showsProjectName
-                        ? (projectNames.get(thread.projectId) ?? null)
-                        : null
-                    }
-                    time={thread.latestAttentionAt}
-                    onOpen={onOpenThread}
-                  />
-                ))
-            )}
-          </section>
         )}
         {projectSections.map(({ project, threads: sectionThreads }) => (
           <ProjectSection
