@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { eventsInRange, newEventIcs } from "./calendar.js";
+import { googleEventTimes } from "./google.js";
 
 const WEEKLY_STANDUP = `BEGIN:VCALENDAR
 VERSION:2.0
@@ -72,5 +73,17 @@ describe("newEventIcs", () => {
     expect(eventsInRange(ics, "Home", ...range)).toMatchObject([
       { title: "Trip", start: "2026-12-02", end: "2026-12-03", allDay: true },
     ]);
+  });
+});
+
+describe("googleEventTimes", () => {
+  it("converts timed starts to UTC with a one hour default end and all day starts to an exclusive next day", () => {
+    expect(googleEventTimes("2026-12-01T10:00:00-03:00", null)).toEqual({
+      start: { dateTime: "2026-12-01T13:00:00.000Z" },
+      end: { dateTime: "2026-12-01T14:00:00.000Z" },
+    });
+    expect(googleEventTimes("2026-12-31", null)).toEqual({ start: { date: "2026-12-31" }, end: { date: "2027-01-01" } });
+    expect(googleEventTimes("2026-12-01", "2026-12-04")).toEqual({ start: { date: "2026-12-01" }, end: { date: "2026-12-04" } });
+    expect(() => googleEventTimes("tomorrow", null)).toThrow("Not a date: tomorrow");
   });
 });

@@ -33,7 +33,16 @@ import {
   feedEvents,
   type CaldavAccount,
   type CalendarEvent,
+  type NewEvent,
 } from "./calendar.js";
+import {
+  googleAddEvent,
+  googleCalendarNames,
+  googleEvents,
+  startGoogleLogin,
+  type GoogleAccount,
+  type GoogleClient,
+} from "./google.js";
 import {
   connectSlack,
   fetchPings,
@@ -50,6 +59,7 @@ const UNSEEN_KEY = "unseen";
 const TODOS_KEY = "todos";
 const NEWS_KEY = "news";
 const NEWS_THREAD_KEY = "newsThreadId";
+const GOOGLE_TOKEN_KEY = "google:refreshToken";
 const HABITS_KEY = "habits";
 const DOLLAR_URL = "https://economia.awesomeapi.com.br/json/last/USD-BRL";
 const DOLLAR_TTL_MS = 10 * 60_000;
@@ -78,7 +88,7 @@ function assistantInstructions(threadId: string): string {
   return `You are the user's personal assistant: their secretary and the orchestrator of their other bb agents. You live in one special thread (id ${threadId}) that the user opens from the Assistant entry at the top of the bb sidebar.
 1. Triage. bb posts new Slack mentions, DMs and unread emails here as they arrive. Sort each batch into needs the user now, needs a reply later, and FYI, one line per FYI item. Use slack_search, slack_thread, email_search and email_read for context first.
 2. Notify. Call assistant_notify when something needs the user soon: a direct question, a deadline today, a meeting about to start, someone blocked on them, or a work thread you started that finished or failed. Each call also bumps the count on the Assistant sidebar entry. Never notify for newsletters, automated mail or FYI.
-3. Calendar. calendar_events lists events from every connected calendar, and calendar_add adds an event the user asks for to their CalDAV calendar; call calendar_list first when they name a calendar. Check calendar_events before scheduling anything so you can flag clashes. If no calendar is connected, tell the user to set the CalDAV or calendar feed settings in the Assistant plugin.
+3. Calendar. calendar_events lists events from every connected calendar, and calendar_add adds an event the user asks for to their Google calendar, or their CalDAV calendar when Google is not connected; call calendar_list first when they name a calendar. Check calendar_events before scheduling anything so you can flag clashes. If no calendar is connected, tell the user to set the Google client settings in the Assistant plugin and run \`bb assistant google-login\`.
 4. Habits. Daily habits such as going to the gym are tracked with habit_add, habit_done and habit_list, never as to-dos or automations. bb pushes a reminder at the habit's remind hour on days it is not checked off, and the home card shows the streak and the count for the last 30 days. When the user says they did it, call habit_done; answer "how many days" questions from habit_list.
 5. To-dos. Anything the user has to do themselves, such as "pay rent" or "call Ana", is a to-do: call todo_add with a short title in the language the user wrote in, plus dueAt when it has a date. To-dos stay on the bb home page with a checkbox until the user or todo_done checks them off. When a to-do also needs a nudge at a time, add a one off automation for the notification too. Read todo_list before adding so you never add one twice.
 6. Schedule. For anything recurring or later ("check my email every day at 9am", "remind me Friday"), run \`bb automation create --project proj_personal --target-thread ${threadId} --name <name> --cron "<cron>" --timezone <IANA zone> --prompt "<task>" --provider <your provider id> --model <your model>\`, or \`--at <ISO time>\` or \`--in <duration>\` for one off reminders. The name shows on the bb home page, so write it as a short title in the language the user wrote in, such as "Pay rent", never a slug. One request gets one automation at the time the user asked for: never add a heads-up the day before or any extra reminder they did not ask for, even when the task is urgent. Run \`bb automation list --project proj_personal\` before creating one so you never schedule the same reminder twice.
@@ -130,6 +140,17 @@ export default async function plugin(bb: BbPluginApi) {
         "Read only iCal URLs separated by spaces, such as Google Calendar's secret address in iCal format.",
       secret: true,
     },
+    googleClientId: {
+      type: "string",
+      label: "Google OAuth client ID",
+      description: "From a Desktop app OAuth client in Google Cloud Console with the Google Calendar API enabled. Then run bb assistant google-login.",
+    },
+    googleClientSecret: {
+      type: "string",
+      label: "Google OAuth client secret",
+      description: "The client secret of the same Desktop app OAuth client.",
+      secret: true,
+    },
   });
 
   let threadId = await bb.storage.kv.get<string>(THREAD_KEY);
@@ -172,19 +193,49 @@ export default async function plugin(bb: BbPluginApi) {
     return { url: current.caldavUrl, user: current.caldavUser, password: current.caldavPassword };
   }
 
-  async function requireCaldav(): Promise<CaldavAccount> {
-    const account = await caldavAccount();
-    if (account === null) throw new Error("CalDAV is not connected. Set the CalDAV settings in the Assistant plugin.");
-    return account;
+  async function googleClient(): Promise<GoogleClient | null> {
+    const current = await settings.get();
+    if (!current.googleClientId || !current.googleClientSecret) return null;
+    return { clientId: current.googleClientId, clientSecret: current.googleClientSecret };
+  }
+
+  async function googleAccount(): Promise<GoogleAccount | null> {
+    const client = await googleClient();
+    const refreshToken = await bb.storage.kv.get<string>(GOOGLE_TOKEN_KEY);
+    return client === null || refreshToken === undefined ? null : { ...client, refreshToken };
+  }
+
+  async function addCalendarEvent(calendar: string | null, input: NewEvent): Promise<string> {
+    const google = await googleAccount();
+    const caldav = await caldavAccount();
+    if (google !== null && (calendar === null || caldav === null || (await googleCalendarNames(google)).includes(calendar))) {
+      return googleAddEvent(google, calendar, input);
+    }
+    if (caldav !== null) return caldavAddEvent(caldav, calendar, input);
+    throw new Error("No writable calendar is connected. Set the Google client settings in the Assistant plugin and run bb assistant google-login.");
+  }
+
+  async function writableCalendarNames(): Promise<string[]> {
+    const google = await googleAccount();
+    const caldav = await caldavAccount();
+    if (google === null && caldav === null) {
+      throw new Error("No writable calendar is connected. Set the Google client settings in the Assistant plugin and run bb assistant google-login.");
+    }
+    return [
+      ...(google === null ? [] : await googleCalendarNames(google)),
+      ...(caldav === null ? [] : await caldavCalendarNames(caldav)),
+    ];
   }
 
   async function calendarEvents(from: Date, to: Date): Promise<CalendarEvent[]> {
     const account = await caldavAccount();
+    const google = await googleAccount();
     const feeds = ((await settings.get()).calendarFeeds ?? "").split(/\s+/).filter((url) => url.length > 0);
-    if (account === null && feeds.length === 0) {
-      throw new Error("No calendar is connected. Set the CalDAV or calendar feed settings in the Assistant plugin.");
+    if (account === null && google === null && feeds.length === 0) {
+      throw new Error("No calendar is connected. Set the Google client settings in the Assistant plugin and run bb assistant google-login.");
     }
     const sources = [
+      ...(google === null ? [] : [googleEvents(google, from, to)]),
       ...(account === null ? [] : [caldavEvents(account, from, to)]),
       ...feeds.map((url) => feedEvents(url, from, to)),
     ];
@@ -627,17 +678,17 @@ export default async function plugin(bb: BbPluginApi) {
 
   bb.agents.registerTool({
     name: "calendar_list",
-    description: "List the names of the CalDAV calendars calendar_add can write to.",
+    description: "List the names of the Google and CalDAV calendars calendar_add can write to.",
     parameters: z.object({}),
     async execute() {
-      return JSON.stringify(await caldavCalendarNames(await requireCaldav()));
+      return JSON.stringify(await writableCalendarNames());
     },
   });
 
   bb.agents.registerTool({
     name: "calendar_add",
     description:
-      "Add an event to the user's CalDAV calendar. Pass ISO times with an offset, or YYYY-MM-DD dates for an all day event. End defaults to one hour after start, or the next day for all day events.",
+      "Add an event to the user's calendar: their primary Google calendar by default, or the named calendar from calendar_list. Pass ISO times with an offset, or YYYY-MM-DD dates for an all day event. End defaults to one hour after start, or the next day for all day events.",
     parameters: z.object({
       title: z.string().min(1).max(200),
       start: z.string(),
@@ -647,7 +698,7 @@ export default async function plugin(bb: BbPluginApi) {
       notes: z.string().optional(),
     }),
     async execute({ title, start, end, calendar, location, notes }) {
-      const added = await caldavAddEvent(await requireCaldav(), calendar ?? null, {
+      const added = await addCalendarEvent(calendar ?? null, {
         title,
         start,
         end: end ?? null,
@@ -795,6 +846,19 @@ export default async function plugin(bb: BbPluginApi) {
             if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return { exitCode: 1, stderr: `Not a day: ${day}` };
             await toggleHabit(input.positionals.id, day);
             return { exitCode: 0, stdout: `Toggled ${input.positionals.id} for ${day}.` };
+          },
+        }),
+        "google-login": cliCommand({
+          summary: "Connect Google Calendar: prints a sign-in URL to open within 10 minutes",
+          async run() {
+            const client = await googleClient();
+            if (client === null) {
+              return { exitCode: 1, stderr: "Set Google OAuth client ID and secret in the Assistant plugin settings first." };
+            }
+            const url = await startGoogleLogin(client, async (refreshToken) => {
+              await bb.storage.kv.set(GOOGLE_TOKEN_KEY, refreshToken);
+            });
+            return { exitCode: 0, stdout: url };
           },
         }),
         events: cliCommand({
