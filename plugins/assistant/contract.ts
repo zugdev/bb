@@ -1,6 +1,6 @@
 import { defineRpcContract } from "@get-bb/plugin-sdk";
 import { z } from "zod";
-import { dollarSchema, reminderSchema, todoSchema } from "./home.js";
+import { dollarSchema, habitProgressSchema, reminderSchema, todoSchema } from "./home.js";
 
 export const assistantRpcContract = defineRpcContract({
   "assistant.thread": {
@@ -22,6 +22,7 @@ export const assistantRpcContract = defineRpcContract({
     output: z
       .object({
         todos: z.array(todoSchema),
+        habits: z.array(habitProgressSchema),
         reminders: z.array(reminderSchema),
         dollar: dollarSchema.nullable(),
         news: z.array(z.string()),
@@ -29,6 +30,10 @@ export const assistantRpcContract = defineRpcContract({
       .strict(),
   },
   "assistant.todoDone": {
+    input: z.object({ id: z.string() }).strict(),
+    output: z.object({ ok: z.literal(true) }).strict(),
+  },
+  "assistant.habitToggle": {
     input: z.object({ id: z.string() }).strict(),
     output: z.object({ ok: z.literal(true) }).strict(),
   },

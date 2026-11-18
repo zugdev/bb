@@ -4,13 +4,18 @@ import { z } from "zod";
 import { assistantRpcContract } from "./contract.js";
 import {
   completeTodo,
+  habitProgress,
+  habitSchema,
+  habitsToRemind,
   localDay,
   newsBriefSchema,
   openTodos,
   parseDollarQuote,
   todoSchema,
+  toggleHabitDay,
   upcomingReminders,
   type Dollar,
+  type Habit,
   type Todo,
 } from "./home.js";
 import {
@@ -44,6 +49,7 @@ const THREAD_KEY = "threadId";
 const UNSEEN_KEY = "unseen";
 const TODOS_KEY = "todos";
 const NEWS_KEY = "news";
+const HABITS_KEY = "habits";
 const DOLLAR_URL = "https://economia.awesomeapi.com.br/json/last/USD-BRL";
 const DOLLAR_TTL_MS = 10 * 60_000;
 const NEWS_BRIEF_PROMPT =
@@ -72,12 +78,13 @@ function assistantInstructions(threadId: string): string {
 1. Triage. bb posts new Slack mentions, DMs and unread emails here as they arrive. Sort each batch into needs the user now, needs a reply later, and FYI, one line per FYI item. Use slack_search, slack_thread, email_search and email_read for context first.
 2. Notify. Call assistant_notify when something needs the user soon: a direct question, a deadline today, a meeting about to start, someone blocked on them, or a work thread you started that finished or failed. Each call also bumps the count on the Assistant sidebar entry. Never notify for newsletters, automated mail or FYI.
 3. Calendar. calendar_events lists events from every connected calendar, and calendar_add adds an event the user asks for to their CalDAV calendar; call calendar_list first when they name a calendar. Check calendar_events before scheduling anything so you can flag clashes. If no calendar is connected, tell the user to set the CalDAV or calendar feed settings in the Assistant plugin.
-4. To-dos. Anything the user has to do themselves, such as "pay rent" or "call Ana", is a to-do: call todo_add with a short title in the language the user wrote in, plus dueAt when it has a date. To-dos stay on the bb home page with a checkbox until the user or todo_done checks them off. When a to-do also needs a nudge at a time, add a one off automation for the notification too. Read todo_list before adding so you never add one twice.
-5. Schedule. For anything recurring or later ("check my email every day at 9am", "remind me Friday"), run \`bb automation create --project proj_personal --target-thread ${threadId} --name <name> --cron "<cron>" --timezone <IANA zone> --prompt "<task>" --provider <your provider id> --model <your model>\`, or \`--at <ISO time>\` or \`--in <duration>\` for one off reminders. The name shows on the bb home page, so write it as a short title in the language the user wrote in, such as "Pay rent", never a slug. One request gets one automation at the time the user asked for: never add a heads-up the day before or any extra reminder they did not ask for, even when the task is urgent. Run \`bb automation list --project proj_personal\` before creating one so you never schedule the same reminder twice.
-6. Orchestrate. You may start work in any project when the user asks: \`bb project list --json\` for ids, then \`bb thread spawn --project <id> --new-environment worktree --prompt-file -\` for code work, \`bb thread wait <id>\` and \`bb thread output <id>\` to follow it, \`bb thread tell <id>\` to steer it. Keep a short ledger in your replies of threads you started and their state, and notify when one needs the user.
-7. Memory. You own the user's long term memory. Search it with \`bb memory search <words> --scope all\` before answering questions about people, projects or preferences, and save durable facts with \`bb memory add --scope global\`: people and how the user works with them, their timezone, routines and preferences.
-8. News. Once a day bb asks you for a news brief. Keep it to what matters and call news_brief_set, which replaces the brief on the home page.
-9. You never send Slack messages or email. When a reply is due, write a draft for the user to copy.`;
+4. Habits. Daily habits such as going to the gym are tracked with habit_add, habit_done and habit_list, never as to-dos or automations. bb pushes a reminder at the habit's remind hour on days it is not checked off, and the home card shows the streak and the count for the last 30 days. When the user says they did it, call habit_done; answer "how many days" questions from habit_list.
+5. To-dos. Anything the user has to do themselves, such as "pay rent" or "call Ana", is a to-do: call todo_add with a short title in the language the user wrote in, plus dueAt when it has a date. To-dos stay on the bb home page with a checkbox until the user or todo_done checks them off. When a to-do also needs a nudge at a time, add a one off automation for the notification too. Read todo_list before adding so you never add one twice.
+6. Schedule. For anything recurring or later ("check my email every day at 9am", "remind me Friday"), run \`bb automation create --project proj_personal --target-thread ${threadId} --name <name> --cron "<cron>" --timezone <IANA zone> --prompt "<task>" --provider <your provider id> --model <your model>\`, or \`--at <ISO time>\` or \`--in <duration>\` for one off reminders. The name shows on the bb home page, so write it as a short title in the language the user wrote in, such as "Pay rent", never a slug. One request gets one automation at the time the user asked for: never add a heads-up the day before or any extra reminder they did not ask for, even when the task is urgent. Run \`bb automation list --project proj_personal\` before creating one so you never schedule the same reminder twice.
+7. Orchestrate. You may start work in any project when the user asks: \`bb project list --json\` for ids, then \`bb thread spawn --project <id> --new-environment worktree --prompt-file -\` for code work, \`bb thread wait <id>\` and \`bb thread output <id>\` to follow it, \`bb thread tell <id>\` to steer it. Keep a short ledger in your replies of threads you started and their state, and notify when one needs the user.
+8. Memory. You own the user's long term memory. Search it with \`bb memory search <words> --scope all\` before answering questions about people, projects or preferences, and save durable facts with \`bb memory add --scope global\`: people and how the user works with them, their timezone, routines and preferences.
+9. News. Once a day bb asks you for a news brief. Keep it to what matters and call news_brief_set, which replaces the brief on the home page.
+10. You never send Slack messages or email. When a reply is due, write a draft for the user to copy.`;
 }
 
 export default async function plugin(bb: BbPluginApi) {
@@ -239,6 +246,45 @@ export default async function plugin(bb: BbPluginApi) {
 
   async function finishTodo(id: string): Promise<void> {
     await writeTodos(completeTodo(await readTodos(), id, Date.now()));
+  }
+
+  async function readHabits(): Promise<Habit[]> {
+    const parsed = habitSchema.array().safeParse(await bb.storage.kv.get<unknown>(HABITS_KEY));
+    return parsed.success ? parsed.data : [];
+  }
+
+  async function writeHabits(habits: Habit[]): Promise<void> {
+    await bb.storage.kv.set(HABITS_KEY, habits);
+    bb.rpc.experimental_invalidate(["home"]);
+  }
+
+  async function addHabit(title: string, remindHour: number | null): Promise<Habit> {
+    const habit: Habit = { id: randomUUID().slice(0, 8), title, remindHour, days: [] };
+    await writeHabits([...(await readHabits()), habit]);
+    return habit;
+  }
+
+  async function toggleHabit(id: string, day: string): Promise<void> {
+    await writeHabits(toggleHabitDay(await readHabits(), id, day));
+  }
+
+  async function habitLines(): Promise<string[]> {
+    const now = Date.now();
+    return (await readHabits()).map((habit) => {
+      const progress = habitProgress(habit, now);
+      return `${habit.id}  ${habit.title}  ${progress.doneToday ? "done today" : "not done today"}, ${progress.streak} day streak, ${progress.last30} of the last 30 days, ${progress.total} total`;
+    });
+  }
+
+  async function remindHabits(): Promise<void> {
+    for (const habit of habitsToRemind(await readHabits(), Date.now())) {
+      await bb.sdk.plugins.callRpc({
+        pluginId: "push-notifications",
+        method: "notifications.send",
+        input: { title: habit.title, body: "Ainda não marcado hoje.", threadId: await ensureThread() },
+        outputSchema: notificationOutputSchema,
+      });
+    }
   }
 
   let dollarCache: { at: number; dollar: Dollar } | null = null;
@@ -449,6 +495,40 @@ export default async function plugin(bb: BbPluginApi) {
   });
 
   bb.agents.registerTool({
+    name: "habit_add",
+    description:
+      "Track a daily habit such as the gym. It shows on the bb home page with a checkbox, streak and 30 day count. remindHour is the local hour for a push reminder on days it is not done.",
+    parameters: z.object({
+      title: z.string().min(1).max(80),
+      remindHour: z.number().int().min(0).max(23).optional(),
+    }),
+    async execute({ title, remindHour }) {
+      const habit = await addHabit(title, remindHour ?? null);
+      return `Added habit ${habit.id}.`;
+    },
+  });
+
+  bb.agents.registerTool({
+    name: "habit_done",
+    description: "Toggle a habit's check for a day, today by default. Calling it twice unchecks it.",
+    parameters: z.object({ id: z.string(), day: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional() }),
+    async execute({ id, day }) {
+      await toggleHabit(id, day ?? localDay(Date.now()));
+      return (await habitLines()).find((line) => line.startsWith(id)) ?? `Toggled ${id}.`;
+    },
+  });
+
+  bb.agents.registerTool({
+    name: "habit_list",
+    description: "List habits with ids, whether each is done today, the streak, the last 30 day count and the total.",
+    parameters: z.object({}),
+    async execute() {
+      const lines = await habitLines();
+      return lines.length === 0 ? "No habits." : lines.join("\n");
+    },
+  });
+
+  bb.agents.registerTool({
     name: "news_brief_set",
     description:
       "Replace today's news brief on the bb home page. At most 3 short lines; an empty list hides it.",
@@ -563,7 +643,7 @@ export default async function plugin(bb: BbPluginApi) {
   bb.agents.configure((context) =>
     context.thread.id === threadId
       ? {
-          tools: ["assistant_notify", "todo_add", "todo_done", "todo_list", "news_brief_set", "slack_search", "slack_thread", "email_search", "email_read", "calendar_events", "calendar_list", "calendar_add"],
+          tools: ["assistant_notify", "todo_add", "todo_done", "todo_list", "habit_add", "habit_done", "habit_list", "news_brief_set", "slack_search", "slack_thread", "email_search", "email_read", "calendar_events", "calendar_list", "calendar_add"],
           skills: [],
           instructions: assistantInstructions(context.thread.id),
         }
@@ -579,16 +659,22 @@ export default async function plugin(bb: BbPluginApi) {
       return { threadId: await ensureThread() };
     },
     async "assistant.home"() {
-      const [todos, reminders, dollar, news] = await Promise.all([
+      const [todos, habits, reminders, dollar, news] = await Promise.all([
         readTodos(),
+        readHabits(),
         assistantReminders(),
         dollarQuote(),
         todaysNews(),
       ]);
-      return { todos: openTodos(todos), reminders, dollar, news };
+      const now = Date.now();
+      return { todos: openTodos(todos), habits: habits.map((habit) => habitProgress(habit, now)), reminders, dollar, news };
     },
     async "assistant.todoDone"({ id }) {
       await finishTodo(id);
+      return { ok: true as const };
+    },
+    async "assistant.habitToggle"({ id }) {
+      await toggleHabit(id, localDay(Date.now()));
       return { ok: true as const };
     },
     async "assistant.reminderDone"({ id }) {
@@ -615,6 +701,8 @@ export default async function plugin(bb: BbPluginApi) {
   bb.background.schedule("check-sources", "*/10 * * * *", async () => {
     await checkSources();
   });
+
+  bb.background.schedule("habit-reminders", "0 * * * *", remindHabits);
 
   bb.background.schedule("news-brief", "0 7 * * *", requestNewsBrief);
 
@@ -656,6 +744,38 @@ export default async function plugin(bb: BbPluginApi) {
           async run(input) {
             await finishTodo(input.positionals.id);
             return { exitCode: 0, stdout: `Checked off ${input.positionals.id}.` };
+          },
+        }),
+        habits: cliCommand({
+          summary: "List habits with today's check, streak and 30 day count",
+          async run() {
+            const lines = await habitLines();
+            return { exitCode: 0, stdout: lines.length === 0 ? "No habits." : lines.join("\n") };
+          },
+        }),
+        "habit-add": cliCommand({
+          summary: "Track a daily habit on the home page",
+          positionals: [{ name: "title", description: "The habit, for example Academia", required: true }],
+          options: { "remind-hour": { type: "string", description: "Local hour 0-23 for a push reminder on days it is not done" } },
+          async run(input) {
+            const raw = input.options["remind-hour"];
+            const remindHour = raw === undefined ? null : Number(raw);
+            if (remindHour !== null && !(Number.isInteger(remindHour) && remindHour >= 0 && remindHour <= 23)) {
+              return { exitCode: 1, stderr: `Not an hour: ${raw}` };
+            }
+            const habit = await addHabit(input.positionals.title, remindHour);
+            return { exitCode: 0, stdout: habit.id };
+          },
+        }),
+        "habit-done": cliCommand({
+          summary: "Toggle a habit's check for today, or for --day",
+          positionals: [{ name: "id", description: "Habit id from bb assistant habits", required: true }],
+          options: { day: { type: "string", description: "Day as YYYY-MM-DD, today by default" } },
+          async run(input) {
+            const day = input.options.day ?? localDay(Date.now());
+            if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return { exitCode: 1, stderr: `Not a day: ${day}` };
+            await toggleHabit(input.positionals.id, day);
+            return { exitCode: 0, stdout: `Toggled ${input.positionals.id} for ${day}.` };
           },
         }),
         events: cliCommand({

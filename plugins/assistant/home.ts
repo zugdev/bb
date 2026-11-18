@@ -102,3 +102,58 @@ export function formatUpcoming(at: number, now: number = Date.now()): string {
   if (Math.abs(days) < 7) return `${weekdayFormat.format(at)} ${time}`;
   return `${dateFormat.format(at)} ${time}`;
 }
+
+export const habitSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  remindHour: z.number().int().min(0).max(23).nullable(),
+  days: z.array(z.string()),
+});
+export type Habit = z.infer<typeof habitSchema>;
+
+export const habitProgressSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  doneToday: z.boolean(),
+  streak: z.number(),
+  last30: z.number(),
+  total: z.number(),
+});
+export type HabitProgress = z.infer<typeof habitProgressSchema>;
+
+function daysBefore(now: number, count: number): string {
+  const date = new Date(now);
+  date.setDate(date.getDate() - count);
+  return localDay(date.getTime());
+}
+
+export function habitProgress(habit: Habit, now: number): HabitProgress {
+  const done = new Set(habit.days);
+  const doneToday = done.has(localDay(now));
+  let streak = 0;
+  while (done.has(daysBefore(now, doneToday ? streak : streak + 1))) streak += 1;
+  const since = daysBefore(now, 29);
+  return {
+    id: habit.id,
+    title: habit.title,
+    doneToday,
+    streak,
+    last30: habit.days.filter((day) => day >= since).length,
+    total: done.size,
+  };
+}
+
+export function toggleHabitDay(habits: readonly Habit[], id: string, day: string): Habit[] {
+  if (!habits.some((habit) => habit.id === id)) throw new Error(`No habit with id ${id}.`);
+  return habits.map((habit) => {
+    if (habit.id !== id) return habit;
+    const days = habit.days.includes(day) ? habit.days.filter((d) => d !== day) : [...habit.days, day].sort();
+    return { ...habit, days };
+  });
+}
+
+export function habitsToRemind(habits: readonly Habit[], now: number): Habit[] {
+  const hour = new Date(now).getHours();
+  const today = localDay(now);
+  return habits.filter((habit) => habit.remindHour === hour && !habit.days.includes(today));
+}

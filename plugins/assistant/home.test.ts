@@ -1,5 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { completeTodo, formatUpcoming, openTodos, parseDollarQuote, upcomingReminders } from "./home.js";
+import {
+  completeTodo,
+  formatUpcoming,
+  habitProgress,
+  habitsToRemind,
+  openTodos,
+  parseDollarQuote,
+  toggleHabitDay,
+  upcomingReminders,
+} from "./home.js";
 
 describe("upcomingReminders", () => {
   it("keeps enabled reminders due by the end of tomorrow, soonest first, and marks which repeat", () => {
@@ -71,5 +80,23 @@ describe("parseDollarQuote", () => {
       pctChange: -0.42,
     });
     expect(() => parseDollarQuote({ status: 429 })).toThrow();
+  });
+});
+
+describe("habits", () => {
+  const now = new Date(2026, 10, 17, 19, 0).getTime();
+  const gym = { id: "gym", title: "Academia", remindHour: 19, days: ["2026-10-01", "2026-11-14", "2026-11-15", "2026-11-16"] };
+
+  it("counts a streak through yesterday until today is checked, and the last 30 days", () => {
+    expect(habitProgress(gym, now)).toMatchObject({ doneToday: false, streak: 3, last30: 3, total: 4 });
+    const checked = toggleHabitDay([gym], "gym", "2026-11-17")[0]!;
+    expect(habitProgress(checked, now)).toMatchObject({ doneToday: true, streak: 4, last30: 4 });
+    expect(toggleHabitDay([checked], "gym", "2026-11-17")[0]!.days).toEqual(gym.days);
+  });
+
+  it("reminds at the remind hour only on days it is not checked", () => {
+    expect(habitsToRemind([gym], now)).toHaveLength(1);
+    expect(habitsToRemind([gym], now + 3_600_000)).toHaveLength(0);
+    expect(habitsToRemind(toggleHabitDay([gym], "gym", "2026-11-17"), now)).toHaveLength(0);
   });
 });
