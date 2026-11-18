@@ -149,9 +149,9 @@ export function nextInboxStep(
   queue: readonly PluginSidebarThread[],
   shownThreadId: string | null,
   trackedThreadId: string | null | undefined,
-  composerHasDraft: boolean,
+  keepComposer: boolean,
 ): InboxStep {
-  if (shownThreadId === null && composerHasDraft) return { kind: "stay" };
+  if (shownThreadId === null && keepComposer) return { kind: "stay" };
   if (shownThreadId !== null && queue.some((t) => t.id === shownThreadId)) {
     return { kind: "stay" };
   }
