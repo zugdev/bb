@@ -186,6 +186,7 @@ function useInboxNavigation(threadId: string) {
     if (next !== undefined) showThread(ownTab, next);
   };
   return {
+    ownTab,
     isActive: ownTab.isActive,
     queue,
     index,
@@ -264,6 +265,35 @@ function ArchiveButton({
   );
 }
 
+function NewThreadButton({
+  nav: { ownTab, isActive, target },
+  className,
+  labelClassName,
+}: {
+  nav: InboxNavigation;
+  className: string;
+  labelClassName?: string;
+}) {
+  const navigate = useBbNavigate();
+  const startThread = () => {
+    if (isActive) ownTab.show({ kind: "compose" });
+    else
+      navigate.toCompose({ projectId: target?.projectId, focusPrompt: true });
+  };
+  return (
+    <Button
+      type="button"
+      variant="ghost"
+      size="sm"
+      className={className}
+      onClick={startThread}
+    >
+      <Icon name="Plus" className="size-3.5" />
+      <span className={labelClassName}>New thread</span>
+    </Button>
+  );
+}
+
 function InboxActions({
   nav: { target, isOpen },
   buttonClassName,
@@ -315,30 +345,86 @@ export function InboxHeaderControls({
 const INBOX_BUBBLE_CLASS =
   "pointer-events-auto flex h-11 items-center rounded-full border border-border/70 bg-surface-scrim/75 text-xs shadow-lg backdrop-blur-md";
 
+const SWIPE_MIN_PX = 40;
+
+function slideThreadPane(from: Element, step: -1 | 1) {
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  from.closest("[data-split-pane-id]")?.animate(
+    [
+      { opacity: 0.3, transform: `translateX(${step * 24}px)` },
+      { opacity: 1, transform: "none" },
+    ],
+    { duration: 250, easing: "cubic-bezier(0.32,0.72,0,1)" },
+  );
+}
+
+function SwipeablePager({ nav }: { nav: InboxNavigation }) {
+  const swiped = useRef(false);
+  return (
+    <div
+      data-no-sidebar-swipe=""
+      data-inbox-pager=""
+      className={cn(INBOX_BUBBLE_CLASS, "touch-pan-y select-none")}
+      onPointerDown={(down) => {
+        swiped.current = false;
+        const bubble = down.currentTarget;
+        const { clientX: x, clientY: y, pointerId } = down;
+        const finish = (up: PointerEvent) => {
+          if (up.pointerId !== pointerId) return;
+          window.removeEventListener("pointerup", finish);
+          window.removeEventListener("pointercancel", finish);
+          if (up.type === "pointercancel") return;
+          const dx = up.clientX - x;
+          const dy = up.clientY - y;
+          if (Math.abs(dx) < SWIPE_MIN_PX || Math.abs(dx) <= Math.abs(dy)) {
+            return;
+          }
+          const step = dx < 0 ? 1 : -1;
+          swiped.current = true;
+          slideThreadPane(bubble, step);
+          nav.go(step);
+        };
+        window.addEventListener("pointerup", finish);
+        window.addEventListener("pointercancel", finish);
+      }}
+      onClickCapture={(event) => {
+        if (!swiped.current) return;
+        swiped.current = false;
+        event.stopPropagation();
+        event.preventDefault();
+      }}
+    >
+      <InboxPager nav={nav} buttonClassName="size-11 rounded-full" />
+    </div>
+  );
+}
+
 export function InboxFloatingControls({
   threadId,
   isPhone,
 }: ExperimentalThreadComposerOverlayProps) {
   const nav = useInboxNavigation(threadId);
-  if (!isPhone || !nav.isActive || nav.queue.length === 0) return null;
+  if (!isPhone) return null;
+  const showPager = nav.isActive && nav.queue.length > 0;
   return (
     <div
       data-inbox-navigator=""
       data-inbox-floating=""
       className="flex items-end justify-between gap-2 pb-2 pl-[max(0.75rem,env(safe-area-inset-left))] pr-[max(0.75rem,env(safe-area-inset-right))]"
     >
+      {showPager ? <SwipeablePager nav={nav} /> : <span />}
       <div className={INBOX_BUBBLE_CLASS}>
-        <InboxPager nav={nav} buttonClassName="size-11 rounded-full" />
+        <InboxActions
+          nav={nav}
+          buttonClassName="size-11 rounded-full"
+          labelClassName="sr-only"
+        />
+        <NewThreadButton
+          nav={nav}
+          className="size-11 rounded-full"
+          labelClassName="sr-only"
+        />
       </div>
-      {nav.isOpen ? (
-        <div className={INBOX_BUBBLE_CLASS}>
-          <InboxActions
-            nav={nav}
-            buttonClassName="size-11 rounded-full"
-            labelClassName="sr-only"
-          />
-        </div>
-      ) : null}
     </div>
   );
 }
