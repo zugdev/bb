@@ -29,7 +29,8 @@
   "dependencies": {
     "@bb/shared-ui": "workspace:*",
     "bb-plugin-environment-git-worktree": "workspace:*",
-    "sonner": "^1.7.4"
+    "sonner": "^1.7.4",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@bb/plugin-build": "workspace:*",
