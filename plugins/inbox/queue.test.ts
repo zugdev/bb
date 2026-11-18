@@ -122,7 +122,7 @@ describe("nextInboxStep", () => {
     });
   });
 
-  it("keeps a composer holding a draft when a thread arrives", () => {
+  it("keeps a composer holding a draft or opened on request when a thread arrives", () => {
     expect(nextInboxStep(queue, null, null, true)).toEqual({ kind: "stay" });
     expect(nextInboxStep(queue, null, "a", true)).toEqual({ kind: "stay" });
   });

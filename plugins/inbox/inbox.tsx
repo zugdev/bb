@@ -41,6 +41,8 @@ const CORE_ACTION_OWNER = "bb--core";
 export const ARCHIVE_ACTION_KEYS = [`${CORE_ACTION_OWNER}/archive`];
 const SNOOZE_ACTION_KEYS = [`${CORE_ACTION_OWNER}/snooze`];
 
+let composeRequested = false;
+
 export interface InboxState {
   isLoaded: boolean;
   threads: readonly PluginSidebarThread[];
@@ -276,8 +278,10 @@ function NewThreadButton({
 }) {
   const navigate = useBbNavigate();
   const startThread = () => {
-    if (isActive) ownTab.show({ kind: "compose" });
-    else
+    if (isActive) {
+      composeRequested = true;
+      ownTab.show({ kind: "compose" });
+    } else
       navigate.toCompose({ projectId: target?.projectId, focusPrompt: true });
   };
   return (
@@ -345,7 +349,7 @@ export function InboxHeaderControls({
 const INBOX_BUBBLE_CLASS =
   "pointer-events-auto flex h-11 items-center rounded-full border border-border/70 bg-surface-scrim/75 text-xs shadow-lg backdrop-blur-md";
 
-const SWIPE_MIN_PX = 40;
+const SCRUB_STEP_PX = 36;
 
 function slideThreadPane(from: Element, step: -1 | 1) {
   if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
@@ -358,38 +362,46 @@ function slideThreadPane(from: Element, step: -1 | 1) {
   );
 }
 
-function SwipeablePager({ nav }: { nav: InboxNavigation }) {
-  const swiped = useRef(false);
+function ScrubPager({ nav }: { nav: InboxNavigation }) {
+  const scrubbed = useRef(false);
   return (
     <div
       data-no-sidebar-swipe=""
       data-inbox-pager=""
-      className={cn(INBOX_BUBBLE_CLASS, "touch-pan-y select-none")}
+      className={cn(INBOX_BUBBLE_CLASS, "touch-none select-none")}
       onPointerDown={(down) => {
-        swiped.current = false;
+        scrubbed.current = false;
+        const { ownTab, queue, index } = nav;
+        if (queue.length < 2) return;
         const bubble = down.currentTarget;
-        const { clientX: x, clientY: y, pointerId } = down;
-        const finish = (up: PointerEvent) => {
-          if (up.pointerId !== pointerId) return;
+        const { clientX: startX, pointerId } = down;
+        let shownSteps = 0;
+        const move = (event: PointerEvent) => {
+          if (event.pointerId !== pointerId) return;
+          const steps = Math.trunc((startX - event.clientX) / SCRUB_STEP_PX);
+          if (steps === shownSteps) return;
+          const direction = steps > shownSteps ? 1 : -1;
+          shownSteps = steps;
+          scrubbed.current = true;
+          const from = index === -1 ? (steps > 0 ? -1 : 0) : index;
+          const target = queue.at((from + steps) % queue.length);
+          if (target === undefined) return;
+          slideThreadPane(bubble, direction);
+          showThread(ownTab, target);
+        };
+        const finish = (event: PointerEvent) => {
+          if (event.pointerId !== pointerId) return;
+          window.removeEventListener("pointermove", move);
           window.removeEventListener("pointerup", finish);
           window.removeEventListener("pointercancel", finish);
-          if (up.type === "pointercancel") return;
-          const dx = up.clientX - x;
-          const dy = up.clientY - y;
-          if (Math.abs(dx) < SWIPE_MIN_PX || Math.abs(dx) <= Math.abs(dy)) {
-            return;
-          }
-          const step = dx < 0 ? 1 : -1;
-          swiped.current = true;
-          slideThreadPane(bubble, step);
-          nav.go(step);
         };
+        window.addEventListener("pointermove", move);
         window.addEventListener("pointerup", finish);
         window.addEventListener("pointercancel", finish);
       }}
       onClickCapture={(event) => {
-        if (!swiped.current) return;
-        swiped.current = false;
+        if (!scrubbed.current) return;
+        scrubbed.current = false;
         event.stopPropagation();
         event.preventDefault();
       }}
@@ -412,7 +424,7 @@ export function InboxFloatingControls({
       data-inbox-floating=""
       className="flex items-end justify-between gap-2 pb-2 pl-[max(0.75rem,env(safe-area-inset-left))] pr-[max(0.75rem,env(safe-area-inset-right))]"
     >
-      {showPager ? <SwipeablePager nav={nav} /> : <span />}
+      {showPager ? <ScrubPager nav={nav} /> : <span />}
       <div className={INBOX_BUBBLE_CLASS}>
         <InboxActions
           nav={nav}
@@ -607,12 +619,13 @@ export function InboxController() {
   useEffect(() => {
     if (!isLoaded || !isActive || focused === null) return;
     if (focused.kind === "other") return;
+    if (focused.kind === "thread") composeRequested = false;
     const shownThreadId = focused.kind === "thread" ? focused.threadId : null;
     const step = nextInboxStep(
       queue,
       shownThreadId,
       tracked.current,
-      focused.kind === "compose" && focused.hasDraft(),
+      focused.kind === "compose" && (composeRequested || focused.hasDraft()),
     );
     if (step.kind === "stay") {
       if (queue.some((thread) => thread.id === shownThreadId)) {
