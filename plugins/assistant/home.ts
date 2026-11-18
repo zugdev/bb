@@ -117,6 +117,7 @@ export const habitProgressSchema = z.object({
   doneToday: z.boolean(),
   streak: z.number(),
   last30: z.number(),
+  recent: z.array(z.boolean()),
   total: z.number(),
 });
 export type HabitProgress = z.infer<typeof habitProgressSchema>;
@@ -133,12 +134,14 @@ export function habitProgress(habit: Habit, now: number): HabitProgress {
   let streak = 0;
   while (done.has(daysBefore(now, doneToday ? streak : streak + 1))) streak += 1;
   const since = daysBefore(now, 29);
+  const recent = Array.from({ length: 30 }, (_, index) => done.has(daysBefore(now, 29 - index)));
   return {
     id: habit.id,
     title: habit.title,
     doneToday,
     streak,
     last30: habit.days.filter((day) => day >= since).length,
+    recent,
     total: done.size,
   };
 }
