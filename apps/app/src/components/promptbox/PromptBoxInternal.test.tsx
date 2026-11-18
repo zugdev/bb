@@ -2564,6 +2564,23 @@ describe("ComposerBox escape", () => {
     expect(document.activeElement).not.toBe(editor);
   });
 
+  it("blurs the editor on Tab so app shortcuts apply outside it", async () => {
+    const promptBoxRef = createRef<PromptBoxHandle>();
+    render(
+      <ComposerBox
+        {...createPromptBoxProps({ value: "Follow-up message" })}
+        promptBoxRef={promptBoxRef}
+      />,
+    );
+    await focusPromptEnd(promptBoxRef);
+    const editor = getPromptEditorElement();
+
+    const wasNotCanceled = fireEvent.keyDown(editor, { key: "Tab" });
+
+    expect(wasNotCanceled).toBe(false);
+    expect(document.activeElement).not.toBe(editor);
+  });
+
   it("routes Escape to onEscape instead of blurring the editor", async () => {
     const onEscape = vi.fn();
     const promptBoxRef = createRef<PromptBoxHandle>();
