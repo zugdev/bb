@@ -57,8 +57,6 @@ type AgendaItem = {
 
 const ROW_CLASS =
   "-mx-2 flex h-8 min-w-0 items-center gap-2.5 rounded-md px-2 text-left text-sm transition-colors hover:bg-state-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
-const ACTION_CLASS =
-  "flex h-7 shrink-0 items-center rounded-md px-2 text-xs text-muted-foreground transition-colors hover:bg-state-hover hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
 
 function When({ at, done }: { at: number | null; done: boolean }) {
   if (at === null) return null;
@@ -163,13 +161,6 @@ function AssistantHomeSection() {
   ].sort((a, b) => (a.at ?? Infinity) - (b.at ?? Infinity));
   return (
     <section className="flex flex-col rounded-xl bg-surface-recessed px-4 py-2">
-      <div className="-mr-2 flex h-8 items-center gap-2">
-        <Icon name="Bot" className="size-4 text-muted-foreground" aria-hidden />
-        <h2 className="min-w-0 flex-1 text-sm font-semibold">Assistant</h2>
-        <button type="button" className={ACTION_CLASS} onClick={openAssistant}>
-          Open
-        </button>
-      </div>
       {data === undefined ? null : items.length === 0 ? (
         <p className="flex h-8 items-center text-sm text-muted-foreground">Nothing due today or tomorrow.</p>
       ) : (

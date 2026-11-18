@@ -4,8 +4,6 @@ import {
   type PluginSidebarThread,
 } from "@get-bb/plugin-sdk/app";
 
-export const NEEDS_YOU_LIMIT = 3;
-
 const SIDE_CHAT_PLUGIN_ID = "side-chat";
 
 const NEEDS_YOU_INDICATORS = new Set([
@@ -86,19 +84,6 @@ export function homeThreadDot(
   if (status.isWorking) return "working";
   if (status.indicator === "unread-success") return "done";
   return null;
-}
-
-export function needsYouThreads(
-  threads: readonly PluginSidebarThread[],
-): PluginSidebarThread[] {
-  const descendants = liveThreadDescendants(threads);
-  return homeTopLevelThreads(threads)
-    .filter((thread) =>
-      NEEDS_YOU_INDICATORS.has(
-        resolveHomeThreadStatus(thread, descendants).indicator,
-      ),
-    )
-    .sort((a, b) => b.latestAttentionAt - a.latestAttentionAt);
 }
 
 export const HOME_STATUS_FILTERS = [
