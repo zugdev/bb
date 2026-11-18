@@ -8,7 +8,7 @@ import {
   type ExperimentalBadge,
 } from "@get-bb/plugin-sdk/app";
 import { assistantRpcContract } from "./contract.js";
-import { formatUpcoming, type Dollar, type HabitProgress } from "./home.js";
+import { formatUpcoming, type Dollar, type FinanceHome, type HabitProgress } from "./home.js";
 
 function useAssistantBadge(): ExperimentalBadge | null {
   const { data } = experimental_useRpcQuery({
@@ -80,6 +80,22 @@ function DollarQuote({ dollar }: { dollar: Dollar }) {
       <span className="min-w-0">
         Dólar {brlFormat.format(dollar.brl)}
         {change === "0" ? null : <span className={`ml-1.5 ${tone}`}>{change}%</span>}
+      </span>
+    </li>
+  );
+}
+
+const dueFormat = new Intl.DateTimeFormat("pt-BR", { day: "numeric", month: "short", timeZone: "UTC" });
+
+function FinanceLine({ finance }: { finance: FinanceHome }) {
+  return (
+    <li className="flex gap-2 tabular-nums" title="Saldo em conta corrente, gastos de ontem e a próxima fatura">
+      <span aria-hidden className="flex shrink-0 justify-center font-medium">R$</span>
+      <span className="min-w-0">
+        Conta {brlFormat.format(finance.checking)} · ontem {brlFormat.format(finance.yesterday)}
+        {finance.bill === null
+          ? null
+          : ` · fatura ${brlFormat.format(finance.bill.total)} vence ${dueFormat.format(new Date(`${finance.bill.dueDate}T00:00:00Z`))}`}
       </span>
     </li>
   );
@@ -232,9 +248,10 @@ function AssistantHomeSection() {
         </span>
         <span className="min-w-0 flex-1 truncate">Ask the assistant or add a reminder</span>
       </button>
-      {data?.news.length || data?.dollar ? (
+      {data?.news.length || data?.dollar || data?.finance ? (
         <ul className="mt-1 flex flex-col gap-1 border-t border-border-hairline pt-2 pb-1 text-xs text-muted-foreground">
           {data.dollar ? <DollarQuote dollar={data.dollar} /> : null}
+          {data.finance ? <FinanceLine finance={data.finance} /> : null}
           {data.news.map((line) => (
             <li key={line} className="flex gap-2">
               <Icon name="News01" aria-hidden className="mt-px size-3.5 shrink-0" />
