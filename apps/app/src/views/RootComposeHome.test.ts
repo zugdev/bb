@@ -11,7 +11,7 @@ describe("getCompactHomeLeadingSpace", () => {
       4.5 * MOBILE_RECENT_ROW_HEIGHT_PX + MOBILE_RECENT_LABEL_HEIGHT_PX;
 
     expect(
-      56 +
+      8 +
         getCompactHomeLeadingSpace({
           regionHeight: 852,
           composerHeight: 188,

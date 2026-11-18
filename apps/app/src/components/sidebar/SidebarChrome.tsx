@@ -18,6 +18,7 @@ import {
   shouldUseMacosDesktopChrome,
 } from "@/lib/bb-desktop";
 import { useDesktopWindowState } from "@/hooks/useDesktopWindowState";
+import { useUsesSwipeChrome } from "@/components/layout/useUsesSwipeChrome";
 import { useSidebarNavigationPlacement } from "./sidebarNavigationProvider";
 
 const FRAMED_CARD_TOP_BORDER_OFFSET_CLASS = "-mt-px";
@@ -92,6 +93,7 @@ export function SidebarTopReserveRow({
     windowState: desktopWindowState,
   });
   const hasRail = useSidebarNavigationPlacement() === "rail";
+  const hasNoSidebarTrigger = useUsesSwipeChrome();
 
   if (isFramed && headerSlot === undefined) {
     return <div data-testid={testId} className="h-2 shrink-0" />;
@@ -111,7 +113,7 @@ export function SidebarTopReserveRow({
           MACOS_DRAWER_HEADER_RESERVE_CLASS,
       )}
     >
-      {isFramed || hasRail || headerSlot === undefined ? (
+      {isFramed || hasRail || hasNoSidebarTrigger || headerSlot === undefined ? (
         headerSlot
       ) : (
         <div

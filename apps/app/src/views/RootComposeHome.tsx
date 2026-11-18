@@ -9,7 +9,7 @@ import {
   MOBILE_RECENT_ROW_HEIGHT_PX,
 } from "./RootComposeMobileRecents";
 
-const COMPACT_HOME_CHROME_OFFSET_PX = 56;
+const COMPACT_HOME_CHROME_OFFSET_PX = 8;
 const COMPACT_HOME_COLUMN_CLASS = "mx-auto w-full max-w-[760px] px-4";
 const ROOT_COMPOSE_MAX_WIDTH_CLASS = "max-w-[760px]";
 const COMPACT_HOME_REST_VISIBLE_ROWS = 4.5;
