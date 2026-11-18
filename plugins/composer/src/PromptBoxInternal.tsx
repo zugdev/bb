@@ -3141,6 +3141,18 @@ export function PromptBoxInternal({
         return true;
       }
 
+      if (
+        event.key === "Tab" &&
+        !event.shiftKey &&
+        !event.metaKey &&
+        !event.ctrlKey &&
+        !event.altKey
+      ) {
+        event.preventDefault();
+        blurPromptEditor(currentEditor);
+        return true;
+      }
+
       if (history) {
         if (
           event.key === "ArrowUp" &&
@@ -3291,7 +3303,7 @@ export function PromptBoxInternal({
         attachFilesWithHistory(Array.from(event.dataTransfer.files));
       }}
       className={cn(
-        "group/promptbox relative w-full rounded-xl border border-border bg-background shadow-lift",
+        "group/promptbox relative w-full rounded-xl border border-border bg-background shadow-lift has-[[contenteditable]:focus]:border-foreground",
         showCompactLayout && "overflow-hidden",
       )}
     >
