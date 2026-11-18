@@ -132,36 +132,55 @@ function AgendaRow({ item, onOpen }: { item: AgendaItem; onOpen: () => void }) {
 const CHECKBOX_CLASS =
   "peer size-3.5 cursor-pointer appearance-none rounded-full border border-muted-foreground/60 transition-colors checked:border-foreground checked:bg-foreground focus-visible:outline-none";
 
+function HabitDays({ recent, today }: { recent: readonly boolean[]; today: boolean }) {
+  return (
+    <div aria-hidden className="flex gap-0.5 pb-1.5 pl-6.5">
+      {recent.map((done, index) => {
+        const filled = index === recent.length - 1 ? today : done;
+        return (
+          <span
+            key={index}
+            className={`size-2 shrink-0 rounded-[2px] ${filled ? "bg-success" : "bg-foreground/10"}`}
+          />
+        );
+      })}
+    </div>
+  );
+}
+
 function HabitRow({ habit, onToggle }: { habit: HabitProgress; onToggle: () => Promise<unknown> }) {
   const [pending, setPending] = useState<{ checked: boolean; from: boolean } | null>(null);
   const checked = pending !== null && pending.from === habit.doneToday ? pending.checked : habit.doneToday;
   return (
-    <label className={`${ROW_CLASS} cursor-pointer has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring`}>
-      <span className="relative flex size-4 shrink-0 items-center justify-center">
-        <input
-          type="checkbox"
-          checked={checked}
-          onChange={() => {
-            setPending({ checked: !checked, from: habit.doneToday });
-            onToggle().catch(() => setPending(null));
-          }}
-          className={CHECKBOX_CLASS}
-        />
-        <Icon
-          name="Check"
-          aria-hidden
-          className="pointer-events-none absolute size-2.5 text-background opacity-0 transition-opacity peer-checked:opacity-100"
-        />
-      </span>
-      <span className="min-w-0 flex-1 truncate">{habit.title}</span>
-      <span
-        className="shrink-0 text-xs tabular-nums text-muted-foreground"
-        title={`${habit.streak} day streak, ${habit.last30} of the last 30 days, ${habit.total} total`}
-      >
-        {habit.streak > 1 ? `${habit.streak}d streak · ` : ""}
-        {habit.last30}/30d
-      </span>
-    </label>
+    <>
+      <label className={`${ROW_CLASS} cursor-pointer has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring`}>
+        <span className="relative flex size-4 shrink-0 items-center justify-center">
+          <input
+            type="checkbox"
+            checked={checked}
+            onChange={() => {
+              setPending({ checked: !checked, from: habit.doneToday });
+              onToggle().catch(() => setPending(null));
+            }}
+            className={CHECKBOX_CLASS}
+          />
+          <Icon
+            name="Check"
+            aria-hidden
+            className="pointer-events-none absolute size-2.5 text-background opacity-0 transition-opacity peer-checked:opacity-100"
+          />
+        </span>
+        <span className="min-w-0 flex-1 truncate">{habit.title}</span>
+        <span
+          className="shrink-0 text-xs tabular-nums text-muted-foreground"
+          title={`${habit.streak} day streak, ${habit.last30} of the last 30 days, ${habit.total} total`}
+        >
+          {habit.streak > 1 ? `${habit.streak}d streak · ` : ""}
+          {habit.last30}/30d
+        </span>
+      </label>
+      <HabitDays recent={habit.recent} today={checked} />
+    </>
   );
 }
 

@@ -89,6 +89,8 @@ describe("habits", () => {
 
   it("counts a streak through yesterday until today is checked, and the last 30 days", () => {
     expect(habitProgress(gym, now)).toMatchObject({ doneToday: false, streak: 3, last30: 3, total: 4 });
+    expect(habitProgress(gym, now).recent.slice(-5)).toEqual([false, true, true, true, false]);
+    expect(habitProgress(gym, now).recent.filter(Boolean)).toHaveLength(3);
     const checked = toggleHabitDay([gym], "gym", "2026-11-17")[0]!;
     expect(habitProgress(checked, now)).toMatchObject({ doneToday: true, streak: 4, last30: 4 });
     expect(toggleHabitDay([checked], "gym", "2026-11-17")[0]!.days).toEqual(gym.days);
