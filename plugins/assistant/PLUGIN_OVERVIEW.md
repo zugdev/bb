@@ -14,14 +14,14 @@ A personal assistant that lives at the top of your sidebar. It reads your Slack 
 
 1. Slack: in each workspace create a Slack app at api.slack.com/apps, add the user scopes `search:read`, `channels:history`, `groups:history`, `im:history` and `mpim:history`, install it, and copy the User OAuth Token (`xoxp-...`). Paste every workspace's token into **Slack user tokens**, separated by spaces.
 2. Email: set **IMAP host**, **IMAP user** and **IMAP app password**. For Gmail use `imap.gmail.com` and an app password from myaccount.google.com/apppasswords. For iCloud use `imap.mail.me.com`.
-3. Calendar: for iCloud keep **CalDAV server** at `https://caldav.icloud.com`, set **CalDAV user** to your Apple ID and **CalDAV app password** to an app password from account.apple.com. Other CalDAV servers such as Fastmail work the same way. Google's CalDAV needs OAuth, so add Google calendars read only: in Google Calendar settings copy each calendar's "Secret address in iCal format" into **Calendar feed URLs**, separated by spaces.
+3. Google Calendar: in Google Cloud Console create a project, enable the Google Calendar API, set up the OAuth consent screen with yourself as a test user, and create an OAuth client of type Desktop app. Paste its ID and secret into **Google OAuth client ID** and **Google OAuth client secret**, run `bb assistant google-login` and open the URL it prints within 10 minutes. For iCloud or another CalDAV server, set **CalDAV server**, **CalDAV user** and **CalDAV app password** instead. **Calendar feed URLs** takes read only iCal URLs.
 4. Turn on a channel in Push notifications so notifications reach you.
 
 The first check after setup records where your Slack and inbox are, so you only get items that arrive after that.
 
 ## Agent tools
 
-Only the assistant thread gets these tools: `assistant_notify`, `todo_add`, `todo_done`, `todo_list`, `habit_add`, `habit_done`, `habit_list`, `news_brief_set`, `slack_search`, `slack_thread`, `email_search`, `email_read`, `calendar_events`, `calendar_list` and `calendar_add`. Email is opened read only, so reading an email does not mark it read. `calendar_events` reads every CalDAV calendar and feed with recurring events expanded; `calendar_add` writes only to CalDAV.
+Only the assistant thread gets these tools: `assistant_notify`, `todo_add`, `todo_done`, `todo_list`, `habit_add`, `habit_done`, `habit_list`, `news_brief_set`, `slack_search`, `slack_thread`, `email_search`, `email_read`, `calendar_events`, `calendar_list` and `calendar_add`. Email is opened read only, so reading an email does not mark it read. `calendar_events` reads every CalDAV calendar and feed with recurring events expanded; `calendar_add` writes to your primary Google calendar, a named Google or CalDAV calendar, or CalDAV when Google is not connected.
 
 ## CLI
 
@@ -30,6 +30,7 @@ Only the assistant thread gets these tools: `assistant_notify`, `todo_add`, `tod
 - `bb assistant habits`: list habits with today's check, streak, 30 day count and total.
 - `bb assistant habit-add <title> [--remind-hour H]`: track a daily habit, with a push at local hour H on days it is not checked.
 - `bb assistant habit-done <id> [--day YYYY-MM-DD]`: toggle a habit's check for today or another day.
+- `bb assistant google-login`: print a Google sign-in URL that connects Google Calendar.
 - `bb assistant events [--days N]`: list calendar events for the next N days, 7 by default.
 - `bb assistant news`: ask the assistant for today's news brief now.
 - `bb assistant check`: check Slack and email now instead of waiting for the next 10 minute run.
