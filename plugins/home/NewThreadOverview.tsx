@@ -5,6 +5,7 @@ import type {
 } from "@get-bb/plugin-sdk/app";
 import { cn } from "@bb/shared-ui/lib/utils";
 import type { ProjectPullRequest } from "bb-plugin-environment-git-worktree/pull-requests-contract";
+import { BacklogSection, type BacklogSectionProps } from "./BacklogSection";
 import { PullRequestsSection } from "./PullRequestsSection";
 import {
   archivableHomeThreads,
@@ -37,6 +38,7 @@ export interface NewThreadOverviewProps {
   setPullRequestsExpanded: (expanded: boolean) => void;
   onSelectPullRequest: (pr: ProjectPullRequest) => void;
   onOpenThread: OpenThread;
+  backlog: BacklogSectionProps | null;
 }
 
 const PILL_CLASS =
@@ -140,6 +142,7 @@ export function NewThreadOverview({
   setPullRequestsExpanded,
   onSelectPullRequest,
   onOpenThread,
+  backlog,
 }: NewThreadOverviewProps) {
   const [isArchiving, setIsArchiving] = useState(false);
   const descendants = useMemo(() => liveThreadDescendants(threads), [threads]);
@@ -254,6 +257,7 @@ export function NewThreadOverview({
             )}
           </div>
         )}
+        {selectedProject === null || backlog === null ? null : <BacklogSection {...backlog} />}
         {projectSections.map(({ project, threads: sectionThreads }) => (
           <ProjectSection
             key={project.id}

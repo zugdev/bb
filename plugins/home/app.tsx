@@ -3,6 +3,7 @@ import {
   definePluginApp,
   experimental_ProjectPicker as ProjectPicker,
   experimental_useCommandShortcut,
+  experimental_useRpcMutation,
   experimental_useRpcQuery,
   experimental_useSidebarThreads,
   useComposer,
@@ -28,6 +29,7 @@ import {
   type HomeThreadFilter,
   type HomeThreadSort,
 } from "./home-overview";
+import { backlogRpcContract } from "./backlog-contract";
 import { NewThreadOverview, ProjectChips } from "./NewThreadOverview";
 
 export const CYCLE_PROJECT_COMMAND_ID = "cycle-project";
@@ -142,6 +144,14 @@ function NewThreadOverviewSection({
     enabled: projectId !== null && setProjectId !== null && pullRequestsExpanded,
   });
   const pullRequestHostId = pullRequestsQuery.data?.hostId ?? null;
+  const backlogQuery = experimental_useRpcQuery({
+    contract: backlogRpcContract,
+    method: "backlog.list",
+    input: { projectId: projectId ?? "" },
+    enabled: projectId !== null,
+  });
+  const backlogAdd = experimental_useRpcMutation({ contract: backlogRpcContract, method: "backlog.add" });
+  const backlogDone = experimental_useRpcMutation({ contract: backlogRpcContract, method: "backlog.done" });
   const order = useHomeThreadOrder();
   return (
     <NewThreadOverview
@@ -180,6 +190,19 @@ function NewThreadOverviewSection({
             ),
           );
       }}
+      backlog={
+        projectId === null
+          ? null
+          : {
+              items: backlogQuery.data?.items ?? null,
+              onAdd: (title) => backlogAdd.mutate({ projectId, title }),
+              onDone: (item) => backlogDone.mutate({ projectId, id: item.id }),
+              onStart: (item) => {
+                composer.replace({ text: item.title, mentions: [] });
+                composer.focus();
+              },
+            }
+      }
       onOpenThread={(thread, { newTab }) =>
         navigate.toThread(
           thread.id,

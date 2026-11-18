@@ -104,6 +104,7 @@ function Stage({ initialProject }: { initialProject: string | null }) {
         onSelectPullRequest={() => undefined}
         onArchiveThreads={() => Promise.resolve()}
         onOpenThread={() => undefined}
+        backlog={null}
       />
       <div className="h-28 rounded-xl border bg-card p-3 text-sm text-muted-foreground">
         Composer

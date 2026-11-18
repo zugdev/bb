@@ -42,6 +42,7 @@ function renderOverview(
     setPullRequestsExpanded: () => undefined,
     onSelectPullRequest: () => undefined,
     onOpenThread: () => undefined,
+    backlog: null,
     ...props,
   };
   return render(
@@ -262,5 +263,25 @@ describe("NewThreadOverview", () => {
     expect(screen.queryByText("Loading…")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: /Your pull requests/u }));
     expect(setPullRequestsExpanded).toHaveBeenCalledWith(true);
+  });
+
+  it("shows the selected project's backlog, adds, finishes and starts items", async () => {
+    const onAdd = vi.fn(() => Promise.resolve());
+    const onDone = vi.fn(() => Promise.resolve());
+    const onStart = vi.fn();
+    const item = { id: "b1", title: "Port feature flags", createdAt: 1 };
+    const backlog = { items: [item], onAdd, onDone, onStart };
+    const { unmount } = renderOverview({ backlog });
+    expect(screen.queryByRole("heading", { name: /Backlog/ })).toBeNull();
+    unmount();
+    renderOverview({ backlog, projectId: WEB.id });
+    fireEvent.click(screen.getByRole("button", { name: "Port feature flags" }));
+    expect(onStart).toHaveBeenCalledWith(item);
+    fireEvent.click(screen.getByRole("checkbox", { name: "Done: Port feature flags" }));
+    expect(onDone).toHaveBeenCalledWith(item);
+    const input = screen.getByRole("textbox", { name: "Add to backlog" });
+    fireEvent.change(input, { target: { value: "  Switch credentials  " } });
+    fireEvent.submit(input);
+    expect(onAdd).toHaveBeenCalledWith("Switch credentials");
   });
 });
