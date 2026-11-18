@@ -22,6 +22,14 @@ import {
   type ImapAccount,
 } from "./email.js";
 import {
+  caldavAddEvent,
+  caldavCalendarNames,
+  caldavEvents,
+  feedEvents,
+  type CaldavAccount,
+  type CalendarEvent,
+} from "./calendar.js";
+import {
   connectSlack,
   fetchPings,
   parseSlackTokens,
@@ -49,6 +57,7 @@ const BUILT_IN_NAVIGATION_KEYS = [
   "__bb__/automations",
 ];
 const EMAIL_UID_KEY = "email:lastUid";
+const DAY_MS = 24 * 60 * 60 * 1000;
 const slackSinceKey = (team: string) => `slack:${team}:since`;
 
 const automationListOutputSchema = z.array(z.unknown());
@@ -62,7 +71,7 @@ function assistantInstructions(threadId: string): string {
   return `You are the user's personal assistant: their secretary and the orchestrator of their other bb agents. You live in one special thread (id ${threadId}) that the user opens from the Assistant entry at the top of the bb sidebar.
 1. Triage. bb posts new Slack mentions, DMs and unread emails here as they arrive. Sort each batch into needs the user now, needs a reply later, and FYI, one line per FYI item. Use slack_search, slack_thread, email_search and email_read for context first.
 2. Notify. Call assistant_notify when something needs the user soon: a direct question, a deadline today, a meeting about to start, someone blocked on them, or a work thread you started that finished or failed. Each call also bumps the count on the Assistant sidebar entry. Never notify for newsletters, automated mail or FYI.
-3. Calendar. Use the Google Calendar connector tools when they are loaded and add events the user asks for directly. If they are missing, tell the user to connect Google Calendar under claude.ai Settings, Connectors.
+3. Calendar. calendar_events lists events from every connected calendar, and calendar_add adds an event the user asks for to their CalDAV calendar; call calendar_list first when they name a calendar. Check calendar_events before scheduling anything so you can flag clashes. If no calendar is connected, tell the user to set the CalDAV or calendar feed settings in the Assistant plugin.
 4. To-dos. Anything the user has to do themselves, such as "pay rent" or "call Ana", is a to-do: call todo_add with a short title in the language the user wrote in, plus dueAt when it has a date. To-dos stay on the bb home page with a checkbox until the user or todo_done checks them off. When a to-do also needs a nudge at a time, add a one off automation for the notification too. Read todo_list before adding so you never add one twice.
 5. Schedule. For anything recurring or later ("check my email every day at 9am", "remind me Friday"), run \`bb automation create --project proj_personal --target-thread ${threadId} --name <name> --cron "<cron>" --timezone <IANA zone> --prompt "<task>" --provider <your provider id> --model <your model>\`, or \`--at <ISO time>\` or \`--in <duration>\` for one off reminders. The name shows on the bb home page, so write it as a short title in the language the user wrote in, such as "Pay rent", never a slug. One request gets one automation at the time the user asked for: never add a heads-up the day before or any extra reminder they did not ask for, even when the task is urgent. Run \`bb automation list --project proj_personal\` before creating one so you never schedule the same reminder twice.
 6. Orchestrate. You may start work in any project when the user asks: \`bb project list --json\` for ids, then \`bb thread spawn --project <id> --new-environment worktree --prompt-file -\` for code work, \`bb thread wait <id>\` and \`bb thread output <id>\` to follow it, \`bb thread tell <id>\` to steer it. Keep a short ledger in your replies of threads you started and their state, and notify when one needs the user.
@@ -91,6 +100,26 @@ export default async function plugin(bb: BbPluginApi) {
       type: "string",
       label: "IMAP app password",
       description: "An app password, not your account password.",
+      secret: true,
+    },
+    caldavUrl: {
+      type: "string",
+      label: "CalDAV server",
+      description: "https://caldav.icloud.com for iCloud, or your provider's CalDAV URL.",
+      default: "https://caldav.icloud.com",
+    },
+    caldavUser: { type: "string", label: "CalDAV user", description: "Your Apple ID or calendar account email." },
+    caldavPassword: {
+      type: "string",
+      label: "CalDAV app password",
+      description: "An app password from account.apple.com, not your account password.",
+      secret: true,
+    },
+    calendarFeeds: {
+      type: "string",
+      label: "Calendar feed URLs",
+      description:
+        "Read only iCal URLs separated by spaces, such as Google Calendar's secret address in iCal format.",
       secret: true,
     },
   });
@@ -127,6 +156,40 @@ export default async function plugin(bb: BbPluginApi) {
       user: current.imapUser,
       password: current.imapPassword,
     };
+  }
+
+  async function caldavAccount(): Promise<CaldavAccount | null> {
+    const current = await settings.get();
+    if (!current.caldavUrl || !current.caldavUser || !current.caldavPassword) return null;
+    return { url: current.caldavUrl, user: current.caldavUser, password: current.caldavPassword };
+  }
+
+  async function requireCaldav(): Promise<CaldavAccount> {
+    const account = await caldavAccount();
+    if (account === null) throw new Error("CalDAV is not connected. Set the CalDAV settings in the Assistant plugin.");
+    return account;
+  }
+
+  async function calendarEvents(from: Date, to: Date): Promise<CalendarEvent[]> {
+    const account = await caldavAccount();
+    const feeds = ((await settings.get()).calendarFeeds ?? "").split(/\s+/).filter((url) => url.length > 0);
+    if (account === null && feeds.length === 0) {
+      throw new Error("No calendar is connected. Set the CalDAV or calendar feed settings in the Assistant plugin.");
+    }
+    const sources = [
+      ...(account === null ? [] : [caldavEvents(account, from, to)]),
+      ...feeds.map((url) => feedEvents(url, from, to)),
+    ];
+    const results = await Promise.allSettled(sources);
+    for (const result of results) {
+      if (result.status === "rejected") bb.log.warn(`calendar fetch failed: ${String(result.reason)}`);
+    }
+    if (results.every((result) => result.status === "rejected")) {
+      throw new Error("Every calendar failed to load. Check the Assistant plugin settings.");
+    }
+    return results
+      .flatMap((result) => (result.status === "fulfilled" ? result.value : []))
+      .sort((a, b) => a.start.localeCompare(b.start));
   }
 
   async function ensureThread(): Promise<string> {
@@ -449,10 +512,58 @@ export default async function plugin(bb: BbPluginApi) {
     },
   });
 
+  bb.agents.registerTool({
+    name: "calendar_events",
+    description:
+      "List calendar events between two times across every connected calendar, recurring ones expanded. Defaults to the next 7 days. Timed events come back in UTC; all day events as dates.",
+    parameters: z.object({
+      from: z.string().datetime({ offset: true }).optional(),
+      to: z.string().datetime({ offset: true }).optional(),
+    }),
+    async execute({ from, to }) {
+      const start = from === undefined ? new Date() : new Date(from);
+      const end = to === undefined ? new Date(start.getTime() + 7 * DAY_MS) : new Date(to);
+      return JSON.stringify(await calendarEvents(start, end));
+    },
+  });
+
+  bb.agents.registerTool({
+    name: "calendar_list",
+    description: "List the names of the CalDAV calendars calendar_add can write to.",
+    parameters: z.object({}),
+    async execute() {
+      return JSON.stringify(await caldavCalendarNames(await requireCaldav()));
+    },
+  });
+
+  bb.agents.registerTool({
+    name: "calendar_add",
+    description:
+      "Add an event to the user's CalDAV calendar. Pass ISO times with an offset, or YYYY-MM-DD dates for an all day event. End defaults to one hour after start, or the next day for all day events.",
+    parameters: z.object({
+      title: z.string().min(1).max(200),
+      start: z.string(),
+      end: z.string().optional(),
+      calendar: z.string().optional(),
+      location: z.string().optional(),
+      notes: z.string().optional(),
+    }),
+    async execute({ title, start, end, calendar, location, notes }) {
+      const added = await caldavAddEvent(await requireCaldav(), calendar ?? null, {
+        title,
+        start,
+        end: end ?? null,
+        location: location ?? null,
+        notes: notes ?? null,
+      });
+      return `Added "${title}" to ${added}.`;
+    },
+  });
+
   bb.agents.configure((context) =>
     context.thread.id === threadId
       ? {
-          tools: ["assistant_notify", "todo_add", "todo_done", "todo_list", "news_brief_set", "slack_search", "slack_thread", "email_search", "email_read"],
+          tools: ["assistant_notify", "todo_add", "todo_done", "todo_list", "news_brief_set", "slack_search", "slack_thread", "email_search", "email_read", "calendar_events", "calendar_list", "calendar_add"],
           skills: [],
           instructions: assistantInstructions(context.thread.id),
         }
@@ -545,6 +656,18 @@ export default async function plugin(bb: BbPluginApi) {
           async run(input) {
             await finishTodo(input.positionals.id);
             return { exitCode: 0, stdout: `Checked off ${input.positionals.id}.` };
+          },
+        }),
+        events: cliCommand({
+          summary: "List calendar events for the next few days",
+          options: { days: { type: "string", description: "How many days ahead, 7 by default" } },
+          async run(input) {
+            const days = Number(input.options.days ?? "7");
+            if (!Number.isFinite(days) || days <= 0) return { exitCode: 1, stderr: `Not a day count: ${input.options.days}` };
+            const now = new Date();
+            const events = await calendarEvents(now, new Date(now.getTime() + days * DAY_MS));
+            const lines = events.map((event) => `${event.start}  ${event.title}  (${event.calendar})`);
+            return { exitCode: 0, stdout: lines.length === 0 ? "No events." : lines.join("\n") };
           },
         }),
         news: cliCommand({
