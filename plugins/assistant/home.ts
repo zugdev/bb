@@ -82,6 +82,13 @@ export function parseDollarQuote(body: unknown): Dollar {
   return { brl: bid, pctChange };
 }
 
+export const financeHomeSchema = z.object({
+  checking: z.number(),
+  yesterday: z.number(),
+  bill: z.object({ account: z.string(), total: z.number(), dueDate: z.string() }).nullable(),
+});
+export type FinanceHome = z.infer<typeof financeHomeSchema>;
+
 export const newsBriefSchema = z.object({ day: z.string(), items: z.array(z.string()) });
 export type NewsBrief = z.infer<typeof newsBriefSchema>;
 
