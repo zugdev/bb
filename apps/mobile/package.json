@@ -35,6 +35,7 @@
     "clsx": "^2.1.1",
     "expo": "~58.0.19",
     "expo-application": "~58.1.2",
+    "expo-audio": "~58.0.12",
     "expo-build-properties": "~58.0.11",
     "expo-camera": "~58.0.12",
     "expo-constants": "~58.0.13",
