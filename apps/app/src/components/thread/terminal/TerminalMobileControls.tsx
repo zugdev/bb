@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from "react";
 import { Icon } from "@bb/shared-ui/icon";
 import { cn } from "@bb/shared-ui/lib/utils";
-import { getNativeShell } from "@/lib/native-shell/native-shell";
+import { shellHaptic } from "@/lib/native-shell/native-shell";
 import type { TerminalNavigationKey } from "./terminal-mobile-input";
 
 interface TerminalMobileControlsProps {
@@ -39,9 +39,7 @@ function Key({
       disabled={disabled}
       onPointerDown={(event) => event.preventDefault()}
       onClick={() => {
-        const shell = getNativeShell();
-        if (shell?.has("haptic"))
-          shell.post({ type: "haptic", kind: "selection" });
+        shellHaptic("selection");
         onPress();
       }}
       className={cn(

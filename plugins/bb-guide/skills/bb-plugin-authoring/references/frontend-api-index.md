@@ -113,6 +113,7 @@ Read the installed SDK declarations for the exact current signatures.
 - `experimental_useServers`
 - `experimental_copyToClipboard`
 - `experimental_saveFile`
+- `experimental_haptic`
 
 ## Type exports
 

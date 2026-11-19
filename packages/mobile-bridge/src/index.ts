@@ -14,6 +14,7 @@ export {
   type SafeAreaInsets,
 } from "./handshake.js";
 export {
+  type HapticKind,
   type NativeScreen,
   parsePageToShellMessage,
   type BridgeSharePayload,

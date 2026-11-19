@@ -11,6 +11,7 @@ export const HAPTIC_KINDS = [
 ] as const;
 
 export const hapticKindSchema = z.enum(HAPTIC_KINDS);
+export type HapticKind = z.infer<typeof hapticKindSchema>;
 
 const httpUrlSchema = z.string().refine((value) => {
   try {

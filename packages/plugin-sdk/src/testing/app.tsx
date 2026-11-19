@@ -1950,6 +1950,7 @@ const testPluginSdkApp = {
   experimental_saveFile(): Promise<ExperimentalSaveFileOutcome> {
     return Promise.resolve("started");
   },
+  experimental_haptic(): void {},
   experimental_useSidebarThreadActions(): PluginSidebarThreadActions {
     return useSlotEnv("experimental_useSidebarThreadActions").sidebarActions;
   },

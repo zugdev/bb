@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import {
   experimental_Icon as Icon,
+  experimental_haptic,
   experimental_useOwnTab,
   experimental_useSidebarThreads,
   experimental_useThreadActions,
@@ -349,7 +350,11 @@ export function InboxHeaderControls({
 const INBOX_BUBBLE_CLASS =
   "pointer-events-auto flex h-11 items-center rounded-full border border-border/70 bg-surface-scrim/75 text-xs shadow-lg backdrop-blur-md";
 
-const SCRUB_STEP_PX = 36;
+const WHEEL_HOLD_MS = 250;
+const WHEEL_ROW_PX = 40;
+const WHEEL_VISIBLE_ROWS = 5;
+const WHEEL_ROW_DEGREES = 22;
+const HOLD_SLOP_PX = 10;
 
 function slideThreadPane(from: Element, step: -1 | 1) {
   if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
@@ -362,50 +367,154 @@ function slideThreadPane(from: Element, step: -1 | 1) {
   );
 }
 
-function ScrubPager({ nav }: { nav: InboxNavigation }) {
-  const scrubbed = useRef(false);
+function InboxWheel({
+  queue,
+  projects,
+  position,
+}: {
+  queue: readonly PluginSidebarThread[];
+  projects: readonly PluginSidebarProject[];
+  position: number;
+}) {
+  const selected = Math.round(position / WHEEL_ROW_PX);
+  const centerOffset = ((WHEEL_VISIBLE_ROWS - 1) / 2) * WHEEL_ROW_PX;
+  return (
+    <div
+      data-inbox-wheel=""
+      role="listbox"
+      aria-label="Inbox threads"
+      className="absolute bottom-full left-0 mb-2 w-[min(20rem,calc(100vw-1.5rem))] overflow-hidden rounded-2xl border border-border/70 bg-surface-scrim/90 shadow-lg backdrop-blur-md [perspective:600px]"
+      style={{ height: WHEEL_VISIBLE_ROWS * WHEEL_ROW_PX }}
+    >
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-2 rounded-lg bg-state-active"
+        style={{ top: centerOffset, height: WHEEL_ROW_PX }}
+      />
+      {queue.map((thread, row) => {
+        const distance = (row * WHEEL_ROW_PX - position) / WHEEL_ROW_PX;
+        if (Math.abs(distance) > WHEEL_VISIBLE_ROWS / 2 + 1) return null;
+        return (
+          <div
+            key={thread.id}
+            role="option"
+            aria-selected={row === selected}
+            className="absolute inset-x-0 flex items-center gap-1 px-4 text-sm"
+            style={{
+              top: centerOffset,
+              height: WHEEL_ROW_PX,
+              transform: `translateY(${distance * WHEEL_ROW_PX}px) rotateX(${-distance * WHEEL_ROW_DEGREES}deg)`,
+              opacity: Math.max(0, 1 - Math.abs(distance) * 0.3),
+            }}
+          >
+            <InboxProjectLabel
+              projectId={thread.projectId}
+              projects={projects}
+              className="max-w-24 shrink-0"
+              separator="/"
+            />
+            <span
+              className={cn(
+                "truncate",
+                row === selected ? "text-foreground" : "text-muted-foreground",
+              )}
+            >
+              {thread.displayTitle}
+            </span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function WheelPager({ nav }: { nav: InboxNavigation }) {
+  const { projects } = useInbox();
+  const [wheel, setWheel] = useState<{
+    queue: readonly PluginSidebarThread[];
+    position: number;
+  } | null>(null);
+  const turned = useRef(false);
   return (
     <div
       data-no-sidebar-swipe=""
       data-inbox-pager=""
-      className={cn(INBOX_BUBBLE_CLASS, "touch-none select-none")}
+      className={cn(INBOX_BUBBLE_CLASS, "relative touch-none select-none")}
+      onContextMenu={(event) => event.preventDefault()}
       onPointerDown={(down) => {
-        scrubbed.current = false;
+        turned.current = false;
         const { ownTab, queue, index } = nav;
         if (queue.length < 2) return;
         const bubble = down.currentTarget;
-        const { clientX: startX, pointerId } = down;
-        let shownSteps = 0;
+        const { clientX: startX, clientY: startY, pointerId } = down;
+        const startRow = Math.max(index, 0);
+        const lastRow = queue.length - 1;
+        let holding = false;
+        let shownRow = startRow;
+        const hold = window.setTimeout(() => {
+          holding = true;
+          turned.current = true;
+          experimental_haptic("impact-light");
+          setWheel({ queue, position: startRow * WHEEL_ROW_PX });
+        }, WHEEL_HOLD_MS);
         const move = (event: PointerEvent) => {
           if (event.pointerId !== pointerId) return;
-          const steps = Math.trunc((startX - event.clientX) / SCRUB_STEP_PX);
-          if (steps === shownSteps) return;
-          const direction = steps > shownSteps ? 1 : -1;
-          shownSteps = steps;
-          scrubbed.current = true;
-          const from = index === -1 ? (steps > 0 ? -1 : 0) : index;
-          const target = queue.at((from + steps) % queue.length);
-          if (target === undefined) return;
-          slideThreadPane(bubble, direction);
-          showThread(ownTab, target);
+          if (!holding) {
+            const drift = Math.hypot(
+              event.clientX - startX,
+              event.clientY - startY,
+            );
+            if (drift > HOLD_SLOP_PX) window.clearTimeout(hold);
+            return;
+          }
+          const position = Math.min(
+            Math.max(startRow * WHEEL_ROW_PX + startY - event.clientY, 0),
+            lastRow * WHEEL_ROW_PX,
+          );
+          const row = Math.round(position / WHEEL_ROW_PX);
+          if (row !== shownRow) {
+            shownRow = row;
+            experimental_haptic("selection");
+          }
+          setWheel({ queue, position });
         };
         const finish = (event: PointerEvent) => {
           if (event.pointerId !== pointerId) return;
+          window.clearTimeout(hold);
           window.removeEventListener("pointermove", move);
           window.removeEventListener("pointerup", finish);
           window.removeEventListener("pointercancel", finish);
+          if (!holding) return;
+          setWheel(null);
+          const target = queue[shownRow];
+          if (
+            event.type === "pointercancel" ||
+            shownRow === startRow ||
+            target === undefined
+          ) {
+            return;
+          }
+          slideThreadPane(bubble, shownRow > startRow ? 1 : -1);
+          showThread(ownTab, target);
         };
         window.addEventListener("pointermove", move);
         window.addEventListener("pointerup", finish);
         window.addEventListener("pointercancel", finish);
       }}
       onClickCapture={(event) => {
-        if (!scrubbed.current) return;
-        scrubbed.current = false;
+        if (!turned.current) return;
+        turned.current = false;
         event.stopPropagation();
         event.preventDefault();
       }}
     >
+      {wheel === null ? null : (
+        <InboxWheel
+          queue={wheel.queue}
+          projects={projects}
+          position={wheel.position}
+        />
+      )}
       <InboxPager nav={nav} buttonClassName="size-11 rounded-full" />
     </div>
   );
@@ -424,7 +533,7 @@ export function InboxFloatingControls({
       data-inbox-floating=""
       className="flex items-end justify-between gap-2 pb-2 pl-[max(0.75rem,env(safe-area-inset-left))] pr-[max(0.75rem,env(safe-area-inset-right))]"
     >
-      {showPager ? <ScrubPager nav={nav} /> : <span />}
+      {showPager ? <WheelPager nav={nav} /> : <span />}
       <div className={INBOX_BUBBLE_CLASS}>
         <InboxActions
           nav={nav}

@@ -1745,6 +1745,8 @@ export const SURFACE_GROUPS: SurfaceGroup[] = [
           "ExperimentalClipboardContent",
           "experimental_saveFile",
           "ExperimentalSaveFileRequest",
+          "experimental_haptic",
+          "ExperimentalHapticKind",
           "ExperimentalSaveFileOutcome",
           "UrlLink",
           "UrlLinkProps",

@@ -1,4 +1,5 @@
 import { applicationLinkApprovals } from "./application-url";
+import { shellHaptic } from "@/lib/native-shell/native-shell";
 import {
   LazyPluginMarkdown,
   LazyPluginDiff,
@@ -269,6 +270,7 @@ export const pluginSdkAppImplementation = {
   experimental_useCodeTheme: useCodeTheme,
   experimental_copyToClipboard: copyToClipboard,
   experimental_saveFile: saveFile,
+  experimental_haptic: shellHaptic,
 } satisfies PluginSdkApp;
 
 export const retiredPluginSdkAppMembers = {
