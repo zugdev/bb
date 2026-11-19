@@ -102,6 +102,25 @@ const timeFormat = new Intl.DateTimeFormat(undefined, { hour: "numeric", minute:
 const weekdayFormat = new Intl.DateTimeFormat(undefined, { weekday: "short" });
 const dateFormat = new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric" });
 
+export const homeEventSchema = z.object({ title: z.string(), at: z.number(), allDay: z.boolean() });
+export type HomeEvent = z.infer<typeof homeEventSchema>;
+
+export function homeEvents(events: readonly { title: string; start: string; allDay: boolean }[]): HomeEvent[] {
+  const seen = new Set<string>();
+  return events.flatMap(({ title, start, allDay }) => {
+    const at = allDay ? new Date(`${start}T00:00:00`).getTime() : Date.parse(start);
+    const key = `${title}\n${at}`;
+    if (Number.isNaN(at) || seen.has(key)) return [];
+    seen.add(key);
+    return [{ title, at, allDay }];
+  });
+}
+
+export function formatDay(at: number, now: number = Date.now()): string {
+  const days = Math.round((startOfDay(at) - startOfDay(now)) / 86_400_000);
+  return Math.abs(days) <= 1 ? relativeDay.format(days, "day") : dateFormat.format(at);
+}
+
 export function formatUpcoming(at: number, now: number = Date.now()): string {
   const days = Math.round((startOfDay(at) - startOfDay(now)) / 86_400_000);
   const time = timeFormat.format(at);

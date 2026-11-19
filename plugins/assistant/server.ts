@@ -4,9 +4,11 @@ import { z } from "zod";
 import { assistantRpcContract } from "./contract.js";
 import {
   completeTodo,
+  endOfTomorrow,
   habitProgress,
   habitSchema,
   habitsToRemind,
+  homeEvents,
   localDay,
   newsBriefSchema,
   openTodos,
@@ -16,6 +18,7 @@ import {
   upcomingReminders,
   type Dollar,
   type Habit,
+  type HomeEvent,
   type Todo,
 } from "./home.js";
 import {
@@ -284,6 +287,17 @@ export default async function plugin(bb: BbPluginApi) {
     return results
       .flatMap((result) => (result.status === "fulfilled" ? result.value : []))
       .sort((a, b) => a.start.localeCompare(b.start));
+  }
+
+  async function upcomingEvents(): Promise<HomeEvent[]> {
+    if ((await googleAccount()) === null && (await caldavAccount()) === null && !(await settings.get()).calendarFeeds) return [];
+    const now = Date.now();
+    try {
+      return homeEvents(await calendarEvents(new Date(now), new Date(endOfTomorrow(now))));
+    } catch (error) {
+      bb.log.warn(`home calendar failed: ${String(error)}`);
+      return [];
+    }
   }
 
   async function pluggySetup(): Promise<{ client: PluggyClient; itemIds: string[] } | null> {
@@ -961,16 +975,17 @@ export default async function plugin(bb: BbPluginApi) {
       return { threadId: await ensureThread() };
     },
     async "assistant.home"() {
-      const [todos, habits, reminders, dollar, news, finance] = await Promise.all([
+      const [todos, habits, reminders, events, dollar, news, finance] = await Promise.all([
         readTodos(),
         readHabits(),
         assistantReminders(),
+        upcomingEvents(),
         dollarQuote(),
         todaysNews(),
         financeHome(),
       ]);
       const now = Date.now();
-      return { todos: openTodos(todos), habits: habits.map((habit) => habitProgress(habit, now)), reminders, dollar, news, finance };
+      return { todos: openTodos(todos), habits: habits.map((habit) => habitProgress(habit, now)), reminders, events, dollar, news, finance };
     },
     async "assistant.todoDone"({ id }) {
       await finishTodo(id);

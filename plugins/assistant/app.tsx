@@ -8,7 +8,7 @@ import {
   type ExperimentalBadge,
 } from "@get-bb/plugin-sdk/app";
 import { assistantRpcContract } from "./contract.js";
-import { formatUpcoming, type Dollar, type FinanceHome, type HabitProgress } from "./home.js";
+import { formatDay, formatUpcoming, type Dollar, type FinanceHome, type HabitProgress } from "./home.js";
 
 function useAssistantBadge(): ExperimentalBadge | null {
   const { data } = experimental_useRpcQuery({
@@ -52,18 +52,19 @@ type AgendaItem = {
   key: string;
   title: string;
   at: number | null;
-  done: (() => Promise<unknown>) | null;
+  allDay: boolean;
+  done: (() => Promise<unknown>) | "event" | null;
 };
 
 const ROW_CLASS =
   "-mx-2 flex h-8 min-w-0 items-center gap-2.5 rounded-md px-2 text-left text-sm transition-colors hover:bg-state-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
 
-function When({ at, done }: { at: number | null; done: boolean }) {
+function When({ at, done, allDay = false }: { at: number | null; done: boolean; allDay?: boolean }) {
   if (at === null) return null;
-  const overdue = !done && at < Date.now();
+  const overdue = !done && !allDay && at < Date.now();
   return (
     <span className={`shrink-0 text-xs tabular-nums ${overdue ? "text-destructive-text" : "text-muted-foreground"}`}>
-      {formatUpcoming(at)}
+      {allDay ? formatDay(at) : formatUpcoming(at)}
     </span>
   );
 }
@@ -109,14 +110,15 @@ function AgendaRow({ item, onOpen }: { item: AgendaItem; onOpen: () => void }) {
     </span>
   );
   const done = item.done;
-  if (done === null) {
+  if (done === null || done === "event") {
+    const label = done === "event" ? "Calendar event" : "Repeats";
     return (
-      <button type="button" className={ROW_CLASS} onClick={onOpen} title="Repeats">
+      <button type="button" className={ROW_CLASS} onClick={onOpen} title={label}>
         <span className="flex size-4 shrink-0 items-center justify-center">
-          <Icon name="Repeat" aria-label="Repeats" className="size-3.5 text-muted-foreground" />
+          <Icon name={done === "event" ? "Calendar" : "Repeat"} aria-label={label} className="size-3.5 text-muted-foreground" />
         </span>
         {title}
-        <When at={item.at} done={false} />
+        <When at={item.at} done={false} allDay={item.allDay} />
       </button>
     );
   }
@@ -223,13 +225,22 @@ function AssistantHomeSection() {
       key: `todo:${todo.id}`,
       title: todo.title,
       at: todo.dueAt,
+      allDay: false,
       done: () => todoDone.mutate({ id: todo.id }),
     })),
     ...(data?.reminders ?? []).map((reminder) => ({
       key: `reminder:${reminder.id}`,
       title: reminder.name,
       at: reminder.nextRunAt,
+      allDay: false,
       done: reminder.repeats ? null : () => reminderDone.mutate({ id: reminder.id }),
+    })),
+    ...(data?.events ?? []).map((event) => ({
+      key: `event:${event.at}:${event.title}`,
+      title: event.title,
+      at: event.at,
+      allDay: event.allDay,
+      done: "event" as const,
     })),
   ].sort((a, b) => (a.at ?? Infinity) - (b.at ?? Infinity));
   return (
