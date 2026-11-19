@@ -162,6 +162,10 @@ reasoningLevel?, serviceTier?, permissionMode? })` sets the pickers as if
   approximate the palette by reading bb's CSS variables: `--canvas` / `--ink`
   carry the app chrome, not the syntax colors, and a custom palette that
   declares its own code theme would not follow.
+- `experimental_haptic(kind)` plays a haptic in the bb mobile app through the
+  path bb's terminal keys use: `selection` for a picker tick, `impact-light`,
+  `impact-medium` or `impact-heavy` for taps, and `success`, `warning` or
+  `error`. A plain function that does nothing outside the mobile app.
 - `experimental_copyToClipboard({ text, html? })` → `Promise<boolean>` — writes
   the system clipboard through the same writer bb's own copy actions use. A
   plain function, not a hook: call it from components, content scripts, and

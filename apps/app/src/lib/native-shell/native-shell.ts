@@ -7,6 +7,7 @@ import {
   parseShellToPageEvent,
   safeAreaInsetsSchema,
   type BridgeServer,
+  type HapticKind,
   type NativeScreen,
   type NativeCapability,
   type NativeShellHandshake,
@@ -146,4 +147,9 @@ export function shellReportReady(path: string): void {
 
 export function shellReportPath(title: string, path: string): void {
   getNativeShell()?.post({ type: "title", title, path });
+}
+
+export function shellHaptic(kind: HapticKind): void {
+  const shell = getNativeShell();
+  if (shell?.has("haptic")) shell.post({ type: "haptic", kind });
 }

@@ -2304,6 +2304,19 @@ Docs: `frontend-hooks-and-ui.md`.
 4. **Consumer count.** One consumer today. Confirm a second engine (CodeMirror,
    xterm) needs the same payload before the prefix drops.
 
+## `app.experimental_haptic` (`@get-bb/plugin-sdk/app`)
+
+A plain function, `(kind) => void`, that posts a `haptic` message to the bb mobile app when its handshake advertises the `haptic` capability, and does nothing anywhere else. The kinds are the mobile bridge's `HAPTIC_KINDS`. The test harness implements it as a no-op.
+
+**Core callers.** `shellHaptic` in `apps/app/src/lib/native-shell/native-shell.ts`, which the terminal's mobile key row (`TerminalMobileControls`) calls on every key press. First plugin: `plugins/inbox` (fork), which ticks once per row while its scroll wheel turns.
+
+Docs: `frontend-hooks-and-ui.md`.
+
+**Audit before stabilizing.**
+
+1. **Web fallback.** Android browsers support `navigator.vibrate` and iOS Safari has no haptics API. Decide whether the browser path should vibrate or stay silent.
+2. **Kind list.** The kinds mirror the bridge's enum, so adding one is a bridge change too. Confirm plugins need more than `selection` and `impact-*`.
+
 ## `app.experimental_copyToClipboard` (`@get-bb/plugin-sdk/app`)
 
 A plain function, `({ text, html? }) => Promise<boolean>`, over the writer

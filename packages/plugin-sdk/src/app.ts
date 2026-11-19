@@ -376,6 +376,7 @@ export const experimental_copyToClipboard = runtimeFunction(
   "experimental_copyToClipboard",
 );
 export const experimental_saveFile = runtimeFunction("experimental_saveFile");
+export const experimental_haptic = runtimeFunction("experimental_haptic");
 
 export const experimental_getApplicationLinkApprovals = runtimeFunction(
   "experimental_getApplicationLinkApprovals",

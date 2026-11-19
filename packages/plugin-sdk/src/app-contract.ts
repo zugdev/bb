@@ -1756,6 +1756,16 @@ export interface ExperimentalClipboardContent {
   html?: string;
 }
 
+/** The feedback {@link PluginSdkApp.experimental_haptic} plays. */
+export type ExperimentalHapticKind =
+  | "selection"
+  | "impact-light"
+  | "impact-medium"
+  | "impact-heavy"
+  | "success"
+  | "warning"
+  | "error";
+
 /**
  * What {@link PluginSdkApp.experimental_saveFile} saves: a URL on the bb
  * server (such as one of the plugin's own HTTP routes), or bytes already in
@@ -6207,6 +6217,15 @@ export interface PluginSdkApp {
   experimental_copyToClipboard(
     content: ExperimentalClipboardContent,
   ): Promise<boolean>;
+  /**
+   * Plays a haptic through the bb mobile app, the path bb's own terminal keys
+   * use. `selection` is the light tick for stepping through a picker; the
+   * `impact-*` kinds are taps of increasing weight, and `success`, `warning`
+   * and `error` are notification patterns. A plain function that does nothing
+   * outside the bb mobile app or when the app has no haptics. Experimental:
+   * see docs/api_to_audit.md.
+   */
+  experimental_haptic(kind: ExperimentalHapticKind): void;
   /**
    * Saves a file through bb's own download path, the one bb's file preview
    * and attachment downloads use. Browsers and bb Desktop start an ordinary
