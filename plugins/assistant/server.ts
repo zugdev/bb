@@ -74,6 +74,8 @@ const UNSEEN_KEY = "unseen";
 const TODOS_KEY = "todos";
 const NEWS_KEY = "news";
 const NEWS_THREAD_KEY = "newsThreadId";
+const INBOX_THREAD_KEY = "inboxThreadId";
+const BILL_SENDERS = "QuintoAndar (rent), Light (electricity), Vivo (phone and internet), Atrium and Naturgy (gas)";
 const GOOGLE_TOKEN_KEY = "google:refreshToken";
 const HABITS_KEY = "habits";
 const DOLLAR_URL = "https://economia.awesomeapi.com.br/json/last/USD-BRL";
@@ -107,7 +109,7 @@ const notificationOutputSchema = z.object({
 
 function assistantInstructions(threadId: string): string {
   return `You are the user's personal assistant: their secretary and the orchestrator of their other bb agents. You live in one special thread (id ${threadId}) that the user opens from the Assistant entry at the top of the bb sidebar.
-1. Triage. bb posts new Slack mentions, DMs and unread emails here as they arrive. Sort each batch into needs the user now, needs a reply later, and FYI, one line per FYI item. Use slack_search, slack_thread, email_search and email_read for context first.
+1. Inbox. A separate background thread triages new Slack pings, emails and bank charges. It adds to-dos for bills and notifies the user only when something needs them, so never triage or list FYI items here.
 2. Notify. Call assistant_notify when something needs the user soon: a direct question, a deadline today, a meeting about to start, someone blocked on them, or a work thread you started that finished or failed. Each call also bumps the count on the Assistant sidebar entry. Never notify for newsletters, automated mail or FYI.
 3. Calendar. calendar_events lists events from every connected calendar, and calendar_add adds an event the user asks for to their Google calendar, or their CalDAV calendar when Google is not connected; call calendar_list first when they name a calendar. Check calendar_events before scheduling anything so you can flag clashes. If no calendar is connected, tell the user to set the Google client settings in the Assistant plugin and run \`bb assistant google-login\`.
 4. Habits. Daily habits such as going to the gym are tracked with habit_add, habit_done and habit_list, never as to-dos or automations. bb pushes a reminder at the habit's remind hour on days it is not checked off, and the home card shows the streak and the count for the last 30 days. When the user says they did it, call habit_done; answer "how many days" questions from habit_list.
@@ -116,9 +118,15 @@ function assistantInstructions(threadId: string): string {
 7. Orchestrate. You may start work in any project when the user asks: \`bb project list --json\` for ids, then \`bb thread spawn --project <id> --new-environment worktree --prompt-file -\` for code work, \`bb thread wait <id>\` and \`bb thread output <id>\` to follow it, \`bb thread tell <id>\` to steer it. Keep a short ledger in your replies of threads you started and their state, and notify when one needs the user.
 8. Memory. You own the user's long term memory. Search it with \`bb memory search <words> --scope all\` before answering questions about people, projects or preferences, and save durable facts with \`bb memory add --scope global\`: people and how the user works with them, their timezone, routines and preferences.
 9. News. Once a day bb asks you for a news brief. Keep it to what matters and call news_brief_set, which replaces the brief on the home page.
-10. Money. The user's Brazilian bank accounts and credit cards are connected read only through Pluggy, synced once a day. bb posts new charges here with flags such as possible duplicate, first charge from a merchant, foreign currency, unusually large or split into many installments. Call assistant_notify only for a charge the user would want to know about today: a likely duplicate, a large or unexpected charge, a new subscription or a price increase. Answer money questions with finance_accounts, finance_transactions, finance_summary, finance_committed and finance_recurring; amounts are in reais, negative for money out. Transfers between the user's own accounts, fatura payments and investments are not spending. Write money replies in Portuguese with R$ amounts.
+10. Money. The user's Brazilian bank accounts and credit cards are connected read only through Pluggy, synced once a day. Answer money questions with finance_accounts, finance_transactions, finance_summary, finance_committed and finance_recurring; amounts are in reais, negative for money out. Transfers between the user's own accounts, fatura payments and investments are not spending. Write money replies in Portuguese with R$ amounts.
 11. You never send Slack messages or email. When a reply is due, write a draft for the user to copy.`;
 }
+
+const INBOX_INSTRUCTIONS = `You are the user's silent inbox worker. bb posts new Slack pings, unread emails, new bank charges and the daily money check here. The user never reads this thread, so reply with one short line and act only through tools.
+1. Bills. Bills from ${BILL_SENDERS}, and any other bill, boleto, fatura or payment due, are the priority. Read the email with email_read to find the amount and due date, check todo_list, then call todo_add with a title like "Pagar Light R$ 182,40" and dueAt set to 9am on the due date. bb pushes a reminder on the morning a to-do is due. Notify with assistant_notify only when the bill is due within 2 days or overdue.
+2. Notify. Call assistant_notify for anything that needs the user soon: a direct question or DM, a deadline today, someone blocked on them, a likely duplicate, large or unexpected charge, a new subscription or a price increase. For the daily money check, notify if a card's fatura is due within 3 days and unpaid, or if checking balance is below a fatura due in the next 5 days.
+3. Ignore everything else: newsletters, marketing, promotions, automated alerts, job spam and FYI. Do nothing for them.
+4. Use slack_search, slack_thread, email_search, email_read and the finance tools for context. Amounts are in reais. Write to-do titles and notifications in Portuguese.`;
 
 export default async function plugin(bb: BbPluginApi) {
   const settings = bb.settings.define({
@@ -398,11 +406,7 @@ export default async function plugin(bb: BbPluginApi) {
       const flags = flagCharge(txn, txns);
       return `- ${describeTxn(txn)}${flags.length === 0 ? "" : ` [${flags.join("; ")}]`}`;
     });
-    await bb.sdk.threads.send({
-      threadId: await ensureThread(),
-      mode: "auto",
-      input: [{ type: "text", text: ["New charges on the user's accounts:", ...lines].join("\n"), mentions: [] }],
-    });
+    await sendToInbox(["New charges on the user's accounts:", ...lines].join("\n"));
     return fresh.length;
   }
 
@@ -421,11 +425,7 @@ export default async function plugin(bb: BbPluginApi) {
 
   async function requestFinanceCheck(): Promise<void> {
     if ((await pluggySetup()) === null) return;
-    await bb.sdk.threads.send({
-      threadId: await ensureThread(),
-      mode: "auto",
-      input: [{ type: "text", text: financeCheckPrompt(new Date()), mentions: [] }],
-    });
+    await sendToInbox(financeCheckPrompt(new Date()));
   }
 
   async function ensureThread(): Promise<string> {
@@ -536,29 +536,50 @@ export default async function plugin(bb: BbPluginApi) {
     return parsed.success && parsed.data.day === localDay(Date.now()) ? parsed.data.items : [];
   }
 
-  async function requestNewsBrief(): Promise<void> {
-    const existing = await bb.storage.kv.get<string>(NEWS_THREAD_KEY);
+  async function sendToWorker(key: string, title: string, metadata: Record<string, boolean>, text: string): Promise<void> {
+    const existing = await bb.storage.kv.get<string>(key);
     if (existing !== undefined) {
       try {
         await bb.sdk.threads.send({
           threadId: existing,
           mode: "auto",
-          input: [{ type: "text", text: NEWS_BRIEF_PROMPT, mentions: [] }],
+          input: [{ type: "text", text, mentions: [] }],
         });
         return;
       } catch (error) {
-        bb.log.info(`news brief thread ${existing} is gone, starting a new one: ${String(error)}`);
+        bb.log.info(`${title} thread ${existing} is gone, starting a new one: ${String(error)}`);
       }
     }
     const thread = await bb.sdk.threads.spawn({
       projectId: PERSONAL_PROJECT_ID,
       environment: { type: "project-default" },
-      title: "News brief",
+      title,
       visibility: "hidden",
-      prompt: NEWS_BRIEF_PROMPT,
-      pluginMetadata: { newsBrief: true },
+      prompt: text,
+      pluginMetadata: metadata,
     });
-    await bb.storage.kv.set(NEWS_THREAD_KEY, thread.id);
+    await bb.storage.kv.set(key, thread.id);
+  }
+
+  async function requestNewsBrief(): Promise<void> {
+    await sendToWorker(NEWS_THREAD_KEY, "News brief", { newsBrief: true }, NEWS_BRIEF_PROMPT);
+  }
+
+  async function sendToInbox(text: string): Promise<void> {
+    await sendToWorker(INBOX_THREAD_KEY, "Inbox", { inbox: true }, text);
+  }
+
+  async function remindDueTodos(): Promise<void> {
+    const today = localDay(Date.now());
+    for (const todo of openTodos(await readTodos())) {
+      if (todo.dueAt === null || localDay(todo.dueAt) !== today) continue;
+      await bb.sdk.plugins.callRpc({
+        pluginId: "push-notifications",
+        method: "notifications.send",
+        input: { title: todo.title, body: "Vence hoje.", threadId: await ensureThread() },
+        outputSchema: notificationOutputSchema,
+      });
+    }
   }
 
   async function assistantReminders() {
@@ -677,11 +698,7 @@ export default async function plugin(bb: BbPluginApi) {
         (email) => `- Email uid ${email.uid} from ${email.from}: ${email.subject}`,
       ),
     ];
-    await bb.sdk.threads.send({
-      threadId: await ensureThread(),
-      mode: "auto",
-      input: [{ type: "text", text: lines.join("\n"), mentions: [] }],
-    });
+    await sendToInbox(lines.join("\n"));
     return { slack: pings.length, email: emails.length };
   }
 
@@ -693,11 +710,11 @@ export default async function plugin(bb: BbPluginApi) {
       title: z.string().min(1).max(80),
       body: z.string().max(180).default(""),
     }),
-    async execute({ title, body }, ctx) {
+    async execute({ title, body }) {
       const result = await bb.sdk.plugins.callRpc({
         pluginId: "push-notifications",
         method: "notifications.send",
-        input: { title, body, threadId: ctx.threadId },
+        input: { title, body, threadId: await ensureThread() },
         outputSchema: notificationOutputSchema,
       });
       await bumpUnseen(1);
@@ -957,6 +974,13 @@ export default async function plugin(bb: BbPluginApi) {
 
   bb.agents.configure((context) => {
     if (context.pluginMetadata.newsBrief === true) return { tools: ["news_brief_set"], skills: [] };
+    if (context.pluginMetadata.inbox === true) {
+      return {
+        tools: ["assistant_notify", "todo_add", "todo_list", "slack_search", "slack_thread", "email_search", "email_read", "calendar_events", "finance_accounts", "finance_transactions", "finance_summary", "finance_committed", "finance_recurring"],
+        skills: [],
+        instructions: INBOX_INSTRUCTIONS,
+      };
+    }
     return context.thread.id === threadId
       ? {
           tools: ["assistant_notify", "todo_add", "todo_done", "todo_list", "habit_add", "habit_done", "habit_list", "news_brief_set", "slack_search", "slack_thread", "email_search", "email_read", "calendar_events", "calendar_list", "calendar_add", "finance_accounts", "finance_transactions", "finance_summary", "finance_committed", "finance_recurring"],
@@ -1021,6 +1045,8 @@ export default async function plugin(bb: BbPluginApi) {
   });
 
   bb.background.schedule("habit-reminders", "0 * * * *", remindHabits);
+
+  bb.background.schedule("todo-due-reminders", "0 9 * * *", remindDueTodos);
 
   bb.background.schedule("news-brief", "0 7 * * *", requestNewsBrief);
 
@@ -1162,14 +1188,14 @@ export default async function plugin(bb: BbPluginApi) {
           summary: "Fetch bank transactions now and send new charges to the assistant",
           async run() {
             const count = await checkFinance();
-            return { exitCode: 0, stdout: `${count} new charges sent to the assistant.` };
+            return { exitCode: 0, stdout: `${count} new charges sent to the inbox worker.` };
           },
         }),
         check: cliCommand({
           summary: "Check Slack and email now and send new items to the assistant",
           async run() {
             const { slack, email } = await checkSources();
-            return { exitCode: 0, stdout: `${slack} Slack pings, ${email} emails sent to the assistant.` };
+            return { exitCode: 0, stdout: `${slack} Slack pings, ${email} emails sent to the inbox worker.` };
           },
         }),
       },

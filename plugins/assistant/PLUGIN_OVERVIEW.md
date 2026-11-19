@@ -3,13 +3,13 @@ A personal assistant that lives at the top of your sidebar. It reads your Slack 
 ## What you get
 
 - An **Assistant** entry in the sidebar that opens one long running agent thread in your personal workspace.
-- Every 10 minutes bb sends new Slack mentions, DMs and unread email into that thread for triage.
+- Every 10 minutes bb sends new Slack mentions, DMs and unread email to a hidden Inbox thread, so the Assistant thread stays clean. The inbox worker ignores marketing and FYI, adds a to-do for every bill (QuintoAndar, Light, Vivo, Atrium, Naturgy and others) due on its due date, and notifies you only when something needs you. At 9:00 bb pushes a reminder for each to-do due that day.
 - The agent notifies your phone, desktop and browser through Push notifications when an item needs you soon.
 - Draft replies in the thread. The assistant never sends Slack messages or email.
 - An **Assistant** card at the top of the New thread screen, above the project picker. It lists open to-dos and the assistant's reminders (automations that target its thread) due by the end of tomorrow, soonest first. To-dos and one off reminders have a checkbox: ticking a to-do checks it off and ticking a reminder pauses its automation. Repeating reminders show a repeat icon. Below the agenda it shows the dollar in reais with today's change and up to 3 lines of yesterday's major news.
 - Daily habits such as the gym sit at the top of the card with a checkbox for today, the current streak and how many of the last 30 days you checked them. On a day you have not checked one, bb sends a push at its remind hour.
 - Every day at 7:00 the assistant searches yesterday's news and keeps only what is worth your attention. On a quiet day the card shows no news.
-- Money, through Pluggy's free Meu Pluggy access to Brazilian banks over Open Finance, read only. Every 3 hours bb sends new charges to the assistant flagged as a possible duplicate, a first charge from a merchant, foreign currency, unusually large (R$ 1.000 or more, or 3 times the category median) or split into 6 or more parcelas, and the assistant notifies you about the ones that matter. Every day at 8:00 it checks fatura due and closing dates and whether checking covers the next fatura, on Mondays it posts a weekly summary and on the 1st a monthly one. The home card shows checking balance, yesterday's spending and the next fatura. Pluggy syncs your banks once a day, so charges usually show up a day late.
+- Money, through Pluggy's free Meu Pluggy access to Brazilian banks over Open Finance, read only. Every 3 hours bb sends new charges to the inbox worker flagged as a possible duplicate, a first charge from a merchant, foreign currency, unusually large (R$ 1.000 or more, or 3 times the category median) or split into 6 or more parcelas, and the inbox worker notifies you about the ones that matter. Every day at 8:00 it checks fatura due and closing dates and whether checking covers the next fatura, on Mondays it posts a weekly summary and on the 1st a monthly one. The home card shows checking balance, yesterday's spending and the next fatura. Pluggy syncs your banks once a day, so charges usually show up a day late.
 
 ## Setup
 
@@ -37,5 +37,5 @@ Only the assistant thread gets these tools: `assistant_notify`, `todo_add`, `tod
 - `bb assistant news`: ask the assistant for today's news brief now.
 - `bb assistant accounts`: list bank accounts and cards with balances and the next fatura.
 - `bb assistant spending [--days N]`: spending by category for the last N days, 30 by default.
-- `bb assistant finance-check`: fetch bank transactions now and send new charges to the assistant.
+- `bb assistant finance-check`: fetch bank transactions now and send new charges to the inbox worker.
 - `bb assistant check`: check Slack and email now instead of waiting for the next 10 minute run.
