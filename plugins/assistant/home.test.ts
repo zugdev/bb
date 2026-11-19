@@ -3,6 +3,7 @@ import {
   completeTodo,
   formatUpcoming,
   habitProgress,
+  homeEvents,
   habitsToRemind,
   openTodos,
   parseDollarQuote,
@@ -100,5 +101,19 @@ describe("habits", () => {
     expect(habitsToRemind([gym], now)).toHaveLength(1);
     expect(habitsToRemind([gym], now + 3_600_000)).toHaveLength(0);
     expect(habitsToRemind(toggleHabitDay([gym], "gym", "2026-11-17"), now)).toHaveLength(0);
+  });
+});
+
+describe("homeEvents", () => {
+  it("places all day events at local midnight and drops repeats of the same event", () => {
+    const events = homeEvents([
+      { title: "Holiday", start: "2026-11-20", allDay: true },
+      { title: "Holiday", start: "2026-11-20", allDay: true },
+      { title: "Call", start: "2026-11-19T21:30:00.000Z", allDay: false },
+    ]);
+    expect(events).toEqual([
+      { title: "Holiday", at: new Date(2026, 10, 20).getTime(), allDay: true },
+      { title: "Call", at: Date.parse("2026-11-19T21:30:00.000Z"), allDay: false },
+    ]);
   });
 });
