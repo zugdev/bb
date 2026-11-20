@@ -1,4 +1,18 @@
-import type { PluggyAccount, PluggyTransaction } from "./pluggy.js";
+import { z } from "zod";
+
+export const faturaSchema = z.object({
+  card: z.string().min(1).describe("Card name, such as Nubank or Itaú Visa"),
+  total: z.number(),
+  dueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  closingDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().default(null),
+});
+export type Fatura = z.infer<typeof faturaSchema>;
+
+export function upsertFatura(faturas: readonly Fatura[], fatura: Fatura): Fatura[] {
+  return [...faturas.filter((existing) => existing.card !== fatura.card || existing.dueDate !== fatura.dueDate), fatura]
+    .sort((a, b) => a.dueDate.localeCompare(b.dueDate))
+    .slice(-36);
+}
 
 export interface Txn {
   key: string;
@@ -17,7 +31,6 @@ export interface Txn {
   counterparty: string | null;
 }
 
-const BRAZIL_DAY = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" });
 const INTERNAL_CATEGORIES = new Set([
   "Credit card payment",
   "Same person transfer",
@@ -37,11 +50,6 @@ const LARGE_CHARGE = 1000;
 const MANY_INSTALLMENTS = 6;
 const DAY_MS = 86_400_000;
 
-export function brazilDay(iso: string): string {
-  if (/T00:00:00(\.000)?Z$/.test(iso)) return iso.slice(0, 10);
-  return BRAZIL_DAY.format(new Date(iso));
-}
-
 export function merchantName(description: string): string {
   return description
     .toLowerCase()
@@ -51,44 +59,35 @@ export function merchantName(description: string): string {
     .replace(/\s+/g, " ");
 }
 
-export function accountLabel(account: PluggyAccount): string {
-  const name = account.marketingName ?? account.name;
-  return account.number ? `${name} ${account.number.slice(-4)}` : name;
+export function parseInstallment(description: string): { number: number; total: number } | null {
+  const match = /parc(?:ela)?\.?\s*(\d{1,2})\s*(?:\/|de)\s*(\d{1,2})/i.exec(description) ?? /\b(\d{1,2})\/(\d{1,2})\s*$/.exec(description);
+  if (match === null) return null;
+  const number = Number(match[1]);
+  const total = Number(match[2]);
+  return total > 1 && number >= 1 && number <= total ? { number, total } : null;
 }
 
-export function toTxn(raw: PluggyTransaction, account: PluggyAccount): Txn {
-  const amount = Math.abs(raw.amountInAccountCurrency ?? raw.amount);
-  const card = account.subtype === "CREDIT_CARD";
-  const value = raw.type === "DEBIT" ? -amount : amount;
-  const day = brazilDay(raw.date);
-  const metadata = raw.creditCardMetadata;
-  const installment =
-    metadata?.installmentNumber != null && metadata.totalInstallments != null && metadata.totalInstallments > 1
-      ? { number: metadata.installmentNumber, total: metadata.totalInstallments }
-      : null;
-  const counterparty = value < 0 ? raw.paymentData?.receiver?.name : raw.paymentData?.payer?.name;
+export function makeTxn(input: { key: string; account: string; card: boolean; day: string; description: string; value: number; billMonth: string | null }): Txn {
   return {
-    key: raw.providerId ?? `${raw.accountId}|${day}|${value}|${raw.description}`,
-    account: accountLabel(account),
-    card,
-    day,
-    description: raw.description,
-    merchant: merchantName(counterparty ?? raw.description),
-    value: Math.round(value * 100) / 100,
-    currency: raw.currencyCode,
-    category: raw.category ?? null,
-    pending: raw.status === "PENDING",
-    installment,
-    billMonth: metadata?.billForecastDate ? metadata.billForecastDate.slice(0, 7) : null,
-    method: raw.paymentData?.paymentMethod ?? raw.operationType ?? null,
-    counterparty: counterparty ?? null,
+    ...input,
+    value: Math.round(input.value * 100) / 100,
+    merchant: merchantName(input.description),
+    currency: "BRL",
+    category: null,
+    pending: false,
+    installment: parseInstallment(input.description),
+    method: null,
+    counterparty: null,
   };
 }
+
+const INTERNAL_DESCRIPTION = /pag(amen)?to\.? (de |da )?fatura|pag fatura|fatura (do )?cart|pagamento recebido|aplica[cç][aã]o|resgate|\b(rdb|cdb)\b|dinheiro guardado|dinheiro resgatado/i;
 
 export function isInternal(txn: Txn): boolean {
   return (
     (txn.category !== null && INTERNAL_CATEGORIES.has(txn.category)) ||
-    (txn.method !== null && INTERNAL_OPERATIONS.has(txn.method))
+    (txn.method !== null && INTERNAL_OPERATIONS.has(txn.method)) ||
+    INTERNAL_DESCRIPTION.test(txn.description)
   );
 }
 
@@ -121,19 +120,29 @@ export function spendSummary(txns: readonly Txn[], from: string, to: string) {
     to,
     spent: round(-spending.reduce((sum, txn) => sum + txn.value, 0)),
     income: round(income.reduce((sum, txn) => sum + txn.value, 0)),
-    byCategory: totals(spending, (txn) => txn.category ?? "Uncategorized"),
     topMerchants: totals(spending, (txn) => txn.merchant).slice(0, 10),
   };
 }
 
-export function committedMonths(txns: readonly Txn[], today: string) {
-  const thisMonth = today.slice(0, 7);
+function addMonths(month: string, count: number): string {
+  const date = new Date(`${month}-01T00:00:00Z`);
+  date.setUTCMonth(date.getUTCMonth() + count);
+  return date.toISOString().slice(0, 7);
+}
+
+export function committedMonths(txns: readonly Txn[]) {
+  const latestBill = new Map<string, string>();
+  for (const txn of txns) {
+    if (!txn.card || txn.billMonth === null) continue;
+    if ((latestBill.get(txn.account) ?? "") < txn.billMonth) latestBill.set(txn.account, txn.billMonth);
+  }
   const months = new Map<string, number>();
   for (const txn of txns) {
-    if (!txn.card || !txn.pending || !isSpending(txn)) continue;
-    const month = txn.billMonth ?? txn.day.slice(0, 7);
-    if (month < thisMonth) continue;
-    months.set(month, (months.get(month) ?? 0) - txn.value);
+    if (txn.installment === null || !isSpending(txn) || txn.billMonth === null || latestBill.get(txn.account) !== txn.billMonth) continue;
+    for (let ahead = 1; ahead <= txn.installment.total - txn.installment.number; ahead += 1) {
+      const month = addMonths(txn.billMonth, ahead);
+      months.set(month, (months.get(month) ?? 0) - txn.value);
+    }
   }
   return [...months].sort(([a], [b]) => a.localeCompare(b)).map(([month, total]) => ({ month, total: round(total) }));
 }

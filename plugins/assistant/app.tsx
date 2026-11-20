@@ -88,16 +88,17 @@ function DollarQuote({ dollar }: { dollar: Dollar }) {
 
 const dueFormat = new Intl.DateTimeFormat("pt-BR", { day: "numeric", month: "short", timeZone: "UTC" });
 
+const formatDueDay = (day: string) => dueFormat.format(new Date(`${day}T00:00:00Z`));
+
 function FinanceLine({ finance }: { finance: FinanceHome }) {
+  const parts = [
+    finance.checking === null ? null : `Conta ${brlFormat.format(finance.checking)}${finance.checkingDay === null ? "" : ` em ${formatDueDay(finance.checkingDay)}`}`,
+    finance.bill === null ? null : `fatura ${finance.bill.account} ${brlFormat.format(finance.bill.total)} vence ${formatDueDay(finance.bill.dueDate)}`,
+  ];
   return (
-    <li className="flex gap-2 tabular-nums" title="Saldo em conta corrente, gastos de ontem e a próxima fatura">
+    <li className="flex gap-2 tabular-nums" title="Saldo do último extrato e a próxima fatura">
       <span aria-hidden className="flex shrink-0 justify-center font-medium">R$</span>
-      <span className="min-w-0">
-        Conta {brlFormat.format(finance.checking)} · ontem {brlFormat.format(finance.yesterday)}
-        {finance.bill === null
-          ? null
-          : ` · fatura ${brlFormat.format(finance.bill.total)} vence ${dueFormat.format(new Date(`${finance.bill.dueDate}T00:00:00Z`))}`}
-      </span>
+      <span className="min-w-0">{parts.filter((part) => part !== null).join(" · ")}</span>
     </li>
   );
 }

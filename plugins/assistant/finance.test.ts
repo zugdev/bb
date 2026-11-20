@@ -1,13 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { brazilDay, committedMonths, flagCharge, recurringCharges, spendSummary, toTxn, type Txn } from "./finance.js";
-import type { PluggyAccount, PluggyTransaction } from "./pluggy.js";
-
-const card: PluggyAccount = { id: "card", itemId: "i", type: "CREDIT", subtype: "CREDIT_CARD", name: "Nubank", number: "1234", balance: 0, currencyCode: "BRL" };
-const checking: PluggyAccount = { id: "bank", itemId: "i", type: "BANK", subtype: "CHECKING_ACCOUNT", name: "Conta", balance: 0, currencyCode: "BRL" };
-
-function raw(overrides: Partial<PluggyTransaction>): PluggyTransaction {
-  return { id: "t", accountId: "card", date: "2026-11-10T00:00:00.000Z", description: "X", amount: 10, currencyCode: "BRL", status: "POSTED", type: "DEBIT", ...overrides };
-}
+import { committedMonths, flagCharge, parseInstallment, recurringCharges, spendSummary, type Txn } from "./finance.js";
 
 let next = 0;
 function txn(overrides: Partial<Txn>): Txn {
@@ -31,73 +23,50 @@ function txn(overrides: Partial<Txn>): Txn {
   };
 }
 
-describe("toTxn", () => {
-  it("signs by type, keeps date-only days, and reads installments and the Pix receiver", () => {
-    const purchase = toTxn(
-      raw({ amount: 300, creditCardMetadata: { installmentNumber: 2, totalInstallments: 10, billForecastDate: "2026-12-05" } }),
-      card,
-    );
-    expect(purchase).toMatchObject({ value: -300, day: "2026-11-10", installment: { number: 2, total: 10 }, billMonth: "2026-12", card: true });
-
-    const pix = toTxn(
-      raw({ accountId: "bank", date: "2026-11-10T01:30:00.000Z", amount: -50, paymentData: { paymentMethod: "PIX", receiver: { name: "Ana Souza" } } }),
-      checking,
-    );
-    expect(pix).toMatchObject({ value: -50, day: "2026-11-09", merchant: "ana souza", method: "PIX" });
-
-    expect(toTxn(raw({ type: "CREDIT", amount: -5000 }), checking).value).toBe(5000);
-  });
-
-  it("uses the amount in reais for foreign purchases", () => {
-    expect(toTxn(raw({ amount: 20, amountInAccountCurrency: 110.4, currencyCode: "USD" }), card).value).toBe(-110.4);
-  });
-});
-
-describe("brazilDay", () => {
-  it("shifts timed instants to São Paulo and leaves midnight dates alone", () => {
-    expect(brazilDay("2026-11-10T00:00:00.000Z")).toBe("2026-11-10");
-    expect(brazilDay("2026-11-10T02:00:00.000Z")).toBe("2026-11-09");
+describe("parseInstallment", () => {
+  it("reads Nubank and Itaú installment suffixes and ignores lone numbers", () => {
+    expect(parseInstallment("Amazon - Parcela 3/10")).toEqual({ number: 3, total: 10 });
+    expect(parseInstallment("MAGAZINE LUIZA 02/12")).toEqual({ number: 2, total: 12 });
+    expect(parseInstallment("PARC 1 DE 6 FAST SHOP")).toEqual({ number: 1, total: 6 });
+    expect(parseInstallment("Uber 99/1")).toBeNull();
+    expect(parseInstallment("Padaria 1/1")).toBeNull();
+    expect(parseInstallment("Netflix")).toBeNull();
   });
 });
 
 describe("spendSummary", () => {
-  it("leaves out fatura payments, own transfers and investments", () => {
+  it("leaves out fatura payments and investments", () => {
     const summary = spendSummary(
       [
-        txn({ value: -100, category: "Groceries", merchant: "pao de acucar" }),
-        txn({ value: -40, category: "Groceries", merchant: "pao de acucar" }),
-        txn({ value: -2000, card: false, category: "Credit card payment" }),
+        txn({ value: -100, merchant: "pao de acucar" }),
+        txn({ value: -40, merchant: "pao de acucar" }),
+        txn({ value: -2000, card: false, description: "Pagamento de fatura" }),
+        txn({ value: -900, card: false, description: "Aplicação RDB" }),
         txn({ value: -500, card: false, category: "Same person transfer - PIX" }),
-        txn({ value: -900, card: false, category: "Fixed income" }),
-        txn({ value: 8000, card: false, category: "Salary" }),
-        txn({ value: 2000, card: true, method: "PAGAMENTO_FATURA" }),
-        txn({ value: -60, day: "2026-10-01", category: "Groceries" }),
+        txn({ value: 8000, card: false, description: "Transferência recebida" }),
+        txn({ value: 2000, card: true, description: "Pagamento recebido" }),
+        txn({ value: -60, day: "2026-10-01" }),
       ],
       "2026-11-01",
       "2026-11-30",
     );
-    expect(summary).toMatchObject({ spent: 140, income: 8000, byCategory: [{ name: "Groceries", total: 140, count: 2 }] });
+    expect(summary).toMatchObject({ spent: 140, income: 8000, topMerchants: [{ name: "pao de acucar", total: 140, count: 2 }] });
   });
 });
 
 describe("committedMonths", () => {
-  it("sums pending card spending per fatura month from this month on", () => {
+  it("projects the remaining parcelas from each card's latest statement only", () => {
     expect(
-      committedMonths(
-        [
-          txn({ pending: true, value: -100, billMonth: "2026-12" }),
-          txn({ pending: true, value: -100, billMonth: "2027-01" }),
-          txn({ pending: true, value: -50, billMonth: null, day: "2026-11-15" }),
-          txn({ pending: true, value: -70, billMonth: "2026-10" }),
-          txn({ pending: false, value: -999, billMonth: "2026-12" }),
-          txn({ pending: true, card: false, value: -300, billMonth: null, day: "2026-12-01" }),
-        ],
-        "2026-11-18",
-      ),
+      committedMonths([
+        txn({ value: -100, billMonth: "2026-11", installment: { number: 2, total: 4 } }),
+        txn({ value: -50, billMonth: "2026-11", installment: { number: 10, total: 10 } }),
+        txn({ value: -100, billMonth: "2026-10", installment: { number: 1, total: 4 } }),
+        txn({ value: -30, billMonth: "2026-11" }),
+        txn({ account: "Itaú cartão 9876", value: -200, billMonth: "2026-12", installment: { number: 1, total: 2 } }),
+      ]),
     ).toEqual([
-      { month: "2026-11", total: 50 },
       { month: "2026-12", total: 100 },
-      { month: "2027-01", total: 100 },
+      { month: "2027-01", total: 300 },
     ]);
   });
 });
