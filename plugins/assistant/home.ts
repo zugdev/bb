@@ -83,8 +83,8 @@ export function parseDollarQuote(body: unknown): Dollar {
 }
 
 export const financeHomeSchema = z.object({
-  checking: z.number(),
-  yesterday: z.number(),
+  checking: z.number().nullable(),
+  checkingDay: z.string().nullable(),
   bill: z.object({ account: z.string(), total: z.number(), dueDate: z.string() }).nullable(),
 });
 export type FinanceHome = z.infer<typeof financeHomeSchema>;

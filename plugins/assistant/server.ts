@@ -46,18 +46,20 @@ import {
   type GoogleAccount,
   type GoogleClient,
 } from "./google.js";
+import { createHash } from "node:crypto";
 import {
   committedMonths,
   describeTxn,
+  faturaSchema,
   flagCharge,
   isSpending,
   recurringCharges,
   spendSummary,
-  toTxn,
-  accountLabel,
+  upsertFatura,
+  type Fatura,
   type Txn,
 } from "./finance.js";
-import { pluggyAccounts, pluggyBills, pluggyTransactions, type PluggyAccount, type PluggyBill, type PluggyClient } from "./pluggy.js";
+import { expandHome, loadStatements, type StatementAccount } from "./statements.js";
 import {
   connectSlack,
   fetchPings,
@@ -93,11 +95,9 @@ const BUILT_IN_NAVIGATION_KEYS = [
 const EMAIL_UID_KEY = "email:lastUid";
 const DAY_MS = 24 * 60 * 60 * 1000;
 const FINANCE_SEEN_KEY = "finance:seen";
-const FINANCE_TTL_MS = 30 * 60_000;
-const FINANCE_HISTORY_DAYS = 365;
-const FINANCE_RECENT_DAYS = 10;
-const FINANCE_NOT_CONNECTED =
-  "Bank accounts are not connected. Set Pluggy client ID, Pluggy client secret and Pluggy item IDs in the Assistant plugin settings.";
+const FINANCE_TTL_MS = 5 * 60_000;
+const FATURAS_KEY = "finance:faturas";
+const STALE_STATEMENT_DAYS = 10;
 const slackSinceKey = (team: string) => `slack:${team}:since`;
 
 const automationListOutputSchema = z.array(z.unknown());
@@ -118,13 +118,13 @@ function assistantInstructions(threadId: string): string {
 7. Orchestrate. You may start work in any project when the user asks: \`bb project list --json\` for ids, then \`bb thread spawn --project <id> --new-environment worktree --prompt-file -\` for code work, \`bb thread wait <id>\` and \`bb thread output <id>\` to follow it, \`bb thread tell <id>\` to steer it. Keep a short ledger in your replies of threads you started and their state, and notify when one needs the user.
 8. Memory. You own the user's long term memory. Search it with \`bb memory search <words> --scope all\` before answering questions about people, projects or preferences, and save durable facts with \`bb memory add --scope global\`: people and how the user works with them, their timezone, routines and preferences.
 9. News. Once a day bb asks you for a news brief. Keep it to what matters and call news_brief_set, which replaces the brief on the home page.
-10. Money. The user's Brazilian bank accounts and credit cards are connected read only through Pluggy, synced once a day. Answer money questions with finance_accounts, finance_transactions, finance_summary, finance_committed and finance_recurring; amounts are in reais, negative for money out. Transfers between the user's own accounts, fatura payments and investments are not spending. Write money replies in Portuguese with R$ amounts.
+10. Money. bb reads the OFX and CSV statements the user exports from Nubank and Itaú into a local folder, and the inbox worker records each card fatura from its email with fatura_record. Nothing goes through a bank data aggregator. Answer money questions with finance_accounts, finance_transactions, finance_summary, finance_committed and finance_recurring; amounts are in reais, negative for money out, and data is only as recent as the newest statement. Statements have no categories, so group spending by merchant and use your judgment. Transfers between the user's own accounts, fatura payments and investments are not spending. Write money replies in Portuguese with R$ amounts.
 11. You never send Slack messages or email. When a reply is due, write a draft for the user to copy.`;
 }
 
 const INBOX_INSTRUCTIONS = `You are the user's silent inbox worker. bb posts new Slack pings, unread emails, new bank charges and the daily money check here. The user never reads this thread, so reply with one short line and act only through tools.
-1. Bills. Bills from ${BILL_SENDERS}, and any other bill, boleto, fatura or payment due, are the priority. Read the email with email_read to find the amount and due date, check todo_list, then call todo_add with a title like "Pagar Light R$ 182,40" and dueAt set to 9am on the due date. bb pushes a reminder on the morning a to-do is due. Notify with assistant_notify only when the bill is due within 2 days or overdue.
-2. Notify. Call assistant_notify for anything that needs the user soon: a direct question or DM, a deadline today, someone blocked on them, a likely duplicate, large or unexpected charge, a new subscription or a price increase. For the daily money check, notify if a card's fatura is due within 3 days and unpaid, or if checking balance is below a fatura due in the next 5 days.
+1. Bills. Bills from ${BILL_SENDERS}, and any other bill, boleto, fatura or payment due, are the priority. Read the email with email_read to find the amount and due date, check todo_list, then call todo_add with a title like "Pagar Light R$ 182,40" and dueAt set to 9am on the due date. For a Nubank or Itaú credit card fatura email, also call fatura_record with the card, total, due date and closing date. bb pushes a reminder on the morning a to-do is due. Notify with assistant_notify only when the bill is due within 2 days or overdue.
+2. Notify. Call assistant_notify for anything that needs the user soon: a direct question or DM, a deadline today, someone blocked on them, a likely duplicate, large or unexpected charge, a new subscription or a price increase. For the daily money check, follow its instructions.
 3. Ignore everything else: newsletters, marketing, promotions, automated alerts, job spam and FYI. Do nothing for them.
 4. Use slack_search, slack_thread, email_search, email_read and the finance tools for context. Amounts are in reais. Write to-do titles and notifications in Portuguese.`;
 
@@ -181,21 +181,11 @@ export default async function plugin(bb: BbPluginApi) {
       description: "The client secret of the same Desktop app OAuth client.",
       secret: true,
     },
-    pluggyClientId: {
+    statementsFolder: {
       type: "string",
-      label: "Pluggy client ID",
-      description: "From an application in dashboard.pluggy.ai with the MeuPluggy connector, for reading your own bank accounts.",
-    },
-    pluggyClientSecret: {
-      type: "string",
-      label: "Pluggy client secret",
-      description: "The client secret of the same Pluggy application.",
-      secret: true,
-    },
-    pluggyItemIds: {
-      type: "string",
-      label: "Pluggy item IDs",
-      description: "One item ID per connected bank, separated by spaces or commas, from Demo → Connected Items in the Pluggy dashboard.",
+      label: "Bank statements folder",
+      description: "Folder where you save OFX and CSV statement exports from Nubank and Itaú. bb reads it every 3 hours.",
+      default: "~/Documents/Extratos",
     },
   });
 
@@ -308,82 +298,48 @@ export default async function plugin(bb: BbPluginApi) {
     }
   }
 
-  async function pluggySetup(): Promise<{ client: PluggyClient; itemIds: string[] } | null> {
-    const current = await settings.get();
-    const itemIds = (current.pluggyItemIds ?? "").split(/[\s,]+/).filter((id) => id.length > 0);
-    if (!current.pluggyClientId || !current.pluggyClientSecret || itemIds.length === 0) return null;
-    return { client: { clientId: current.pluggyClientId, clientSecret: current.pluggyClientSecret }, itemIds };
-  }
+  let financeCache: { at: number; accounts: StatementAccount[]; txns: Txn[] } | null = null;
 
-  let financeCache: { at: number; accounts: PluggyAccount[]; txns: Txn[] } | null = null;
-
-  async function financeData(fresh = false): Promise<{ accounts: PluggyAccount[]; txns: Txn[] }> {
+  async function financeData(fresh = false): Promise<{ accounts: StatementAccount[]; txns: Txn[] }> {
     if (!fresh && financeCache !== null && Date.now() - financeCache.at < FINANCE_TTL_MS) return financeCache;
-    const setup = await pluggySetup();
-    if (setup === null) throw new Error(FINANCE_NOT_CONNECTED);
-    const accounts = await pluggyAccounts(setup.client, setup.itemIds);
-    const dateFrom = localDay(Date.now() - FINANCE_HISTORY_DAYS * DAY_MS);
-    const perAccount = await Promise.all(
-      accounts.map(async (account) => (await pluggyTransactions(setup.client, account.id, dateFrom)).map((raw) => toTxn(raw, account))),
-    );
-    const txns = perAccount.flat().sort((a, b) => b.day.localeCompare(a.day));
-    financeCache = { at: Date.now(), accounts, txns };
-    return financeCache;
+    const folder = expandHome((await settings.get()).statementsFolder);
+    try {
+      const loaded = await loadStatements(folder, (message) => bb.log.warn(message));
+      financeCache = { at: Date.now(), ...loaded };
+      return financeCache;
+    } catch (error) {
+      throw new Error(`Could not read the bank statements folder ${folder}. Create it and save OFX or CSV exports from Nubank and Itaú there, or change Bank statements folder in the Assistant plugin settings. ${String(error)}`);
+    }
   }
 
-  function nextBill(bills: readonly PluggyBill[], today: string): PluggyBill | null {
-    return bills.filter((bill) => bill.dueDate.slice(0, 10) >= today).sort((a, b) => a.dueDate.localeCompare(b.dueDate))[0] ?? null;
+  async function readFaturas(): Promise<Fatura[]> {
+    const parsed = faturaSchema.array().safeParse(await bb.storage.kv.get<unknown>(FATURAS_KEY));
+    return parsed.success ? parsed.data : [];
   }
 
   async function financeAccounts() {
-    const setup = await pluggySetup();
-    if (setup === null) throw new Error(FINANCE_NOT_CONNECTED);
-    const { accounts } = await financeData();
+    const [{ accounts, txns }, faturas] = await Promise.all([financeData(), readFaturas()]);
     const today = localDay(Date.now());
-    return Promise.all(
-      accounts.map(async (account) => {
-        const base = { account: accountLabel(account), subtype: account.subtype, balance: account.balance, currency: account.currencyCode };
-        if (account.subtype !== "CREDIT_CARD") return base;
-        const bills = await pluggyBills(setup.client, account.id).catch((error: unknown) => {
-          bb.log.warn(`could not load bills for ${base.account}: ${String(error)}`);
-          return [];
-        });
-        const upcoming = nextBill(bills, today);
-        const last = bills.filter((bill) => bill.dueDate.slice(0, 10) < today).sort((a, b) => b.dueDate.localeCompare(a.dueDate))[0] ?? null;
-        const describeBill = (bill: PluggyBill | null) =>
-          bill === null
-            ? null
-            : {
-                dueDate: bill.dueDate.slice(0, 10),
-                closingDate: bill.billClosingDate?.slice(0, 10) ?? null,
-                total: bill.totalAmount,
-                paid: (bill.payments ?? []).reduce((sum, payment) => sum + payment.amount, 0),
-              };
-        return {
-          ...base,
-          usedLimit: account.balance,
-          creditLimit: account.creditData?.creditLimit ?? null,
-          availableLimit: account.creditData?.availableCreditLimit ?? null,
-          openBillDueDate: account.creditData?.balanceDueDate ?? null,
-          nextBill: describeBill(upcoming),
-          lastBill: describeBill(last),
-        };
-      }),
-    );
+    const newestByAccount = new Map<string, string>();
+    for (const txn of txns) if ((newestByAccount.get(txn.account) ?? "") < txn.day) newestByAccount.set(txn.account, txn.day);
+    return {
+      accounts: accounts.map((account) => ({ ...account, newestTransaction: newestByAccount.get(account.label) ?? null })),
+      upcomingFaturas: faturas.filter((fatura) => fatura.dueDate >= today).sort((a, b) => a.dueDate.localeCompare(b.dueDate)),
+      pastFaturas: faturas.filter((fatura) => fatura.dueDate < today).sort((a, b) => b.dueDate.localeCompare(a.dueDate)).slice(0, 6),
+    };
   }
 
   async function financeHome() {
-    if ((await pluggySetup()) === null) return null;
     try {
-      const accounts = await financeAccounts();
-      const { txns } = await financeData();
-      const yesterday = localDay(Date.now() - DAY_MS);
-      const bills = accounts.flatMap((account) => ("nextBill" in account && account.nextBill !== null ? [{ ...account.nextBill, account: account.account }] : []));
-      const bill = bills.sort((a, b) => a.dueDate.localeCompare(b.dueDate))[0] ?? null;
+      const [{ accounts }, faturas] = await Promise.all([financeData(), readFaturas()]);
+      const today = localDay(Date.now());
+      const checking = accounts.filter((account) => !account.card && account.balance !== null);
+      const bill = faturas.filter((fatura) => fatura.dueDate >= today).sort((a, b) => a.dueDate.localeCompare(b.dueDate))[0] ?? null;
+      if (checking.length === 0 && bill === null) return null;
       return {
-        checking: accounts.filter((account) => account.subtype === "CHECKING_ACCOUNT").reduce((sum, account) => sum + account.balance, 0),
-        yesterday: -txns.filter((txn) => txn.day === yesterday && isSpending(txn)).reduce((sum, txn) => sum + txn.value, 0),
-        bill: bill === null ? null : { account: bill.account, total: bill.total, dueDate: bill.dueDate },
+        checking: checking.length === 0 ? null : checking.reduce((sum, account) => sum + account.balance!, 0),
+        checkingDay: checking.map((account) => account.balanceDay ?? "").sort()[0] || null,
+        bill: bill === null ? null : { account: bill.card, total: bill.total, dueDate: bill.dueDate },
       };
     } catch (error) {
       bb.log.warn(`could not load finance for the home card: ${String(error)}`);
@@ -391,40 +347,43 @@ export default async function plugin(bb: BbPluginApi) {
     }
   }
 
+  const hashKey = (key: string) => createHash("sha256").update(key).digest("base64url").slice(0, 16);
+
   async function checkFinance(): Promise<number> {
-    if ((await pluggySetup()) === null) return 0;
     const { txns } = await financeData(true);
-    const recentFrom = localDay(Date.now() - FINANCE_RECENT_DAYS * DAY_MS);
-    const recent = txns.filter((txn) => txn.day >= recentFrom);
     const stored = await bb.storage.kv.get<string[]>(FINANCE_SEEN_KEY);
-    await bb.storage.kv.set(FINANCE_SEEN_KEY, recent.map((txn) => txn.key));
-    if (stored === undefined) return 0;
+    await bb.storage.kv.set(FINANCE_SEEN_KEY, txns.map((txn) => hashKey(txn.key)));
+    if (stored === undefined || stored.length === 0) return 0;
     const seen = new Set(stored);
-    const fresh = recent.filter((txn) => !seen.has(txn.key) && isSpending(txn));
+    const fresh = txns.filter((txn) => !seen.has(hashKey(txn.key)) && isSpending(txn));
     if (fresh.length === 0) return 0;
-    const lines = fresh.map((txn) => {
+    const flagged = fresh.flatMap((txn) => {
       const flags = flagCharge(txn, txns);
-      return `- ${describeTxn(txn)}${flags.length === 0 ? "" : ` [${flags.join("; ")}]`}`;
+      return flags.length === 0 ? [] : [`- ${describeTxn(txn)} [${flags.join("; ")}]`];
     });
-    await sendToInbox(["New charges on the user's accounts:", ...lines].join("\n"));
+    const accounts = [...new Set(fresh.map((txn) => txn.account))].join(", ");
+    await sendToInbox(
+      [`Imported ${fresh.length} new charges from statements (${accounts}).`, ...(flagged.length === 0 ? ["None flagged."] : ["Flagged:", ...flagged])].join("\n"),
+    );
     return fresh.length;
   }
 
   function financeCheckPrompt(now: Date): string {
     const parts = [
-      "Daily money check. Call finance_accounts. Notify the user if a card's next fatura is due within 3 days and not paid, if today is a card's closing date (say the total and how it compares with the last fatura), or if checking balance is below a fatura due in the next 5 days. Otherwise reply with one line and no notification.",
+      "Daily money check. Call finance_accounts. Notify the user if an upcoming fatura is due within 3 days and finance_transactions shows no payment for it, or if a checking balance is below a fatura due in the next 5 days. Otherwise reply with one line and no notification.",
     ];
     if (now.getDay() === 1) {
-      parts.push("It is Monday: also post a short weekly summary of last week's spending from finance_summary, compared with the weekly average of the previous 4 weeks, naming only the 2 or 3 changes that matter, and any new or changed subscription from finance_recurring.");
+      parts.push(
+        `It is Monday: also post a short weekly summary of last week's spending from finance_summary against the previous 4 weeks, naming only the 2 or 3 changes that matter, and any new or changed subscription from finance_recurring. If an account's newestTransaction is more than ${STALE_STATEMENT_DAYS} days old, notify the user once to save new statement exports to the statements folder.`,
+      );
     }
     if (now.getDate() === 1) {
-      parts.push("It is the first of the month: also post last month's summary from finance_summary against the 3 months before it, income against outflow, and what finance_committed says is already committed for the coming months. Notify once with the headline.");
+      parts.push("It is the first of the month: also post last month's summary from finance_summary against the 3 months before it, income against outflow, and what finance_committed says is already committed in future faturas. Notify once with the headline.");
     }
     return parts.join(" ");
   }
 
   async function requestFinanceCheck(): Promise<void> {
-    if ((await pluggySetup()) === null) return;
     await sendToInbox(financeCheckPrompt(new Date()));
   }
 
@@ -908,7 +867,7 @@ export default async function plugin(bb: BbPluginApi) {
   bb.agents.registerTool({
     name: "finance_accounts",
     description:
-      "List the user's bank accounts and credit cards with balances in reais. Cards include limits, the next fatura to pay (due date, closing date, total, amount paid) and the last one.",
+      "List the user's accounts from their statement exports, with checking balances as of the statement date and each account's newest transaction day, plus the card faturas recorded from email: upcoming ones and the last 6.",
     parameters: z.object({}),
     async execute() {
       return JSON.stringify(await financeAccounts());
@@ -916,25 +875,35 @@ export default async function plugin(bb: BbPluginApi) {
   });
 
   bb.agents.registerTool({
+    name: "fatura_record",
+    description:
+      "Record a credit card fatura from its email, such as Nubank's or Itaú's closing notice. Recording the same card and due date again replaces it.",
+    parameters: faturaSchema,
+    async execute(fatura) {
+      await bb.storage.kv.set(FATURAS_KEY, upsertFatura(await readFaturas(), fatura));
+      bb.rpc.experimental_invalidate(["home"]);
+      return `Recorded ${fatura.card} fatura due ${fatura.dueDate}.`;
+    },
+  });
+
+  bb.agents.registerTool({
     name: "finance_transactions",
     description:
-      "Search transactions from the last 12 months, newest first. Each line is day | account | signed amount in R$ (negative is money out) | description | category | parcela | pending. query matches description, merchant, counterparty, category or account, case insensitive.",
+      "Search transactions from the user's statement exports, newest first. Each line is day | account | signed amount in R$ (negative is money out) | description | category | parcela. query matches description, merchant or account, case insensitive.",
     parameters: z.object({
       from: dayParam.optional(),
       to: dayParam.optional(),
       query: z.string().optional(),
-      pendingOnly: z.boolean().default(false),
       limit: z.number().int().min(1).max(500).default(100),
     }),
-    async execute({ from, to, query, pendingOnly, limit }) {
+    async execute({ from, to, query, limit }) {
       const needle = query?.toLowerCase();
       const rows = (await financeData()).txns.filter(
         (txn) =>
           (from === undefined || txn.day >= from) &&
           (to === undefined || txn.day <= to) &&
-          (!pendingOnly || txn.pending) &&
           (needle === undefined ||
-            [txn.description, txn.merchant, txn.counterparty ?? "", txn.category ?? "", txn.account].some((field) => field.toLowerCase().includes(needle))),
+            [txn.description, txn.merchant, txn.account].some((field) => field.toLowerCase().includes(needle))),
       );
       if (rows.length === 0) return "No matching transactions.";
       const shown = rows.slice(0, limit).map(describeTxn);
@@ -945,7 +914,7 @@ export default async function plugin(bb: BbPluginApi) {
   bb.agents.registerTool({
     name: "finance_summary",
     description:
-      "Spending between two days inclusive: total spent, income, spend by category and the top 10 merchants. Excludes transfers between the user's own accounts, fatura payments and investments.",
+      "Spending between two days inclusive: total spent, income and the top 10 merchants. Excludes fatura payments and investments; transfers between the user's own accounts may still show up as spending.",
     parameters: z.object({ from: dayParam, to: dayParam }),
     async execute({ from, to }) {
       return JSON.stringify(spendSummary((await financeData()).txns, from, to));
@@ -955,10 +924,10 @@ export default async function plugin(bb: BbPluginApi) {
   bb.agents.registerTool({
     name: "finance_committed",
     description:
-      "How much is already committed on credit cards per fatura month from pending purchases and future parcelas, starting with the open fatura.",
+      "How much future faturas already owe from parcelas, per month, projected from the remaining installments on each card's latest statement.",
     parameters: z.object({}),
     async execute() {
-      return JSON.stringify(committedMonths((await financeData()).txns, localDay(Date.now())));
+      return JSON.stringify(committedMonths((await financeData()).txns));
     },
   });
 
@@ -976,14 +945,14 @@ export default async function plugin(bb: BbPluginApi) {
     if (context.pluginMetadata.newsBrief === true) return { tools: ["news_brief_set"], skills: [] };
     if (context.pluginMetadata.inbox === true) {
       return {
-        tools: ["assistant_notify", "todo_add", "todo_list", "slack_search", "slack_thread", "email_search", "email_read", "calendar_events", "finance_accounts", "finance_transactions", "finance_summary", "finance_committed", "finance_recurring"],
+        tools: ["assistant_notify", "todo_add", "todo_list", "slack_search", "slack_thread", "email_search", "email_read", "calendar_events", "finance_accounts", "fatura_record", "finance_transactions", "finance_summary", "finance_committed", "finance_recurring"],
         skills: [],
         instructions: INBOX_INSTRUCTIONS,
       };
     }
     return context.thread.id === threadId
       ? {
-          tools: ["assistant_notify", "todo_add", "todo_done", "todo_list", "habit_add", "habit_done", "habit_list", "news_brief_set", "slack_search", "slack_thread", "email_search", "email_read", "calendar_events", "calendar_list", "calendar_add", "finance_accounts", "finance_transactions", "finance_summary", "finance_committed", "finance_recurring"],
+          tools: ["assistant_notify", "todo_add", "todo_done", "todo_list", "habit_add", "habit_done", "habit_list", "news_brief_set", "slack_search", "slack_thread", "email_search", "email_read", "calendar_events", "calendar_list", "calendar_add", "finance_accounts", "fatura_record", "finance_transactions", "finance_summary", "finance_committed", "finance_recurring"],
           skills: [],
           instructions: assistantInstructions(context.thread.id),
         }
@@ -1161,17 +1130,21 @@ export default async function plugin(bb: BbPluginApi) {
           },
         }),
         accounts: cliCommand({
-          summary: "List bank accounts and cards with balances and the next fatura",
+          summary: "List accounts from the statements folder and upcoming card faturas",
           async run() {
-            const lines = (await financeAccounts()).map((account) => {
-              const bill = "nextBill" in account && account.nextBill !== null ? `  next fatura R$ ${account.nextBill.total.toFixed(2)} due ${account.nextBill.dueDate}` : "";
-              return `${account.account}  ${account.subtype}  R$ ${account.balance.toFixed(2)}${bill}`;
-            });
-            return { exitCode: 0, stdout: lines.length === 0 ? "No accounts." : lines.join("\n") };
+            const { accounts, upcomingFaturas } = await financeAccounts();
+            const lines = [
+              ...accounts.map(
+                (account) =>
+                  `${account.label}  ${account.balance === null ? "" : `R$ ${account.balance.toFixed(2)} on ${account.balanceDay}  `}newest ${account.newestTransaction ?? "none"}`,
+              ),
+              ...upcomingFaturas.map((fatura) => `${fatura.card} fatura  R$ ${fatura.total.toFixed(2)}  due ${fatura.dueDate}`),
+            ];
+            return { exitCode: 0, stdout: lines.length === 0 ? "No statements or faturas yet." : lines.join("\n") };
           },
         }),
         spending: cliCommand({
-          summary: "Show spending by category for the last N days",
+          summary: "Show spending and the top merchants for the last N days",
           options: { days: { type: "string", description: "How many days back, 30 by default" } },
           async run(input) {
             const days = Number(input.options.days ?? "30");
@@ -1179,13 +1152,13 @@ export default async function plugin(bb: BbPluginApi) {
             const summary = spendSummary((await financeData()).txns, localDay(Date.now() - days * DAY_MS), localDay(Date.now()));
             const lines = [
               `Spent R$ ${summary.spent.toFixed(2)}, income R$ ${summary.income.toFixed(2)} from ${summary.from} to ${summary.to}`,
-              ...summary.byCategory.map((row) => `  ${row.name}  R$ ${row.total.toFixed(2)}  (${row.count})`),
+              ...summary.topMerchants.map((row) => `  ${row.name}  R$ ${row.total.toFixed(2)}  (${row.count})`),
             ];
             return { exitCode: 0, stdout: lines.join("\n") };
           },
         }),
         "finance-check": cliCommand({
-          summary: "Fetch bank transactions now and send new charges to the assistant",
+          summary: "Read the statements folder now and send new charges to the assistant",
           async run() {
             const count = await checkFinance();
             return { exitCode: 0, stdout: `${count} new charges sent to the inbox worker.` };
