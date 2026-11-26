@@ -77,7 +77,6 @@ const TODOS_KEY = "todos";
 const NEWS_KEY = "news";
 const NEWS_THREAD_KEY = "newsThreadId";
 const INBOX_THREAD_KEY = "inboxThreadId";
-const BILL_SENDERS = "QuintoAndar (rent), Light (electricity), Vivo (phone and internet), Atrium and Naturgy (gas)";
 const GOOGLE_TOKEN_KEY = "google:refreshToken";
 const HABITS_KEY = "habits";
 const DOLLAR_URL = "https://economia.awesomeapi.com.br/json/last/USD-BRL";
@@ -122,14 +121,23 @@ function assistantInstructions(threadId: string): string {
 11. You never send Slack messages or email. When a reply is due, write a draft for the user to copy.`;
 }
 
-const INBOX_INSTRUCTIONS = `You are the user's silent inbox worker. bb posts new Slack pings, unread emails, new bank charges and the daily money check here. The user never reads this thread, so reply with one short line and act only through tools.
-1. Bills. Bills from ${BILL_SENDERS}, and any other bill, boleto, fatura or payment due, are the priority. Read the email with email_read to find the amount and due date, check todo_list, then call todo_add with a title like "Pagar Light R$ 182,40" and dueAt set to 9am on the due date. For a Nubank or Itaú credit card fatura email, also call fatura_record with the card, total, due date and closing date. bb pushes a reminder on the morning a to-do is due. Notify with assistant_notify only when the bill is due within 2 days or overdue.
+function inboxInstructions(knownBills: string): string {
+  return `You are the user's silent inbox worker. bb posts new Slack pings, unread emails, new bank charges and the daily money check here. The user never reads this thread, so reply with one short line and act only through tools.
+1. Bills. Any bill, boleto, fatura or payment due is the priority.${knownBills.trim() === "" ? "" : ` The user's known bills, one per line as "issuer: what it is":\n${knownBills.trim()}\nWhen a line says two issuers are the same bill, never add a second to-do for it.`} Read the email with email_read to find the amount and due date, check todo_list, then call todo_add with a title like "Pagar luz R$ 182,40" and dueAt set to 9am on the due date. Nubank's "Buscador de Boletos" notices ("Novo boleto emitido no seu CPF" or CNPJ) name the issuer but never the amount or due date: email_search the issuer's name for its own boleto email and take them from there; only if there is none, add "Pagar <issuer> (valor no app Nubank)" without dueAt. For a Nubank or Itaú credit card fatura email, also call fatura_record with the card, total, due date and closing date. bb pushes a reminder on the morning a to-do is due. Notify with assistant_notify only when the bill is due within 2 days or overdue.
 2. Notify. Call assistant_notify for anything that needs the user soon: a direct question or DM, a deadline today, someone blocked on them, a likely duplicate, large or unexpected charge, a new subscription or a price increase. For the daily money check, follow its instructions.
 3. Ignore everything else: newsletters, marketing, promotions, automated alerts, job spam and FYI. Do nothing for them.
 4. Use slack_search, slack_thread, email_search, email_read and the finance tools for context. Amounts are in reais. Write to-do titles and notifications in Portuguese.`;
+}
 
 export default async function plugin(bb: BbPluginApi) {
   const settings = bb.settings.define({
+    knownBills: {
+      type: "string",
+      label: "Known bills",
+      description:
+        "Who bills you, one per line as \"issuer: what it is\", such as \"Light: electricity\" or \"ACME Ltda: rent, same bill as Imobiliária X\". The inbox worker uses it to recognize bills and avoid duplicate to-dos.",
+      default: "",
+    },
     slackTokens: {
       type: "string",
       label: "Slack user tokens",
@@ -187,6 +195,11 @@ export default async function plugin(bb: BbPluginApi) {
       description: "Folder where you save OFX and CSV statement exports from Nubank and Itaú. bb reads it every 3 hours.",
       default: "~/Documents/Extratos",
     },
+  });
+
+  let knownBills = (await settings.get()).knownBills;
+  settings.onChange((next) => {
+    knownBills = next.knownBills;
   });
 
   let threadId = await bb.storage.kv.get<string>(THREAD_KEY);
@@ -945,9 +958,9 @@ export default async function plugin(bb: BbPluginApi) {
     if (context.pluginMetadata.newsBrief === true) return { tools: ["news_brief_set"], skills: [] };
     if (context.pluginMetadata.inbox === true) {
       return {
-        tools: ["assistant_notify", "todo_add", "todo_list", "slack_search", "slack_thread", "email_search", "email_read", "calendar_events", "finance_accounts", "fatura_record", "finance_transactions", "finance_summary", "finance_committed", "finance_recurring"],
+        tools: ["assistant_notify", "todo_add", "todo_done", "todo_list", "slack_search", "slack_thread", "email_search", "email_read", "calendar_events", "finance_accounts", "fatura_record", "finance_transactions", "finance_summary", "finance_committed", "finance_recurring"],
         skills: [],
-        instructions: INBOX_INSTRUCTIONS,
+        instructions: inboxInstructions(knownBills),
       };
     }
     return context.thread.id === threadId

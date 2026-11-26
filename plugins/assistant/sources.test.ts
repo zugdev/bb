@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { findTextPart } from "./email.js";
+import { findTextPart, htmlToText } from "./email.js";
 import { newPings, parseSlackTokens, type SlackMessage } from "./slack.js";
 
 const workspace = { token: "xoxp-1", team: "acme", userId: "U_ME" };
@@ -37,5 +37,12 @@ describe("findTextPart", () => {
       }),
     ).toBe("1.1");
     expect(findTextPart({ type: "text/html", part: "1" })).toBeUndefined();
+  });
+});
+
+describe("htmlToText", () => {
+  it("keeps the amount and due date from an HTML-only boleto email", () => {
+    const html = `<html><head><style>td{color:red}</style></head><body><table><tr><td>Beneficiário</td><td>Energia&nbsp;SA</td></tr><tr><td>Valor</td><td>R$&nbsp;182,40</td></tr><tr><td>Vencimento</td><td>07/12/2026</td></tr></table><p>Pague pelo app&#33; &zwnj; &zwnj;&#8203;</p></body></html>`;
+    expect(htmlToText(html)).toBe("Beneficiário Energia SA\nValor R$ 182,40\nVencimento 07/12/2026\nPague pelo app!");
   });
 });
