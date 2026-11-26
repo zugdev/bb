@@ -68,14 +68,35 @@ async function summarize(
 
 export function findTextPart(
   node: MessageStructureObject | undefined,
+  type: "text/plain" | "text/html" = "text/plain",
 ): string | undefined {
   if (node === undefined) return undefined;
-  if (node.type === "text/plain") return node.part ?? "1";
+  if (node.type === type) return node.part ?? "1";
   for (const child of node.childNodes ?? []) {
-    const part = findTextPart(child);
+    const part = findTextPart(child, type);
     if (part !== undefined) return part;
   }
   return undefined;
+}
+
+const HTML_ENTITIES: Record<string, string> = { nbsp: " ", amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", zwnj: "", zwj: "", shy: "" };
+
+export function htmlToText(html: string): string {
+  return html
+    .replace(/<(style|script|head)\b[\s\S]*?<\/\1>/gi, "")
+    .replace(/<br\s*\/?>|<\/(p|div|tr|li|h[1-6]|table)>/gi, "\n")
+    .replace(/<\/t[dh]>/gi, " ")
+    .replace(/<[^>]+>/g, "")
+    .replace(/&(#x[0-9a-f]+|#\d+|[a-z]+);/gi, (entity, code: string) => {
+      if (code.startsWith("#x") || code.startsWith("#X")) return String.fromCodePoint(Number.parseInt(code.slice(2), 16));
+      if (code.startsWith("#")) return String.fromCodePoint(Number(code.slice(1)));
+      return HTML_ENTITIES[code.toLowerCase()] ?? entity;
+    })
+    .replace(/[\u200b-\u200d\u00ad\ufeff]/g, "")
+    .split("\n")
+    .map((line) => line.replace(/\s+/g, " ").trim())
+    .filter((line) => line.length > 0)
+    .join("\n");
 }
 
 export function latestUid(account: ImapAccount): Promise<number> {
@@ -125,13 +146,15 @@ export function readEmail(account: ImapAccount, uid: number): Promise<string> {
       { uid: true },
     );
     if (message === false) return `No email with uid ${uid}.`;
-    const part = findTextPart(message.bodyStructure);
-    let body = "(no plain text part)";
+    const plain = findTextPart(message.bodyStructure);
+    const part = plain ?? findTextPart(message.bodyStructure, "text/html");
+    let body = "(no text part)";
     if (part !== undefined) {
       const download = await client.download(String(uid), part, { uid: true });
       const chunks: Buffer[] = [];
       for await (const chunk of download.content) chunks.push(Buffer.from(chunk));
-      body = Buffer.concat(chunks).toString("utf8").slice(0, MAX_BODY_CHARS);
+      const text = Buffer.concat(chunks).toString("utf8");
+      body = (plain === undefined ? htmlToText(text) : text).slice(0, MAX_BODY_CHARS);
     }
     const sender = message.envelope?.from?.[0];
     return [
